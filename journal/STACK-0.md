@@ -93,7 +93,7 @@ cargo clippy --workspace -- -D warnings
 - [x] Squelette de monorepo versionné et poussé sur `main`.
 - [x] Docs fondatrices présentes.
 - [x] CI minimale configurée.
-- [ ] Compilation vérifiée sur un poste avec Rust (CI le confirmera au push).
+- [x] Compilation vérifiée par la CI (run 32315042757, success).
 
 ## Prochaine étape
 
