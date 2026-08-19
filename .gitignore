@@ -1,0 +1,37 @@
+# ── Rust ─────────────────────────────────────────────────────────────────────
+/target
+**/*.rs.bk
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# ── Environnement & secrets ──────────────────────────────────────────────────
+# JAMAIS de secret en clair dans le dépôt. Les .env sont hors git.
+.env
+.env.*
+!.env.example
+
+# ── Protobuf généré ──────────────────────────────────────────────────────────
+proto/*.pb.go
+proto/*_pb2.py
+proto/*_pb2.pyi
+proto/*_pb2_grpc.py
+
+# ── Éditeurs / OS ────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# ── Données locales de dev (jamais de PII réelle, jamais de coffre) ─────────
+*.redb
+*.sqlite
+*.sqlite3
+vault/
+data/
