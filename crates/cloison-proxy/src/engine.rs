@@ -5,10 +5,24 @@
 //! Chaque requête possède son propre `Engine` (`Engine::new(keys)`) : le
 //! registre d'émission ne contient que les jetons de CETTE requête, il n'y a
 //! donc ni purge ni course entre requêtes concurrentes.
+//!
+//! STACK-4 : `AuditEngine` — moteur d'audit **observe-only**. Il réutilise le
+//! `Detector` de cloison-core pour **compter** les PII sans rien masquer :
+//! le texte passe au client tel quel, seuls les compteurs sont accumulés
+//! dans des reçus signés (jamais de texte).
+
+use std::path::Path;
+use std::sync::Mutex;
 
 use serde_json::Value;
 
-use cloison_core::{CloisonError, CloisonResult, Engine, Policy, RestoreResult, SessionKeys, TokenizeResult};
+use cloison_audit::ed25519_dalek::{SigningKey, VerifyingKey};
+use cloison_audit::receipt::{self, Counters, Receipt, ReceiptMessage};
+use cloison_audit::report::ConformanceReport;
+use cloison_core::{
+    CloisonError, CloisonResult, Detector, DetectorKind, Engine, Policy, RestoreResult,
+    SessionKeys, Sentinel, TokenizeResult,
+};
 
 use crate::errors::{ErrorKind, ProxyError};
 use crate::handlers::Metrics;
@@ -225,4 +239,305 @@ fn apply_restore(
 /// Convertit une erreur `cloison-core` en 500 interne (jamais silencieux).
 pub(crate) fn proxy_internal(e: CloisonError) -> ProxyError {
     ProxyError::new(ErrorKind::Internal, "internal tokenization error").with_field("detail", e.to_string())
+}
+
+// ---------------------------------------------------------------------------
+// STACK-4 — moteur d'audit observe-only
+// ---------------------------------------------------------------------------
+
+/// Types à faible cardinalité généralisés par `cloison-core` (jamais
+/// tokenisés) : leurs occurrences sont des drapeaux quasi-identifiants.
+fn is_quasi_identifier(kind: &DetectorKind) -> bool {
+    matches!(kind, DetectorKind::Ip | DetectorKind::Date | DetectorKind::CreditCard)
+}
+
+/// Moteur d'audit observe-only : détecte et **compte** sans jamais masquer.
+///
+/// - Réutilise le `Detector` de cloison-core (même configuration que le mode
+///   masquage) ;
+/// - `count_text` incrémente `masked_by_type` (masqué *potentiel*) et
+///   `quasi_id_flags` (types généralisés) **sans modifier le texte** ;
+/// - `count_response` compte les sentinelles d'une réponse (aucune n'est
+///   légitime en mode audit) ;
+/// - chaque requête produit un `Receipt` signé Ed25519 (clé de l'agent au
+///   bord), accumulé dans `ledger` pour le rapport de conformité.
+///
+/// Le reçu ne contient **jamais de texte** : uniquement des compteurs.
+pub struct AuditEngine {
+    /// Détecteur partagé avec le mode masquage (STACK-2).
+    detector: Detector,
+    /// Clé de signature Ed25519 de l'agent au bord.
+    signing_key: SigningKey,
+    /// hex(public_key[0..8]) — identifiant de clé (rotation).
+    key_id: String,
+    /// hex(SHA-256(json canonique de la Policy)) — règle appliquée au comptage.
+    policy_hash: String,
+    /// Version du moteur (`CARGO_PKG_VERSION` du proxy).
+    engine_version: String,
+    /// Seuil k-anonyme du rapport (défaut 5).
+    k: usize,
+    /// Journal des reçus accumulés (pour le rapport) — compteurs uniquement.
+    ledger: Mutex<Vec<Receipt>>,
+}
+
+impl AuditEngine {
+    /// Construit le moteur : détecteur par défaut, clé chargée ou générée,
+    /// hash de politique, seuil k validé (≥ 2).
+    pub fn new(policy: &Policy, keys_path: Option<&Path>, k: usize) -> Result<Self, ProxyError> {
+        if k < 2 {
+            return Err(ProxyError::new(
+                ErrorKind::Internal,
+                "audit k-anonymity threshold must be >= 2 (CLOISON_AUDIT_K)",
+            ));
+        }
+        let detector = Detector::new().map_err(|e| {
+            ProxyError::new(ErrorKind::Internal, "failed to initialize audit detector")
+                .with_field("detail", e.to_string())
+        })?;
+        let signing_key = load_or_create_signing_key(keys_path)?;
+        let key_id = hex_short(&signing_key.verifying_key().to_bytes());
+        let policy_hash = receipt::policy_hash(policy).map_err(|e| {
+            ProxyError::new(ErrorKind::Internal, "failed to hash audit policy")
+                .with_field("detail", e.to_string())
+        })?;
+        Ok(Self {
+            detector,
+            signing_key,
+            key_id,
+            policy_hash,
+            engine_version: env!("CARGO_PKG_VERSION").to_string(),
+            k,
+            ledger: Mutex::new(Vec::new()),
+        })
+    }
+
+    /// Clé publique de l'agent (vérification hors-ligne).
+    pub fn verifying_key(&self) -> VerifyingKey {
+        self.signing_key.verifying_key()
+    }
+
+    /// Identifiant de clé (hex des 8 premiers octets de la clé publique).
+    pub fn key_id(&self) -> &str {
+        &self.key_id
+    }
+
+    /// Hash de politique appliquée au comptage.
+    pub fn policy_hash(&self) -> &str {
+        &self.policy_hash
+    }
+
+    /// Version du moteur.
+    pub fn engine_version(&self) -> &str {
+        &self.engine_version
+    }
+
+    /// Compte les PII d'un texte (masqué *potentiel*), **sans le modifier**.
+    ///
+    /// Les valeurs des spans ne sortent jamais d'ici : seuls les compteurs
+    /// sont incrémentés.
+    pub fn count_text(&self, text: &str, policy: &Policy, counters: &mut Counters) {
+        for span in self.detector.detect_with_policy(text, &policy.detection) {
+            if is_quasi_identifier(&span.entity_type) {
+                counters.quasi_id_flags += 1;
+            } else {
+                *counters
+                    .masked_by_type
+                    .entry(span.entity_type.to_string())
+                    .or_insert(0) += 1;
+            }
+        }
+    }
+
+    /// Compte les sentinelles d'un texte de réponse.
+    ///
+    /// En mode audit aucune sentinelle n'est légitime (registre d'émission
+    /// vide) : une sentinelle bien formée mais non résolvable →
+    /// `incomplete_restorations` ; une forme invalide → `blocked_outputs`
+    /// (en mode masquage, ce champ aurait été passé au marqueur neutre).
+    pub fn count_response(&self, text: &str, counters: &mut Counters) {
+        for shape in sentinel_shapes(text) {
+            match Sentinel::parse(&shape) {
+                Some(_) => counters.incomplete_restorations += 1,
+                None => counters.blocked_outputs += 1,
+            }
+        }
+    }
+
+    /// Construit un reçu **non signé** pour cette requête.
+    pub fn build_receipt(
+        &self,
+        tenant_id: String,
+        session_ref_hashed: String,
+        ts_unix: u64,
+        counters: Counters,
+    ) -> Receipt {
+        Receipt::build(ReceiptMessage {
+            tenant_id,
+            session_ref_hashed,
+            ts_unix,
+            engine_version: self.engine_version.clone(),
+            policy_hash: self.policy_hash.clone(),
+            counters,
+        })
+    }
+
+    /// Signe un reçu avec la clé de l'agent au bord.
+    pub fn sign(&self, receipt: &Receipt) -> Receipt {
+        receipt.sign(&self.signing_key)
+    }
+
+    /// Accumule un reçu signé dans le journal (pour le rapport).
+    pub fn record(&self, receipt: Receipt) {
+        self.ledger.lock().expect("audit ledger mutex poisoned").push(receipt);
+    }
+
+    /// Nombre de reçus accumulés.
+    pub fn receipts_len(&self) -> usize {
+        self.ledger.lock().expect("audit ledger mutex poisoned").len()
+    }
+
+    /// Copie des reçus accumulés (tests, vérification hors-ligne).
+    pub fn receipts(&self) -> Vec<Receipt> {
+        self.ledger.lock().expect("audit ledger mutex poisoned").clone()
+    }
+
+    /// Rapport de conformité k-anonyme sur le journal accumulé.
+    ///
+    /// Bornes de période : `[min(ts), max(ts)+1)` ; si aucun reçu, `[0, now]`.
+    pub fn report(&self) -> Result<ConformanceReport, ProxyError> {
+        let receipts = self.receipts();
+        let period_start = receipts.iter().map(|r| r.ts_unix).min().unwrap_or(0);
+        let period_end = receipts
+            .iter()
+            .map(|r| r.ts_unix)
+            .max()
+            .map(|m| m + 1)
+            .unwrap_or_else(receipt::now_unix);
+        let mut report =
+            ConformanceReport::from_receipts(&receipts, period_start, period_end, self.k).map_err(|e| {
+                ProxyError::new(ErrorKind::Internal, "failed to build conformance report")
+                    .with_field("detail", e.to_string())
+            })?;
+        // P0-3 : le rapport servi est signé par la clé de l'agent au bord.
+        // Message = JSON canonique {period_start, period_end, total_requests,
+        // redacted} — jamais les compteurs bruts (aggregated).
+        report.sign_report(&self.signing_key);
+        Ok(report)
+    }
+}
+
+/// Charge la clé de signature : fichier existant (32 octets bruts ou 64 hex),
+/// sinon génération + écriture 0600 ; sans chemin, clé éphémère (warning).
+fn load_or_create_signing_key(path: Option<&Path>) -> Result<SigningKey, ProxyError> {
+    match path {
+        Some(p) if p.exists() => {
+            let raw = std::fs::read(p).map_err(|e| {
+                ProxyError::new(ErrorKind::Internal, "failed to read audit key file")
+                    .with_field("path", p.display().to_string())
+                    .with_field("detail", e.to_string())
+            })?;
+            let seed: [u8; 32] = if raw.len() == 32 {
+                let mut s = [0u8; 32];
+                s.copy_from_slice(&raw);
+                s
+            } else if raw.len() == 64 {
+                decode_seed_hex(&String::from_utf8_lossy(&raw)).ok_or_else(|| {
+                    ProxyError::new(ErrorKind::Internal, "audit key file must be 32 raw bytes or 64 hex chars")
+                        .with_field("path", p.display().to_string())
+                })?
+            } else {
+                return Err(ProxyError::new(
+                    ErrorKind::Internal,
+                    "audit key file must be 32 raw bytes or 64 hex chars",
+                )
+                .with_field("path", p.display().to_string()));
+            };
+            Ok(SigningKey::from_bytes(&seed))
+        }
+        Some(p) => {
+            let key = SigningKey::generate(&mut rand::rngs::OsRng);
+            write_seed_file(p, &key.to_bytes())?;
+            tracing::info!(path = %p.display(), "audit agent key generated and written (0600)");
+            Ok(key)
+        }
+        None => {
+            tracing::warn!("audit mode enabled without CLOISON_AUDIT_KEYS: using an ephemeral signing key");
+            Ok(SigningKey::generate(&mut rand::rngs::OsRng))
+        }
+    }
+}
+
+/// Écrit une graine 32 octets avec permissions 0600 (jamais de logs dessus).
+fn write_seed_file(path: &Path, seed: &[u8; 32]) -> Result<(), ProxyError> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(path)
+        .map_err(|e| {
+            ProxyError::new(ErrorKind::Internal, "failed to create audit key file")
+                .with_field("path", path.display().to_string())
+                .with_field("detail", e.to_string())
+        })?;
+    file.write_all(seed).map_err(|e| {
+        ProxyError::new(ErrorKind::Internal, "failed to write audit key file")
+            .with_field("path", path.display().to_string())
+            .with_field("detail", e.to_string())
+    })?;
+    file.flush().map_err(|e| {
+        ProxyError::new(ErrorKind::Internal, "failed to flush audit key file")
+            .with_field("path", path.display().to_string())
+            .with_field("detail", e.to_string())
+    })
+}
+
+/// Décodage strict de 64 caractères hex → 32 octets.
+fn decode_seed_hex(s: &str) -> Option<[u8; 32]> {
+    if s.len() != 64 {
+        return None;
+    }
+    let bytes = s.as_bytes();
+    let mut out = [0u8; 32];
+    for (i, chunk) in bytes.chunks(2).enumerate() {
+        let hi = hex_val(chunk[0])?;
+        let lo = hex_val(chunk[1])?;
+        out[i] = (hi << 4) | lo;
+    }
+    Some(out)
+}
+
+fn hex_val(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
+    }
+}
+
+/// hex des 8 premiers octets.
+fn hex_short(bytes: &[u8]) -> String {
+    bytes.iter().take(8).map(|b| format!("{b:02x}")).collect()
+}
+
+/// Formes `⟦…⟧` présentes dans un texte (paires délimiteurs) — pour comptage.
+fn sentinel_shapes(text: &str) -> Vec<String> {
+    let mut shapes = Vec::new();
+    let mut search = 0;
+    while search < text.len() {
+        let Some(rel_open) = text[search..].find(Sentinel::L_OPEN) else {
+            break;
+        };
+        let open = search + rel_open;
+        let after_open = open + Sentinel::L_OPEN.len_utf8();
+        let Some(rel_close) = text[after_open..].find(Sentinel::L_CLOSE) else {
+            break;
+        };
+        let close = after_open + rel_close + Sentinel::L_CLOSE.len_utf8();
+        shapes.push(text[open..close].to_string());
+        search = close;
+    }
+    shapes
 }

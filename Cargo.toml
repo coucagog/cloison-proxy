@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/cloison-core",
     "crates/cloison-proxy",
+    "crates/cloison-audit",
     "crates/cloison-control",
     "crates/cloison-ledger",
     "crates/cloison-verify",
