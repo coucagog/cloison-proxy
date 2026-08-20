@@ -1,0 +1,7350 @@
+{
+  "total_docs": 200,
+  "docs_compared": 200,
+  "docs_with_core_detection": 135,
+  "divergences": [
+    {
+      "doc_id": "doc_0259",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          149,
+          170,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          212,
+          221,
+          "TEL"
+        ],
+        [
+          147,
+          168,
+          "MAIL"
+        ],
+        [
+          65,
+          70,
+          "LOC"
+        ],
+        [
+          36,
+          49,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0366",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          455,
+          475,
+          "MAIL"
+        ],
+        [
+          884,
+          913,
+          "MAIL"
+        ],
+        [
+          921,
+          934,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          471,
+          480,
+          "TEL"
+        ],
+        [
+          449,
+          454,
+          "PERSON"
+        ],
+        [
+          583,
+          592,
+          "TEL"
+        ],
+        [
+          444,
+          448,
+          "PERSON"
+        ],
+        [
+          825,
+          832,
+          "LOC"
+        ],
+        [
+          667,
+          677,
+          "PERSON"
+        ],
+        [
+          865,
+          871,
+          "PERSON"
+        ],
+        [
+          194,
+          202,
+          "LOC"
+        ],
+        [
+          754,
+          760,
+          "LOC"
+        ],
+        [
+          893,
+          906,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0376",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          467,
+          483,
+          "MAIL"
+        ],
+        [
+          901,
+          921,
+          "MAIL"
+        ],
+        [
+          490,
+          503,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          462,
+          467,
+          "LOC"
+        ],
+        [
+          46,
+          54,
+          "LOC"
+        ],
+        [
+          827,
+          847,
+          "PERSON"
+        ],
+        [
+          316,
+          325,
+          "PERSON"
+        ],
+        [
+          683,
+          685,
+          "PERSON"
+        ],
+        [
+          450,
+          470,
+          "MAIL"
+        ],
+        [
+          591,
+          604,
+          "CNI"
+        ],
+        [
+          477,
+          490,
+          "TEL"
+        ],
+        [
+          326,
+          330,
+          "PERSON"
+        ],
+        [
+          677,
+          682,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0411",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          125,
+          135,
+          "PERSON"
+        ],
+        [
+          82,
+          90,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0206",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          217,
+          230,
+          "TEL"
+        ],
+        [
+          153,
+          171,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          150,
+          168,
+          "MAIL"
+        ],
+        [
+          212,
+          225,
+          "TEL"
+        ],
+        [
+          61,
+          73,
+          "LOC"
+        ],
+        [
+          36,
+          45,
+          "PERSON"
+        ],
+        [
+          61,
+          73,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0243",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          169,
+          193,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          57,
+          65,
+          "PERSON"
+        ],
+        [
+          31,
+          39,
+          "LOC"
+        ],
+        [
+          164,
+          188,
+          "MAIL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0350",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          650,
+          667,
+          "MAIL"
+        ],
+        [
+          238,
+          266,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          100,
+          105,
+          "LOC"
+        ],
+        [
+          126,
+          132,
+          "PERSON"
+        ],
+        [
+          133,
+          138,
+          "PERSON"
+        ],
+        [
+          297,
+          303,
+          "LOC"
+        ],
+        [
+          726,
+          734,
+          "LOC"
+        ],
+        [
+          52,
+          69,
+          "LOC"
+        ],
+        [
+          716,
+          724,
+          "LOC"
+        ],
+        [
+          230,
+          258,
+          "MAIL"
+        ],
+        [
+          626,
+          643,
+          "LOC"
+        ],
+        [
+          590,
+          595,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0393",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          892,
+          912,
+          "MAIL"
+        ],
+        [
+          453,
+          473,
+          "MAIL"
+        ],
+        [
+          920,
+          933,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          46,
+          54,
+          "LOC"
+        ],
+        [
+          757,
+          764,
+          "LOC"
+        ],
+        [
+          829,
+          840,
+          "LOC"
+        ],
+        [
+          46,
+          56,
+          "LOC"
+        ],
+        [
+          309,
+          322,
+          "PERSON"
+        ],
+        [
+          671,
+          680,
+          "PERSON"
+        ],
+        [
+          865,
+          885,
+          "MAIL"
+        ],
+        [
+          442,
+          462,
+          "MAIL"
+        ],
+        [
+          892,
+          905,
+          "TEL"
+        ],
+        [
+          93,
+          115,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0372",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          450,
+          478,
+          "MAIL"
+        ],
+        [
+          891,
+          912,
+          "MAIL"
+        ],
+        [
+          920,
+          933,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          90,
+          112,
+          "PERSON"
+        ],
+        [
+          758,
+          766,
+          "LOC"
+        ],
+        [
+          672,
+          681,
+          "PERSON"
+        ],
+        [
+          891,
+          904,
+          "TEL"
+        ],
+        [
+          446,
+          452,
+          "PERSON"
+        ],
+        [
+          806,
+          817,
+          "PERSON"
+        ],
+        [
+          863,
+          884,
+          "MAIL"
+        ],
+        [
+          833,
+          838,
+          "LOC"
+        ],
+        [
+          586,
+          599,
+          "CNI"
+        ],
+        [
+          46,
+          51,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0000",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          58,
+          71,
+          "TEL"
+        ],
+        [
+          30,
+          43,
+          "CNI"
+        ]
+      ],
+      "only_presidio": [
+        [
+          29,
+          42,
+          "CNI"
+        ],
+        [
+          44,
+          53,
+          "LOC"
+        ],
+        [
+          55,
+          68,
+          "TEL"
+        ],
+        [
+          10,
+          22,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0295",
+      "difficulty": "contextual",
+      "only_core": [],
+      "only_presidio": [
+        [
+          60,
+          70,
+          "PERSON"
+        ],
+        [
+          149,
+          162,
+          "CNI"
+        ],
+        [
+          85,
+          91,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0329",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          604,
+          626,
+          "MAIL"
+        ],
+        [
+          369,
+          382,
+          "TEL"
+        ],
+        [
+          327,
+          340,
+          "TEL"
+        ],
+        [
+          417,
+          438,
+          "MAIL"
+        ],
+        [
+          303,
+          325,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          677,
+          690,
+          "PERSON"
+        ],
+        [
+          184,
+          194,
+          "LOC"
+        ],
+        [
+          403,
+          424,
+          "MAIL"
+        ],
+        [
+          581,
+          603,
+          "MAIL"
+        ],
+        [
+          595,
+          600,
+          "LOC"
+        ],
+        [
+          265,
+          278,
+          "LOC"
+        ],
+        [
+          448,
+          464,
+          "CNI"
+        ],
+        [
+          280,
+          289,
+          "PERSON"
+        ],
+        [
+          330,
+          340,
+          "LOC"
+        ],
+        [
+          371,
+          385,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0220",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          168,
+          191,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          164,
+          187,
+          "MAIL"
+        ],
+        [
+          55,
+          65,
+          "PERSON"
+        ],
+        [
+          31,
+          37,
+          "LOC"
+        ],
+        [
+          164,
+          170,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0391",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          307,
+          336,
+          "MAIL"
+        ],
+        [
+          427,
+          444,
+          "MAIL"
+        ],
+        [
+          608,
+          625,
+          "MAIL"
+        ],
+        [
+          379,
+          392,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          281,
+          293,
+          "PERSON"
+        ],
+        [
+          649,
+          666,
+          "PERSON"
+        ],
+        [
+          364,
+          378,
+          "TEL"
+        ],
+        [
+          266,
+          279,
+          "LOC"
+        ],
+        [
+          365,
+          378,
+          "TEL"
+        ],
+        [
+          396,
+          402,
+          "PERSON"
+        ],
+        [
+          583,
+          600,
+          "MAIL"
+        ],
+        [
+          89,
+          99,
+          "PERSON"
+        ],
+        [
+          185,
+          195,
+          "LOC"
+        ],
+        [
+          295,
+          324,
+          "MAIL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0242",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          210,
+          223,
+          "CNI"
+        ]
+      ],
+      "only_presidio": [
+        [
+          194,
+          207,
+          "CNI"
+        ],
+        [
+          44,
+          54,
+          "PERSON"
+        ],
+        [
+          67,
+          82,
+          "PERSON"
+        ],
+        [
+          194,
+          207,
+          "TEL"
+        ],
+        [
+          44,
+          54,
+          "LOC"
+        ],
+        [
+          143,
+          152,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0360",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          199,
+          212,
+          "TEL"
+        ],
+        [
+          639,
+          660,
+          "MAIL"
+        ],
+        [
+          227,
+          244,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          84,
+          90,
+          "LOC"
+        ],
+        [
+          94,
+          105,
+          "LOC"
+        ],
+        [
+          706,
+          719,
+          "LOC"
+        ],
+        [
+          52,
+          57,
+          "LOC"
+        ],
+        [
+          78,
+          82,
+          "LOC"
+        ],
+        [
+          126,
+          134,
+          "PERSON"
+        ],
+        [
+          567,
+          574,
+          "LOC"
+        ],
+        [
+          147,
+          159,
+          "PERSON"
+        ],
+        [
+          382,
+          396,
+          "PERSON"
+        ],
+        [
+          639,
+          648,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0029",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          59,
+          72,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          10,
+          20,
+          "PERSON"
+        ],
+        [
+          56,
+          69,
+          "TEL"
+        ],
+        [
+          27,
+          43,
+          "CNI"
+        ],
+        [
+          45,
+          54,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0397",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          903,
+          928,
+          "MAIL"
+        ],
+        [
+          456,
+          480,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          91,
+          110,
+          "PERSON"
+        ],
+        [
+          445,
+          469,
+          "MAIL"
+        ],
+        [
+          875,
+          900,
+          "MAIL"
+        ],
+        [
+          884,
+          889,
+          "PERSON"
+        ],
+        [
+          192,
+          198,
+          "LOC"
+        ],
+        [
+          672,
+          688,
+          "PERSON"
+        ],
+        [
+          46,
+          52,
+          "LOC"
+        ],
+        [
+          765,
+          771,
+          "LOC"
+        ],
+        [
+          305,
+          325,
+          "PERSON"
+        ],
+        [
+          811,
+          824,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0115",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          32,
+          45,
+          "CNI"
+        ]
+      ],
+      "only_presidio": [
+        [
+          10,
+          23,
+          "PERSON"
+        ],
+        [
+          30,
+          43,
+          "CNI"
+        ],
+        [
+          56,
+          65,
+          "TEL"
+        ],
+        [
+          45,
+          54,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0272",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          174,
+          196,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          55,
+          70,
+          "PERSON"
+        ],
+        [
+          169,
+          191,
+          "MAIL"
+        ],
+        [
+          31,
+          37,
+          "LOC"
+        ],
+        [
+          169,
+          191,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0459",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          28,
+          35,
+          "LOC"
+        ],
+        [
+          129,
+          134,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0327",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          903,
+          924,
+          "MAIL"
+        ],
+        [
+          468,
+          489,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          834,
+          852,
+          "LOC"
+        ],
+        [
+          848,
+          852,
+          "LOC"
+        ],
+        [
+          202,
+          213,
+          "LOC"
+        ],
+        [
+          877,
+          898,
+          "MAIL"
+        ],
+        [
+          46,
+          56,
+          "LOC"
+        ],
+        [
+          95,
+          103,
+          "PERSON"
+        ],
+        [
+          104,
+          120,
+          "PERSON"
+        ],
+        [
+          320,
+          337,
+          "PERSON"
+        ],
+        [
+          684,
+          695,
+          "PERSON"
+        ],
+        [
+          905,
+          914,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0068",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          20,
+          32,
+          "PERSON"
+        ],
+        [
+          76,
+          84,
+          "LOC"
+        ],
+        [
+          34,
+          59,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0131",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          20,
+          29,
+          "PERSON"
+        ],
+        [
+          32,
+          40,
+          "LOC"
+        ],
+        [
+          8,
+          18,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0236",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          139,
+          152,
+          "CNI"
+        ],
+        [
+          238,
+          264,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          133,
+          146,
+          "CNI"
+        ],
+        [
+          35,
+          40,
+          "LOC"
+        ],
+        [
+          204,
+          213,
+          "TEL"
+        ],
+        [
+          0,
+          22,
+          "PERSON"
+        ],
+        [
+          229,
+          255,
+          "LOC"
+        ],
+        [
+          229,
+          255,
+          "MAIL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0093",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          43,
+          53,
+          "LOC"
+        ],
+        [
+          10,
+          22,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0440",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          47,
+          54,
+          "LOC"
+        ],
+        [
+          136,
+          143,
+          "LOC"
+        ],
+        [
+          56,
+          63,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0148",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          36,
+          64,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          20,
+          32,
+          "PERSON"
+        ],
+        [
+          34,
+          62,
+          "PERSON"
+        ],
+        [
+          34,
+          62,
+          "MAIL"
+        ],
+        [
+          78,
+          83,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0339",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          663,
+          682,
+          "MAIL"
+        ],
+        [
+          244,
+          266,
+          "MAIL"
+        ],
+        [
+          215,
+          228,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          738,
+          746,
+          "LOC"
+        ],
+        [
+          430,
+          432,
+          "PERSON"
+        ],
+        [
+          491,
+          504,
+          "CNI"
+        ],
+        [
+          52,
+          69,
+          "LOC"
+        ],
+        [
+          694,
+          701,
+          "PERSON"
+        ],
+        [
+          222,
+          232,
+          "PERSON"
+        ],
+        [
+          714,
+          736,
+          "LOC"
+        ],
+        [
+          132,
+          158,
+          "PERSON"
+        ],
+        [
+          205,
+          219,
+          "TEL"
+        ],
+        [
+          702,
+          704,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0044",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          18,
+          29,
+          "PERSON"
+        ],
+        [
+          55,
+          63,
+          "LOC"
+        ],
+        [
+          30,
+          34,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0353",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          624,
+          637,
+          "TEL"
+        ],
+        [
+          399,
+          425,
+          "MAIL"
+        ],
+        [
+          451,
+          464,
+          "CNI"
+        ],
+        [
+          299,
+          319,
+          "MAIL"
+        ],
+        [
+          588,
+          609,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          258,
+          271,
+          "LOC"
+        ],
+        [
+          309,
+          318,
+          "TEL"
+        ],
+        [
+          344,
+          353,
+          "TEL"
+        ],
+        [
+          387,
+          413,
+          "MAIL"
+        ],
+        [
+          355,
+          369,
+          "PERSON"
+        ],
+        [
+          638,
+          653,
+          "PERSON"
+        ],
+        [
+          666,
+          679,
+          "PERSON"
+        ],
+        [
+          437,
+          450,
+          "CNI"
+        ],
+        [
+          371,
+          385,
+          "PERSON"
+        ],
+        [
+          320,
+          330,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0301",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          249,
+          275,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          240,
+          247,
+          "PERSON"
+        ],
+        [
+          34,
+          45,
+          "LOC"
+        ],
+        [
+          240,
+          266,
+          "MAIL"
+        ],
+        [
+          0,
+          21,
+          "PERSON"
+        ],
+        [
+          138,
+          154,
+          "CNI"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0234",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          208,
+          241,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          38,
+          55,
+          "PERSON"
+        ],
+        [
+          199,
+          232,
+          "MAIL"
+        ],
+        [
+          88,
+          93,
+          "LOC"
+        ],
+        [
+          171,
+          180,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0429",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          47,
+          54,
+          "LOC"
+        ],
+        [
+          136,
+          143,
+          "LOC"
+        ],
+        [
+          56,
+          63,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0315",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          208,
+          230,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          84,
+          90,
+          "LOC"
+        ],
+        [
+          199,
+          205,
+          "PERSON"
+        ],
+        [
+          38,
+          51,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0036",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          0,
+          12,
+          "LOC"
+        ],
+        [
+          14,
+          25,
+          "PERSON"
+        ],
+        [
+          39,
+          44,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0332",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          597,
+          619,
+          "MAIL"
+        ],
+        [
+          634,
+          647,
+          "TEL"
+        ],
+        [
+          307,
+          322,
+          "MAIL"
+        ],
+        [
+          455,
+          468,
+          "CNI"
+        ],
+        [
+          408,
+          429,
+          "MAIL"
+        ],
+        [
+          324,
+          337,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          337,
+          349,
+          "LOC"
+        ],
+        [
+          284,
+          308,
+          "MAIL"
+        ],
+        [
+          573,
+          595,
+          "MAIL"
+        ],
+        [
+          351,
+          360,
+          "TEL"
+        ],
+        [
+          284,
+          290,
+          "PERSON"
+        ],
+        [
+          310,
+          323,
+          "TEL"
+        ],
+        [
+          378,
+          392,
+          "PERSON"
+        ],
+        [
+          344,
+          349,
+          "PERSON"
+        ],
+        [
+          394,
+          415,
+          "MAIL"
+        ],
+        [
+          645,
+          656,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0374",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          210,
+          223,
+          "TEL"
+        ],
+        [
+          653,
+          671,
+          "MAIL"
+        ],
+        [
+          675,
+          688,
+          "TEL"
+        ],
+        [
+          236,
+          262,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          227,
+          253,
+          "MAIL"
+        ],
+        [
+          201,
+          215,
+          "TEL"
+        ],
+        [
+          628,
+          632,
+          "PERSON"
+        ],
+        [
+          154,
+          168,
+          "PERSON"
+        ],
+        [
+          400,
+          413,
+          "PERSON"
+        ],
+        [
+          713,
+          732,
+          "LOC"
+        ],
+        [
+          734,
+          742,
+          "LOC"
+        ],
+        [
+          232,
+          237,
+          "PERSON"
+        ],
+        [
+          292,
+          302,
+          "LOC"
+        ],
+        [
+          188,
+          200,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0347",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          618,
+          637,
+          "MAIL"
+        ],
+        [
+          475,
+          488,
+          "CNI"
+        ],
+        [
+          316,
+          337,
+          "MAIL"
+        ],
+        [
+          381,
+          394,
+          "TEL"
+        ],
+        [
+          426,
+          449,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          303,
+          324,
+          "MAIL"
+        ],
+        [
+          595,
+          614,
+          "MAIL"
+        ],
+        [
+          288,
+          301,
+          "LOC"
+        ],
+        [
+          532,
+          544,
+          "LOC"
+        ],
+        [
+          352,
+          366,
+          "PERSON"
+        ],
+        [
+          273,
+          286,
+          "LOC"
+        ],
+        [
+          295,
+          301,
+          "PERSON"
+        ],
+        [
+          532,
+          544,
+          "PERSON"
+        ],
+        [
+          288,
+          294,
+          "PERSON"
+        ],
+        [
+          368,
+          381,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0188",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          149,
+          172,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          147,
+          153,
+          "PERSON"
+        ],
+        [
+          154,
+          159,
+          "PERSON"
+        ],
+        [
+          147,
+          170,
+          "MAIL"
+        ],
+        [
+          64,
+          70,
+          "LOC"
+        ],
+        [
+          214,
+          223,
+          "TEL"
+        ],
+        [
+          36,
+          48,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0308",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          207,
+          218,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          27,
+          31,
+          "PERSON"
+        ],
+        [
+          179,
+          186,
+          "PERSON"
+        ],
+        [
+          179,
+          207,
+          "MAIL"
+        ],
+        [
+          49,
+          66,
+          "PERSON"
+        ],
+        [
+          27,
+          31,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0166",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          184,
+          203,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          175,
+          194,
+          "MAIL"
+        ],
+        [
+          27,
+          33,
+          "LOC"
+        ],
+        [
+          51,
+          62,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0041",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          40,
+          49,
+          "TEL"
+        ],
+        [
+          22,
+          38,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0378",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          665,
+          678,
+          "TEL"
+        ],
+        [
+          308,
+          339,
+          "MAIL"
+        ],
+        [
+          638,
+          650,
+          "MAIL"
+        ],
+        [
+          483,
+          496,
+          "CNI"
+        ],
+        [
+          762,
+          775,
+          "CNI"
+        ],
+        [
+          427,
+          457,
+          "MAIL"
+        ],
+        [
+          341,
+          354,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          601,
+          625,
+          "MAIL"
+        ],
+        [
+          396,
+          410,
+          "PERSON"
+        ],
+        [
+          295,
+          301,
+          "PERSON"
+        ],
+        [
+          733,
+          746,
+          "CNI"
+        ],
+        [
+          267,
+          280,
+          "LOC"
+        ],
+        [
+          466,
+          479,
+          "CNI"
+        ],
+        [
+          192,
+          196,
+          "LOC"
+        ],
+        [
+          734,
+          743,
+          "TEL"
+        ],
+        [
+          355,
+          364,
+          "PERSON"
+        ],
+        [
+          702,
+          709,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0172",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          206,
+          231,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          198,
+          223,
+          "MAIL"
+        ],
+        [
+          198,
+          205,
+          "PERSON"
+        ],
+        [
+          62,
+          67,
+          "LOC"
+        ],
+        [
+          277,
+          281,
+          "LOC"
+        ],
+        [
+          14,
+          36,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0213",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          192,
+          214,
+          "MAIL"
+        ],
+        [
+          237,
+          250,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          56,
+          70,
+          "PERSON"
+        ],
+        [
+          27,
+          38,
+          "LOC"
+        ],
+        [
+          183,
+          205,
+          "MAIL"
+        ],
+        [
+          226,
+          239,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0335",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          935,
+          948,
+          "TEL"
+        ],
+        [
+          470,
+          482,
+          "MAIL"
+        ],
+        [
+          489,
+          502,
+          "TEL"
+        ],
+        [
+          907,
+          927,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          833,
+          853,
+          "LOC"
+        ],
+        [
+          878,
+          898,
+          "LOC"
+        ],
+        [
+          769,
+          779,
+          "LOC"
+        ],
+        [
+          46,
+          57,
+          "PERSON"
+        ],
+        [
+          451,
+          470,
+          "MAIL"
+        ],
+        [
+          878,
+          898,
+          "MAIL"
+        ],
+        [
+          46,
+          57,
+          "LOC"
+        ],
+        [
+          200,
+          211,
+          "LOC"
+        ],
+        [
+          594,
+          603,
+          "TEL"
+        ],
+        [
+          847,
+          853,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0344",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          641,
+          663,
+          "MAIL"
+        ],
+        [
+          667,
+          680,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          85,
+          91,
+          "LOC"
+        ],
+        [
+          624,
+          628,
+          "PERSON"
+        ],
+        [
+          232,
+          234,
+          "PERSON"
+        ],
+        [
+          692,
+          703,
+          "LOC"
+        ],
+        [
+          79,
+          83,
+          "LOC"
+        ],
+        [
+          181,
+          193,
+          "PERSON"
+        ],
+        [
+          52,
+          58,
+          "LOC"
+        ],
+        [
+          705,
+          726,
+          "LOC"
+        ],
+        [
+          210,
+          217,
+          "PERSON"
+        ],
+        [
+          617,
+          639,
+          "MAIL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0161",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          206,
+          230,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          84,
+          92,
+          "LOC"
+        ],
+        [
+          198,
+          222,
+          "LOC"
+        ],
+        [
+          170,
+          179,
+          "TEL"
+        ],
+        [
+          198,
+          222,
+          "MAIL"
+        ],
+        [
+          38,
+          51,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0488",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          134,
+          144,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0288",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          239,
+          263,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          229,
+          253,
+          "MAIL"
+        ],
+        [
+          130,
+          146,
+          "CNI"
+        ],
+        [
+          204,
+          213,
+          "TEL"
+        ],
+        [
+          0,
+          16,
+          "PERSON"
+        ],
+        [
+          29,
+          37,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0248",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          229,
+          242,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          151,
+          167,
+          "CNI"
+        ],
+        [
+          87,
+          93,
+          "LOC"
+        ],
+        [
+          214,
+          227,
+          "TEL"
+        ],
+        [
+          60,
+          72,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0276",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          205,
+          223,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          38,
+          49,
+          "PERSON"
+        ],
+        [
+          82,
+          87,
+          "LOC"
+        ],
+        [
+          193,
+          198,
+          "PERSON"
+        ],
+        [
+          165,
+          174,
+          "TEL"
+        ],
+        [
+          193,
+          214,
+          "LOC"
+        ],
+        [
+          193,
+          214,
+          "MAIL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0182",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          150,
+          175,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          64,
+          72,
+          "LOC"
+        ],
+        [
+          149,
+          174,
+          "MAIL"
+        ],
+        [
+          36,
+          48,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0341",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          308,
+          330,
+          "MAIL"
+        ],
+        [
+          415,
+          442,
+          "MAIL"
+        ],
+        [
+          607,
+          628,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          331,
+          341,
+          "LOC"
+        ],
+        [
+          174,
+          180,
+          "LOC"
+        ],
+        [
+          526,
+          531,
+          "LOC"
+        ],
+        [
+          399,
+          426,
+          "MAIL"
+        ],
+        [
+          275,
+          288,
+          "PERSON"
+        ],
+        [
+          674,
+          686,
+          "PERSON"
+        ],
+        [
+          184,
+          189,
+          "LOC"
+        ],
+        [
+          260,
+          273,
+          "LOC"
+        ],
+        [
+          95,
+          100,
+          "PERSON"
+        ],
+        [
+          368,
+          382,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0241",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          148,
+          171,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          213,
+          222,
+          "TEL"
+        ],
+        [
+          63,
+          69,
+          "LOC"
+        ],
+        [
+          36,
+          47,
+          "PERSON"
+        ],
+        [
+          146,
+          169,
+          "MAIL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0174",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          204,
+          217,
+          "CNI"
+        ]
+      ],
+      "only_presidio": [
+        [
+          188,
+          201,
+          "CNI"
+        ],
+        [
+          137,
+          146,
+          "TEL"
+        ],
+        [
+          44,
+          51,
+          "LOC"
+        ],
+        [
+          64,
+          76,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0154",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          43,
+          68,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          22,
+          33,
+          "PERSON"
+        ],
+        [
+          42,
+          67,
+          "MAIL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0319",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          181,
+          203,
+          "MAIL"
+        ],
+        [
+          226,
+          239,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          27,
+          32,
+          "LOC"
+        ],
+        [
+          173,
+          195,
+          "MAIL"
+        ],
+        [
+          216,
+          229,
+          "TEL"
+        ],
+        [
+          50,
+          60,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0096",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          34,
+          43,
+          "LOC"
+        ],
+        [
+          5,
+          15,
+          "PERSON"
+        ],
+        [
+          45,
+          54,
+          "TEL"
+        ],
+        [
+          26,
+          32,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0210",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          236,
+          249,
+          "TEL"
+        ],
+        [
+          191,
+          213,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          27,
+          38,
+          "LOC"
+        ],
+        [
+          27,
+          38,
+          "PERSON"
+        ],
+        [
+          56,
+          68,
+          "PERSON"
+        ],
+        [
+          181,
+          203,
+          "MAIL"
+        ],
+        [
+          224,
+          237,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0294",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          189,
+          211,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          181,
+          203,
+          "MAIL"
+        ],
+        [
+          56,
+          68,
+          "PERSON"
+        ],
+        [
+          27,
+          38,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0173",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          238,
+          251,
+          "TEL"
+        ],
+        [
+          191,
+          215,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          228,
+          241,
+          "TEL"
+        ],
+        [
+          27,
+          40,
+          "LOC"
+        ],
+        [
+          183,
+          207,
+          "MAIL"
+        ],
+        [
+          58,
+          70,
+          "PERSON"
+        ],
+        [
+          27,
+          31,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0311",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          211,
+          234,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          83,
+          94,
+          "LOC"
+        ],
+        [
+          38,
+          50,
+          "PERSON"
+        ],
+        [
+          203,
+          226,
+          "MAIL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0358",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          245,
+          268,
+          "MAIL"
+        ],
+        [
+          651,
+          674,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          712,
+          730,
+          "LOC"
+        ],
+        [
+          653,
+          662,
+          "TEL"
+        ],
+        [
+          128,
+          151,
+          "PERSON"
+        ],
+        [
+          236,
+          259,
+          "MAIL"
+        ],
+        [
+          475,
+          491,
+          "CNI"
+        ],
+        [
+          52,
+          59,
+          "LOC"
+        ],
+        [
+          298,
+          305,
+          "LOC"
+        ],
+        [
+          183,
+          201,
+          "PERSON"
+        ],
+        [
+          590,
+          595,
+          "LOC"
+        ],
+        [
+          406,
+          416,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0089",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          23,
+          36,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0006",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          29,
+          45,
+          "CNI"
+        ],
+        [
+          47,
+          56,
+          "LOC"
+        ],
+        [
+          10,
+          22,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0365",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          195,
+          208,
+          "TEL"
+        ],
+        [
+          637,
+          660,
+          "MAIL"
+        ],
+        [
+          224,
+          252,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          84,
+          90,
+          "LOC"
+        ],
+        [
+          189,
+          202,
+          "TEL"
+        ],
+        [
+          702,
+          727,
+          "LOC"
+        ],
+        [
+          52,
+          57,
+          "LOC"
+        ],
+        [
+          145,
+          150,
+          "PERSON"
+        ],
+        [
+          78,
+          82,
+          "LOC"
+        ],
+        [
+          643,
+          652,
+          "TEL"
+        ],
+        [
+          94,
+          100,
+          "LOC"
+        ],
+        [
+          390,
+          405,
+          "PERSON"
+        ],
+        [
+          676,
+          691,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0179",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          243,
+          263,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          33,
+          39,
+          "LOC"
+        ],
+        [
+          234,
+          254,
+          "LOC"
+        ],
+        [
+          234,
+          254,
+          "MAIL"
+        ],
+        [
+          132,
+          148,
+          "CNI"
+        ],
+        [
+          0,
+          20,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0257",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          173,
+          204,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          169,
+          175,
+          "PERSON"
+        ],
+        [
+          63,
+          70,
+          "PERSON"
+        ],
+        [
+          31,
+          36,
+          "LOC"
+        ],
+        [
+          54,
+          70,
+          "LOC"
+        ],
+        [
+          54,
+          62,
+          "PERSON"
+        ],
+        [
+          169,
+          200,
+          "MAIL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0050",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          27,
+          39,
+          "PERSON"
+        ],
+        [
+          46,
+          51,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0449",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          54,
+          66,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0027",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          52,
+          65,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          28,
+          35,
+          "LOC"
+        ],
+        [
+          5,
+          17,
+          "PERSON"
+        ],
+        [
+          37,
+          46,
+          "LOC"
+        ],
+        [
+          48,
+          61,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0240",
+      "difficulty": "contextual",
+      "only_core": [],
+      "only_presidio": [
+        [
+          154,
+          167,
+          "CNI"
+        ],
+        [
+          84,
+          96,
+          "LOC"
+        ],
+        [
+          84,
+          96,
+          "PERSON"
+        ],
+        [
+          214,
+          223,
+          "TEL"
+        ],
+        [
+          60,
+          69,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0132",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          59,
+          72,
+          "CNI"
+        ]
+      ],
+      "only_presidio": [
+        [
+          56,
+          69,
+          "CNI"
+        ],
+        [
+          39,
+          50,
+          "LOC"
+        ],
+        [
+          52,
+          69,
+          "LOC"
+        ],
+        [
+          15,
+          21,
+          "PERSON"
+        ],
+        [
+          22,
+          26,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0237",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          207,
+          230,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          14,
+          22,
+          "PERSON"
+        ],
+        [
+          23,
+          34,
+          "PERSON"
+        ],
+        [
+          60,
+          68,
+          "LOC"
+        ],
+        [
+          199,
+          222,
+          "LOC"
+        ],
+        [
+          199,
+          222,
+          "MAIL"
+        ],
+        [
+          276,
+          288,
+          "LOC"
+        ],
+        [
+          276,
+          288,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0225",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          184,
+          207,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          220,
+          229,
+          "TEL"
+        ],
+        [
+          27,
+          31,
+          "PERSON"
+        ],
+        [
+          49,
+          63,
+          "PERSON"
+        ],
+        [
+          176,
+          199,
+          "MAIL"
+        ],
+        [
+          176,
+          179,
+          "PERSON"
+        ],
+        [
+          27,
+          31,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0331",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          303,
+          322,
+          "MAIL"
+        ],
+        [
+          365,
+          378,
+          "TEL"
+        ],
+        [
+          455,
+          468,
+          "CNI"
+        ],
+        [
+          594,
+          617,
+          "MAIL"
+        ],
+        [
+          413,
+          429,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          322,
+          332,
+          "LOC"
+        ],
+        [
+          570,
+          593,
+          "MAIL"
+        ],
+        [
+          263,
+          276,
+          "LOC"
+        ],
+        [
+          172,
+          179,
+          "LOC"
+        ],
+        [
+          290,
+          309,
+          "LOC"
+        ],
+        [
+          352,
+          365,
+          "TEL"
+        ],
+        [
+          278,
+          288,
+          "PERSON"
+        ],
+        [
+          439,
+          452,
+          "CNI"
+        ],
+        [
+          89,
+          93,
+          "PERSON"
+        ],
+        [
+          334,
+          350,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0245",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          207,
+          229,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          14,
+          38,
+          "PERSON"
+        ],
+        [
+          275,
+          287,
+          "PERSON"
+        ],
+        [
+          275,
+          287,
+          "LOC"
+        ],
+        [
+          163,
+          172,
+          "TEL"
+        ],
+        [
+          199,
+          221,
+          "MAIL"
+        ],
+        [
+          64,
+          71,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0045",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          31,
+          43,
+          "PERSON"
+        ],
+        [
+          8,
+          17,
+          "PERSON"
+        ],
+        [
+          19,
+          28,
+          "PERSON"
+        ],
+        [
+          31,
+          43,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0273",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          228,
+          241,
+          "TEL"
+        ],
+        [
+          181,
+          205,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          27,
+          32,
+          "LOC"
+        ],
+        [
+          173,
+          197,
+          "MAIL"
+        ],
+        [
+          218,
+          231,
+          "TEL"
+        ],
+        [
+          218,
+          231,
+          "LOC"
+        ],
+        [
+          50,
+          60,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0208",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          247,
+          269,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          135,
+          151,
+          "CNI"
+        ],
+        [
+          237,
+          259,
+          "LOC"
+        ],
+        [
+          31,
+          42,
+          "LOC"
+        ],
+        [
+          237,
+          259,
+          "MAIL"
+        ],
+        [
+          0,
+          18,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0189",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          168,
+          189,
+          "MAIL"
+        ],
+        [
+          193,
+          206,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          31,
+          36,
+          "LOC"
+        ],
+        [
+          163,
+          184,
+          "MAIL"
+        ],
+        [
+          188,
+          201,
+          "TEL"
+        ],
+        [
+          54,
+          64,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0447",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          15,
+          29,
+          "LOC"
+        ],
+        [
+          152,
+          163,
+          "LOC"
+        ],
+        [
+          127,
+          143,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0187",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          198,
+          211,
+          "TEL"
+        ],
+        [
+          172,
+          194,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          55,
+          68,
+          "PERSON"
+        ],
+        [
+          167,
+          189,
+          "LOC"
+        ],
+        [
+          167,
+          189,
+          "MAIL"
+        ],
+        [
+          193,
+          206,
+          "TEL"
+        ],
+        [
+          31,
+          37,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0034",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          17,
+          26,
+          "PERSON"
+        ],
+        [
+          43,
+          52,
+          "TEL"
+        ],
+        [
+          29,
+          36,
+          "LOC"
+        ],
+        [
+          8,
+          15,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0312",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          238,
+          251,
+          "TEL"
+        ],
+        [
+          192,
+          215,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          228,
+          241,
+          "TEL"
+        ],
+        [
+          228,
+          241,
+          "LOC"
+        ],
+        [
+          27,
+          40,
+          "PERSON"
+        ],
+        [
+          27,
+          40,
+          "LOC"
+        ],
+        [
+          184,
+          207,
+          "MAIL"
+        ],
+        [
+          58,
+          71,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0155",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          36,
+          45,
+          "TEL"
+        ],
+        [
+          22,
+          34,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0268",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          189,
+          210,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          27,
+          38,
+          "LOC"
+        ],
+        [
+          56,
+          68,
+          "PERSON"
+        ],
+        [
+          173,
+          202,
+          "LOC"
+        ],
+        [
+          181,
+          202,
+          "MAIL"
+        ],
+        [
+          223,
+          232,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0289",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          211,
+          244,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          89,
+          97,
+          "LOC"
+        ],
+        [
+          203,
+          209,
+          "PERSON"
+        ],
+        [
+          215,
+          221,
+          "PERSON"
+        ],
+        [
+          38,
+          56,
+          "PERSON"
+        ],
+        [
+          210,
+          214,
+          "PERSON"
+        ],
+        [
+          203,
+          236,
+          "MAIL"
+        ],
+        [
+          175,
+          184,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0493",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          47,
+          54,
+          "LOC"
+        ],
+        [
+          136,
+          143,
+          "LOC"
+        ],
+        [
+          56,
+          63,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0059",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          18,
+          20,
+          "PERSON"
+        ],
+        [
+          13,
+          17,
+          "PERSON"
+        ],
+        [
+          46,
+          55,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0018",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          38,
+          51,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          22,
+          34,
+          "PERSON"
+        ],
+        [
+          35,
+          49,
+          "TEL"
+        ],
+        [
+          36,
+          49,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0466",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          125,
+          135,
+          "PERSON"
+        ],
+        [
+          82,
+          90,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0153",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          30,
+          43,
+          "CNI"
+        ]
+      ],
+      "only_presidio": [
+        [
+          29,
+          42,
+          "CNI"
+        ],
+        [
+          44,
+          53,
+          "LOC"
+        ],
+        [
+          33,
+          42,
+          "TEL"
+        ],
+        [
+          10,
+          22,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0441",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          15,
+          29,
+          "LOC"
+        ],
+        [
+          152,
+          163,
+          "LOC"
+        ],
+        [
+          127,
+          143,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0383",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          309,
+          338,
+          "MAIL"
+        ],
+        [
+          428,
+          455,
+          "MAIL"
+        ],
+        [
+          381,
+          394,
+          "TEL"
+        ],
+        [
+          340,
+          353,
+          "TEL"
+        ],
+        [
+          481,
+          494,
+          "CNI"
+        ],
+        [
+          617,
+          637,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          369,
+          382,
+          "TEL"
+        ],
+        [
+          297,
+          326,
+          "MAIL"
+        ],
+        [
+          98,
+          102,
+          "PERSON"
+        ],
+        [
+          415,
+          442,
+          "MAIL"
+        ],
+        [
+          539,
+          544,
+          "LOC"
+        ],
+        [
+          191,
+          197,
+          "LOC"
+        ],
+        [
+          664,
+          677,
+          "PERSON"
+        ],
+        [
+          595,
+          599,
+          "PERSON"
+        ],
+        [
+          466,
+          479,
+          "CNI"
+        ],
+        [
+          176,
+          187,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0157",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          54,
+          67,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          51,
+          64,
+          "TEL"
+        ],
+        [
+          33,
+          40,
+          "LOC"
+        ],
+        [
+          11,
+          23,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0138",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          48,
+          61,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          46,
+          59,
+          "TEL"
+        ],
+        [
+          8,
+          19,
+          "PERSON"
+        ],
+        [
+          33,
+          39,
+          "LOC"
+        ],
+        [
+          33,
+          39,
+          "PERSON"
+        ],
+        [
+          21,
+          30,
+          "PERSON"
+        ],
+        [
+          0,
+          6,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0171",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          149,
+          173,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          148,
+          155,
+          "PERSON"
+        ],
+        [
+          148,
+          172,
+          "MAIL"
+        ],
+        [
+          44,
+          50,
+          "PERSON"
+        ],
+        [
+          66,
+          71,
+          "LOC"
+        ],
+        [
+          36,
+          43,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0008",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          8,
+          24,
+          "PERSON"
+        ],
+        [
+          53,
+          62,
+          "TEL"
+        ],
+        [
+          26,
+          35,
+          "PERSON"
+        ],
+        [
+          38,
+          46,
+          "LOC"
+        ],
+        [
+          38,
+          46,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0420",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          15,
+          29,
+          "LOC"
+        ],
+        [
+          152,
+          163,
+          "LOC"
+        ],
+        [
+          127,
+          143,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0280",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          240,
+          261,
+          "MAIL"
+        ],
+        [
+          138,
+          151,
+          "CNI"
+        ]
+      ],
+      "only_presidio": [
+        [
+          230,
+          251,
+          "MAIL"
+        ],
+        [
+          237,
+          242,
+          "PERSON"
+        ],
+        [
+          230,
+          236,
+          "PERSON"
+        ],
+        [
+          31,
+          38,
+          "LOC"
+        ],
+        [
+          131,
+          144,
+          "CNI"
+        ],
+        [
+          0,
+          18,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0065",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          10,
+          21,
+          "PERSON"
+        ],
+        [
+          42,
+          47,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0127",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          47,
+          72,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          46,
+          71,
+          "MAIL"
+        ],
+        [
+          22,
+          37,
+          "PERSON"
+        ],
+        [
+          46,
+          52,
+          "PERSON"
+        ],
+        [
+          53,
+          62,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0194",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          170,
+          193,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          166,
+          174,
+          "PERSON"
+        ],
+        [
+          166,
+          189,
+          "MAIL"
+        ],
+        [
+          193,
+          202,
+          "TEL"
+        ],
+        [
+          31,
+          36,
+          "LOC"
+        ],
+        [
+          175,
+          181,
+          "PERSON"
+        ],
+        [
+          54,
+          67,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0151",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          35,
+          45,
+          "LOC"
+        ],
+        [
+          47,
+          54,
+          "LOC"
+        ],
+        [
+          11,
+          25,
+          "PERSON"
+        ],
+        [
+          56,
+          65,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0049",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          44,
+          50,
+          "LOC"
+        ],
+        [
+          10,
+          23,
+          "PERSON"
+        ],
+        [
+          44,
+          50,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0046",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          29,
+          45,
+          "CNI"
+        ],
+        [
+          47,
+          56,
+          "LOC"
+        ],
+        [
+          10,
+          22,
+          "PERSON"
+        ],
+        [
+          58,
+          67,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0181",
+      "difficulty": "contextual",
+      "only_core": [],
+      "only_presidio": [
+        [
+          44,
+          48,
+          "LOC"
+        ],
+        [
+          182,
+          198,
+          "CNI"
+        ],
+        [
+          131,
+          140,
+          "TEL"
+        ],
+        [
+          61,
+          70,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0395",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          203,
+          216,
+          "TEL"
+        ],
+        [
+          239,
+          267,
+          "MAIL"
+        ],
+        [
+          688,
+          701,
+          "TEL"
+        ],
+        [
+          660,
+          684,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          662,
+          675,
+          "LOC"
+        ],
+        [
+          210,
+          227,
+          "PERSON"
+        ],
+        [
+          740,
+          751,
+          "LOC"
+        ],
+        [
+          148,
+          153,
+          "PERSON"
+        ],
+        [
+          714,
+          724,
+          "LOC"
+        ],
+        [
+          101,
+          106,
+          "LOC"
+        ],
+        [
+          193,
+          207,
+          "TEL"
+        ],
+        [
+          753,
+          761,
+          "LOC"
+        ],
+        [
+          699,
+          712,
+          "PERSON"
+        ],
+        [
+          480,
+          493,
+          "CNI"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0169",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          182,
+          204,
+          "MAIL"
+        ],
+        [
+          227,
+          240,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          27,
+          32,
+          "LOC"
+        ],
+        [
+          217,
+          230,
+          "TEL"
+        ],
+        [
+          50,
+          61,
+          "PERSON"
+        ],
+        [
+          179,
+          185,
+          "PERSON"
+        ],
+        [
+          174,
+          178,
+          "PERSON"
+        ],
+        [
+          174,
+          196,
+          "MAIL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0184",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          200,
+          213,
+          "CNI"
+        ]
+      ],
+      "only_presidio": [
+        [
+          44,
+          50,
+          "LOC"
+        ],
+        [
+          185,
+          198,
+          "CNI"
+        ],
+        [
+          134,
+          143,
+          "TEL"
+        ],
+        [
+          63,
+          73,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0363",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          630,
+          652,
+          "MAIL"
+        ],
+        [
+          220,
+          250,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          84,
+          90,
+          "PERSON"
+        ],
+        [
+          52,
+          57,
+          "LOC"
+        ],
+        [
+          460,
+          473,
+          "CNI"
+        ],
+        [
+          78,
+          82,
+          "LOC"
+        ],
+        [
+          94,
+          110,
+          "PERSON"
+        ],
+        [
+          679,
+          683,
+          "LOC"
+        ],
+        [
+          94,
+          100,
+          "LOC"
+        ],
+        [
+          667,
+          677,
+          "PERSON"
+        ],
+        [
+          121,
+          131,
+          "PERSON"
+        ],
+        [
+          283,
+          290,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0281",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          244,
+          265,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          133,
+          149,
+          "CNI"
+        ],
+        [
+          248,
+          253,
+          "LOC"
+        ],
+        [
+          235,
+          256,
+          "LOC"
+        ],
+        [
+          235,
+          256,
+          "MAIL"
+        ],
+        [
+          0,
+          22,
+          "PERSON"
+        ],
+        [
+          35,
+          40,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0141",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          10,
+          21,
+          "PERSON"
+        ],
+        [
+          42,
+          50,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0083",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          33,
+          57,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          72,
+          76,
+          "LOC"
+        ],
+        [
+          72,
+          76,
+          "PERSON"
+        ],
+        [
+          32,
+          56,
+          "MAIL"
+        ],
+        [
+          20,
+          30,
+          "PERSON"
+        ],
+        [
+          39,
+          44,
+          "PERSON"
+        ],
+        [
+          32,
+          38,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0306",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          203,
+          217,
+          "MAIL"
+        ],
+        [
+          240,
+          253,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          27,
+          40,
+          "LOC"
+        ],
+        [
+          186,
+          191,
+          "PERSON"
+        ],
+        [
+          229,
+          242,
+          "TEL"
+        ],
+        [
+          58,
+          73,
+          "PERSON"
+        ],
+        [
+          186,
+          208,
+          "MAIL"
+        ],
+        [
+          27,
+          31,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0146",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          33,
+          42,
+          "TEL"
+        ],
+        [
+          22,
+          31,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0079",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          49,
+          62,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          41,
+          60,
+          "MAIL"
+        ],
+        [
+          22,
+          32,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0217",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          187,
+          207,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          51,
+          66,
+          "PERSON"
+        ],
+        [
+          179,
+          199,
+          "MAIL"
+        ],
+        [
+          27,
+          33,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0053",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          42,
+          50,
+          "PERSON"
+        ],
+        [
+          42,
+          49,
+          "LOC"
+        ],
+        [
+          21,
+          31,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0260",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          174,
+          198,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          31,
+          35,
+          "PERSON"
+        ],
+        [
+          53,
+          71,
+          "PERSON"
+        ],
+        [
+          170,
+          194,
+          "MAIL"
+        ],
+        [
+          31,
+          35,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0218",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          215,
+          232,
+          "MAIL"
+        ],
+        [
+          164,
+          177,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          14,
+          33,
+          "PERSON"
+        ],
+        [
+          197,
+          223,
+          "LOC"
+        ],
+        [
+          197,
+          223,
+          "MAIL"
+        ],
+        [
+          277,
+          281,
+          "LOC"
+        ],
+        [
+          197,
+          203,
+          "PERSON"
+        ],
+        [
+          59,
+          65,
+          "LOC"
+        ],
+        [
+          157,
+          170,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0124",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          35,
+          40,
+          "LOC"
+        ],
+        [
+          42,
+          49,
+          "LOC"
+        ],
+        [
+          11,
+          25,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0437",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          25,
+          34,
+          "PERSON"
+        ],
+        [
+          46,
+          47,
+          "LOC"
+        ],
+        [
+          51,
+          52,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0348",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          310,
+          334,
+          "MAIL"
+        ],
+        [
+          748,
+          761,
+          "CNI"
+        ],
+        [
+          471,
+          484,
+          "CNI"
+        ],
+        [
+          375,
+          388,
+          "TEL"
+        ],
+        [
+          610,
+          640,
+          "MAIL"
+        ],
+        [
+          422,
+          445,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          350,
+          361,
+          "PERSON"
+        ],
+        [
+          262,
+          275,
+          "LOC"
+        ],
+        [
+          457,
+          470,
+          "CNI"
+        ],
+        [
+          394,
+          401,
+          "LOC"
+        ],
+        [
+          378,
+          392,
+          "PERSON"
+        ],
+        [
+          410,
+          417,
+          "PERSON"
+        ],
+        [
+          722,
+          735,
+          "CNI"
+        ],
+        [
+          362,
+          376,
+          "TEL"
+        ],
+        [
+          185,
+          191,
+          "LOC"
+        ],
+        [
+          298,
+          322,
+          "MAIL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0285",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          205,
+          229,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          198,
+          203,
+          "PERSON"
+        ],
+        [
+          14,
+          22,
+          "PERSON"
+        ],
+        [
+          60,
+          67,
+          "LOC"
+        ],
+        [
+          23,
+          34,
+          "PERSON"
+        ],
+        [
+          198,
+          222,
+          "MAIL"
+        ],
+        [
+          264,
+          283,
+          "LOC"
+        ],
+        [
+          276,
+          283,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0328",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          932,
+          945,
+          "TEL"
+        ],
+        [
+          459,
+          480,
+          "MAIL"
+        ],
+        [
+          898,
+          924,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          586,
+          602,
+          "CNI"
+        ],
+        [
+          46,
+          56,
+          "LOC"
+        ],
+        [
+          200,
+          206,
+          "LOC"
+        ],
+        [
+          904,
+          917,
+          "TEL"
+        ],
+        [
+          95,
+          118,
+          "PERSON"
+        ],
+        [
+          839,
+          846,
+          "LOC"
+        ],
+        [
+          871,
+          876,
+          "PERSON"
+        ],
+        [
+          871,
+          897,
+          "MAIL"
+        ],
+        [
+          476,
+          485,
+          "TEL"
+        ],
+        [
+          46,
+          58,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0003",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          14,
+          21,
+          "PERSON"
+        ],
+        [
+          14,
+          25,
+          "LOC"
+        ],
+        [
+          0,
+          12,
+          "LOC"
+        ],
+        [
+          39,
+          45,
+          "LOC"
+        ],
+        [
+          22,
+          25,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0389",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          456,
+          481,
+          "MAIL"
+        ],
+        [
+          905,
+          917,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          91,
+          110,
+          "PERSON"
+        ],
+        [
+          443,
+          450,
+          "PERSON"
+        ],
+        [
+          46,
+          52,
+          "PERSON"
+        ],
+        [
+          192,
+          203,
+          "LOC"
+        ],
+        [
+          475,
+          484,
+          "TEL"
+        ],
+        [
+          761,
+          768,
+          "LOC"
+        ],
+        [
+          46,
+          52,
+          "LOC"
+        ],
+        [
+          443,
+          468,
+          "MAIL"
+        ],
+        [
+          310,
+          323,
+          "PERSON"
+        ],
+        [
+          671,
+          684,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0313",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          237,
+          260,
+          "MAIL"
+        ],
+        [
+          135,
+          148,
+          "CNI"
+        ]
+      ],
+      "only_presidio": [
+        [
+          129,
+          142,
+          "CNI"
+        ],
+        [
+          228,
+          251,
+          "LOC"
+        ],
+        [
+          30,
+          36,
+          "LOC"
+        ],
+        [
+          228,
+          251,
+          "MAIL"
+        ],
+        [
+          132,
+          141,
+          "TEL"
+        ],
+        [
+          0,
+          17,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0385",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          469,
+          482,
+          "CNI"
+        ],
+        [
+          304,
+          333,
+          "MAIL"
+        ],
+        [
+          740,
+          753,
+          "CNI"
+        ],
+        [
+          418,
+          443,
+          "MAIL"
+        ],
+        [
+          611,
+          633,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          527,
+          537,
+          "LOC"
+        ],
+        [
+          527,
+          537,
+          "PERSON"
+        ],
+        [
+          711,
+          724,
+          "CNI"
+        ],
+        [
+          300,
+          304,
+          "PERSON"
+        ],
+        [
+          337,
+          347,
+          "LOC"
+        ],
+        [
+          349,
+          362,
+          "PERSON"
+        ],
+        [
+          279,
+          290,
+          "PERSON"
+        ],
+        [
+          659,
+          669,
+          "PERSON"
+        ],
+        [
+          292,
+          321,
+          "LOC"
+        ],
+        [
+          391,
+          403,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0416",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          47,
+          54,
+          "LOC"
+        ],
+        [
+          136,
+          143,
+          "LOC"
+        ],
+        [
+          56,
+          63,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0475",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          47,
+          54,
+          "LOC"
+        ],
+        [
+          136,
+          143,
+          "LOC"
+        ],
+        [
+          56,
+          63,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0293",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          187,
+          210,
+          "MAIL"
+        ],
+        [
+          233,
+          246,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          27,
+          32,
+          "LOC"
+        ],
+        [
+          223,
+          236,
+          "TEL"
+        ],
+        [
+          179,
+          202,
+          "MAIL"
+        ],
+        [
+          50,
+          66,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0090",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          21,
+          30,
+          "PERSON"
+        ],
+        [
+          8,
+          19,
+          "PERSON"
+        ],
+        [
+          33,
+          39,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0021",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          21,
+          25,
+          "PERSON"
+        ],
+        [
+          52,
+          58,
+          "LOC"
+        ],
+        [
+          13,
+          20,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0075",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          17,
+          23,
+          "PERSON"
+        ],
+        [
+          37,
+          49,
+          "PERSON"
+        ],
+        [
+          25,
+          34,
+          "PERSON"
+        ],
+        [
+          8,
+          16,
+          "PERSON"
+        ],
+        [
+          37,
+          49,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0392",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          202,
+          215,
+          "TEL"
+        ],
+        [
+          232,
+          260,
+          "MAIL"
+        ],
+        [
+          648,
+          674,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          589,
+          594,
+          "LOC"
+        ],
+        [
+          100,
+          105,
+          "LOC"
+        ],
+        [
+          126,
+          140,
+          "PERSON"
+        ],
+        [
+          414,
+          418,
+          "LOC"
+        ],
+        [
+          211,
+          222,
+          "PERSON"
+        ],
+        [
+          52,
+          69,
+          "LOC"
+        ],
+        [
+          710,
+          735,
+          "LOC"
+        ],
+        [
+          688,
+          700,
+          "PERSON"
+        ],
+        [
+          224,
+          252,
+          "MAIL"
+        ],
+        [
+          702,
+          708,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0266",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          194,
+          213,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          52,
+          67,
+          "PERSON"
+        ],
+        [
+          180,
+          203,
+          "MAIL"
+        ],
+        [
+          27,
+          34,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0123",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          0,
+          11,
+          "LOC"
+        ],
+        [
+          45,
+          55,
+          "LOC"
+        ],
+        [
+          25,
+          43,
+          "LOC"
+        ],
+        [
+          13,
+          23,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0492",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          28,
+          35,
+          "LOC"
+        ],
+        [
+          129,
+          134,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0071",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          30,
+          43,
+          "CNI"
+        ]
+      ],
+      "only_presidio": [
+        [
+          29,
+          42,
+          "CNI"
+        ],
+        [
+          44,
+          53,
+          "LOC"
+        ],
+        [
+          10,
+          22,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0250",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          205,
+          228,
+          "MAIL"
+        ],
+        [
+          172,
+          185,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          78,
+          86,
+          "LOC"
+        ],
+        [
+          38,
+          45,
+          "PERSON"
+        ],
+        [
+          164,
+          177,
+          "TEL"
+        ],
+        [
+          196,
+          219,
+          "MAIL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0263",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          182,
+          207,
+          "MAIL"
+        ],
+        [
+          230,
+          243,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          174,
+          199,
+          "MAIL"
+        ],
+        [
+          51,
+          61,
+          "PERSON"
+        ],
+        [
+          27,
+          33,
+          "LOC"
+        ],
+        [
+          220,
+          233,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0287",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          252,
+          272,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          233,
+          238,
+          "PERSON"
+        ],
+        [
+          30,
+          38,
+          "LOC"
+        ],
+        [
+          233,
+          262,
+          "LOC"
+        ],
+        [
+          233,
+          262,
+          "MAIL"
+        ],
+        [
+          131,
+          147,
+          "CNI"
+        ],
+        [
+          0,
+          17,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0446",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          15,
+          29,
+          "LOC"
+        ],
+        [
+          152,
+          163,
+          "LOC"
+        ],
+        [
+          127,
+          143,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0207",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          181,
+          198,
+          "MAIL"
+        ],
+        [
+          221,
+          234,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          51,
+          60,
+          "PERSON"
+        ],
+        [
+          27,
+          33,
+          "LOC"
+        ],
+        [
+          27,
+          33,
+          "PERSON"
+        ],
+        [
+          211,
+          224,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0114",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          44,
+          55,
+          "LOC"
+        ],
+        [
+          27,
+          37,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0451",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          54,
+          66,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0170",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          156,
+          169,
+          "TEL"
+        ],
+        [
+          216,
+          229,
+          "CNI"
+        ]
+      ],
+      "only_presidio": [
+        [
+          44,
+          63,
+          "LOC"
+        ],
+        [
+          76,
+          85,
+          "PERSON"
+        ],
+        [
+          146,
+          159,
+          "TEL"
+        ],
+        [
+          201,
+          214,
+          "CNI"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0299",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          209,
+          233,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          201,
+          225,
+          "MAIL"
+        ],
+        [
+          84,
+          92,
+          "LOC"
+        ],
+        [
+          38,
+          51,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0224",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          190,
+          214,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          182,
+          189,
+          "PERSON"
+        ],
+        [
+          27,
+          38,
+          "LOC"
+        ],
+        [
+          182,
+          206,
+          "MAIL"
+        ],
+        [
+          190,
+          195,
+          "PERSON"
+        ],
+        [
+          56,
+          69,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0450",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          54,
+          66,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0030",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          15,
+          22,
+          "PERSON"
+        ],
+        [
+          23,
+          27,
+          "PERSON"
+        ],
+        [
+          51,
+          67,
+          "CNI"
+        ],
+        [
+          40,
+          45,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0117",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          56,
+          69,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          54,
+          67,
+          "TEL"
+        ],
+        [
+          45,
+          52,
+          "LOC"
+        ],
+        [
+          32,
+          43,
+          "LOC"
+        ],
+        [
+          11,
+          22,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0149",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          48,
+          54,
+          "LOC"
+        ],
+        [
+          18,
+          27,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0199",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          217,
+          230,
+          "TEL"
+        ],
+        [
+          150,
+          171,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          36,
+          50,
+          "PERSON"
+        ],
+        [
+          213,
+          226,
+          "TEL"
+        ],
+        [
+          66,
+          71,
+          "LOC"
+        ],
+        [
+          148,
+          169,
+          "MAIL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0410",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          125,
+          132,
+          "LOC"
+        ],
+        [
+          0,
+          7,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0069",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          47,
+          53,
+          "LOC"
+        ],
+        [
+          27,
+          40,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0097",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          36,
+          45,
+          "TEL"
+        ],
+        [
+          22,
+          34,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0244",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          173,
+          186,
+          "TEL"
+        ],
+        [
+          210,
+          228,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          81,
+          87,
+          "LOC"
+        ],
+        [
+          165,
+          178,
+          "TEL"
+        ],
+        [
+          197,
+          218,
+          "LOC"
+        ],
+        [
+          38,
+          48,
+          "PERSON"
+        ],
+        [
+          197,
+          218,
+          "MAIL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0338",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          411,
+          431,
+          "MAIL"
+        ],
+        [
+          313,
+          331,
+          "MAIL"
+        ],
+        [
+          601,
+          622,
+          "MAIL"
+        ],
+        [
+          637,
+          650,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          441,
+          457,
+          "CNI"
+        ],
+        [
+          300,
+          303,
+          "PERSON"
+        ],
+        [
+          517,
+          527,
+          "LOC"
+        ],
+        [
+          702,
+          718,
+          "CNI"
+        ],
+        [
+          346,
+          356,
+          "PERSON"
+        ],
+        [
+          578,
+          599,
+          "MAIL"
+        ],
+        [
+          385,
+          395,
+          "PERSON"
+        ],
+        [
+          334,
+          344,
+          "LOC"
+        ],
+        [
+          675,
+          687,
+          "PERSON"
+        ],
+        [
+          397,
+          417,
+          "MAIL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0067",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          14,
+          24,
+          "PERSON"
+        ],
+        [
+          38,
+          43,
+          "LOC"
+        ],
+        [
+          0,
+          12,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0019",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          51,
+          55,
+          "LOC"
+        ],
+        [
+          13,
+          20,
+          "PERSON"
+        ],
+        [
+          21,
+          26,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0226",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          213,
+          226,
+          "CNI"
+        ]
+      ],
+      "only_presidio": [
+        [
+          147,
+          156,
+          "TEL"
+        ],
+        [
+          44,
+          52,
+          "LOC"
+        ],
+        [
+          65,
+          86,
+          "PERSON"
+        ],
+        [
+          198,
+          211,
+          "CNI"
+        ],
+        [
+          198,
+          211,
+          "TEL"
+        ],
+        [
+          201,
+          210,
+          "TEL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0343",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          630,
+          650,
+          "MAIL"
+        ],
+        [
+          216,
+          241,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          705,
+          713,
+          "LOC"
+        ],
+        [
+          85,
+          91,
+          "PERSON"
+        ],
+        [
+          608,
+          628,
+          "MAIL"
+        ],
+        [
+          79,
+          83,
+          "LOC"
+        ],
+        [
+          197,
+          207,
+          "PERSON"
+        ],
+        [
+          52,
+          58,
+          "LOC"
+        ],
+        [
+          95,
+          109,
+          "PERSON"
+        ],
+        [
+          95,
+          99,
+          "LOC"
+        ],
+        [
+          668,
+          680,
+          "PERSON"
+        ],
+        [
+          52,
+          64,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0028",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          49,
+          62,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          38,
+          45,
+          "LOC"
+        ],
+        [
+          47,
+          60,
+          "TEL"
+        ],
+        [
+          11,
+          20,
+          "PERSON"
+        ],
+        [
+          30,
+          36,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0377",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          466,
+          479,
+          "CNI"
+        ],
+        [
+          420,
+          440,
+          "MAIL"
+        ],
+        [
+          311,
+          334,
+          "MAIL"
+        ],
+        [
+          728,
+          741,
+          "CNI"
+        ],
+        [
+          604,
+          630,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          278,
+          297,
+          "PERSON"
+        ],
+        [
+          263,
+          276,
+          "LOC"
+        ],
+        [
+          622,
+          631,
+          "TEL"
+        ],
+        [
+          701,
+          714,
+          "CNI"
+        ],
+        [
+          172,
+          183,
+          "LOC"
+        ],
+        [
+          350,
+          364,
+          "LOC"
+        ],
+        [
+          581,
+          607,
+          "PERSON"
+        ],
+        [
+          581,
+          607,
+          "MAIL"
+        ],
+        [
+          350,
+          356,
+          "PERSON"
+        ],
+        [
+          357,
+          364,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0467",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          88,
+          96,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0490",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          125,
+          135,
+          "PERSON"
+        ],
+        [
+          82,
+          90,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0258",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          202,
+          215,
+          "TEL"
+        ],
+        [
+          175,
+          198,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          54,
+          71,
+          "PERSON"
+        ],
+        [
+          31,
+          36,
+          "LOC"
+        ],
+        [
+          197,
+          210,
+          "TEL"
+        ],
+        [
+          170,
+          193,
+          "MAIL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0336",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          457,
+          476,
+          "MAIL"
+        ],
+        [
+          890,
+          911,
+          "MAIL"
+        ],
+        [
+          919,
+          932,
+          "TEL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          449,
+          454,
+          "PERSON"
+        ],
+        [
+          805,
+          814,
+          "PERSON"
+        ],
+        [
+          672,
+          678,
+          "PERSON"
+        ],
+        [
+          444,
+          448,
+          "PERSON"
+        ],
+        [
+          860,
+          881,
+          "MAIL"
+        ],
+        [
+          888,
+          901,
+          "TEL"
+        ],
+        [
+          311,
+          324,
+          "PERSON"
+        ],
+        [
+          583,
+          599,
+          "CNI"
+        ],
+        [
+          758,
+          765,
+          "LOC"
+        ],
+        [
+          830,
+          835,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0476",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          15,
+          29,
+          "LOC"
+        ],
+        [
+          152,
+          163,
+          "LOC"
+        ],
+        [
+          127,
+          143,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0094",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          55,
+          74,
+          "LOC"
+        ],
+        [
+          23,
+          38,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0474",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          54,
+          66,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0048",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          27,
+          40,
+          "PERSON"
+        ],
+        [
+          47,
+          52,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0022",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          28,
+          55,
+          "LOC"
+        ],
+        [
+          57,
+          63,
+          "LOC"
+        ],
+        [
+          13,
+          26,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0043",
+      "difficulty": "simple",
+      "only_core": [],
+      "only_presidio": [
+        [
+          20,
+          29,
+          "PERSON"
+        ],
+        [
+          13,
+          18,
+          "PERSON"
+        ],
+        [
+          32,
+          43,
+          "LOC"
+        ],
+        [
+          32,
+          43,
+          "PERSON"
+        ],
+        [
+          8,
+          12,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0202",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          133,
+          146,
+          "CNI"
+        ],
+        [
+          232,
+          266,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          126,
+          139,
+          "CNI"
+        ],
+        [
+          222,
+          256,
+          "LOC"
+        ],
+        [
+          222,
+          256,
+          "MAIL"
+        ],
+        [
+          0,
+          16,
+          "PERSON"
+        ],
+        [
+          197,
+          206,
+          "TEL"
+        ],
+        [
+          29,
+          33,
+          "LOC"
+        ],
+        [
+          222,
+          229,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0388",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          309,
+          327,
+          "MAIL"
+        ],
+        [
+          599,
+          622,
+          "MAIL"
+        ],
+        [
+          637,
+          650,
+          "TEL"
+        ],
+        [
+          329,
+          342,
+          "TEL"
+        ],
+        [
+          413,
+          437,
+          "MAIL"
+        ],
+        [
+          463,
+          476,
+          "CNI"
+        ]
+      ],
+      "only_presidio": [
+        [
+          185,
+          196,
+          "LOC"
+        ],
+        [
+          341,
+          352,
+          "PERSON"
+        ],
+        [
+          424,
+          433,
+          "LOC"
+        ],
+        [
+          294,
+          312,
+          "MAIL"
+        ],
+        [
+          647,
+          658,
+          "PERSON"
+        ],
+        [
+          282,
+          292,
+          "PERSON"
+        ],
+        [
+          699,
+          715,
+          "CNI"
+        ],
+        [
+          98,
+          102,
+          "PERSON"
+        ],
+        [
+          397,
+          421,
+          "MAIL"
+        ],
+        [
+          267,
+          280,
+          "LOC"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0227",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          163,
+          176,
+          "TEL"
+        ],
+        [
+          204,
+          230,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          14,
+          32,
+          "PERSON"
+        ],
+        [
+          58,
+          64,
+          "LOC"
+        ],
+        [
+          206,
+          212,
+          "PERSON"
+        ],
+        [
+          276,
+          287,
+          "LOC"
+        ],
+        [
+          156,
+          169,
+          "TEL"
+        ],
+        [
+          196,
+          205,
+          "PERSON"
+        ],
+        [
+          196,
+          222,
+          "MAIL"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0176",
+      "difficulty": "contextual",
+      "only_core": [
+        [
+          246,
+          265,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          237,
+          256,
+          "MAIL"
+        ],
+        [
+          212,
+          221,
+          "TEL"
+        ],
+        [
+          237,
+          256,
+          "LOC"
+        ],
+        [
+          0,
+          19,
+          "PERSON"
+        ],
+        [
+          32,
+          45,
+          "LOC"
+        ],
+        [
+          138,
+          154,
+          "CNI"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0404",
+      "difficulty": "non_pii",
+      "only_core": [],
+      "only_presidio": [
+        [
+          125,
+          135,
+          "PERSON"
+        ],
+        [
+          82,
+          90,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0349",
+      "difficulty": "adversarial",
+      "only_core": [
+        [
+          590,
+          613,
+          "MAIL"
+        ],
+        [
+          302,
+          322,
+          "MAIL"
+        ],
+        [
+          405,
+          425,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          282,
+          288,
+          "PERSON"
+        ],
+        [
+          284,
+          288,
+          "LOC"
+        ],
+        [
+          605,
+          614,
+          "TEL"
+        ],
+        [
+          351,
+          360,
+          "TEL"
+        ],
+        [
+          323,
+          333,
+          "LOC"
+        ],
+        [
+          511,
+          516,
+          "LOC"
+        ],
+        [
+          391,
+          411,
+          "MAIL"
+        ],
+        [
+          636,
+          651,
+          "PERSON"
+        ],
+        [
+          693,
+          709,
+          "CNI"
+        ],
+        [
+          378,
+          389,
+          "PERSON"
+        ]
+      ]
+    },
+    {
+      "doc_id": "doc_0035",
+      "difficulty": "simple",
+      "only_core": [
+        [
+          43,
+          69,
+          "MAIL"
+        ]
+      ],
+      "only_presidio": [
+        [
+          22,
+          32,
+          "PERSON"
+        ],
+        [
+          41,
+          67,
+          "MAIL"
+        ]
+      ]
+    }
+  ],
+  "core_only": 244,
+  "presidio_only": 1381,
+  "both": 10,
+  "neither": 0,
+  "summary": {
+    "message": "Le différentiel est un OUTIL DE DIAGNOSTIC, pas un score. Il montre où cloison-core et Presidio divergent.",
+    "note": "cloison-core détecte Email/Tel/CNI/CB/IP/Date (structuré); il ne détecte PAS encore PERSON/LOC par NER (STACK-6). Les divergences sur PERSON/LOC sont attendues."
+  }
+}
