@@ -37,3 +37,9 @@ rand = "0.8"
 thiserror = "1"
 proptest = "1"
 insta = "1"
+
+# Release : binaire edge allégé et plus rapide (dette STACK-7).
+[profile.release]
+strip = true
+lto = "thin"
+codegen-units = 1
