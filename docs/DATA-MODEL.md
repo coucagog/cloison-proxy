@@ -112,13 +112,14 @@ du processus : une cellule n'est **publiée** que si
 
 ### 4.2 Store
 
-- `InMemoryStore` (implémentation actuelle, `RwLock<HashMap>`).
-- **Cible STACK-7 `PostgresStore`** (feature `pg`, sqlx) — schéma documenté
-  dans `crates/cloison-control/src/store.rs` :
-  `tenants`, `licenses`, `policies`, `tokens`, `ledger_entries`.
+- `InMemoryStore` (`RwLock<HashMap>`) — tests, mode sans base.
+- `PostgresStore` (**implémenté, STACK-8**) : feature `pg` (sqlx, pool interne),
+  schéma idempotent `crates/cloison-control/migrations/001_init.sql`
+  (`tenants`, `api_tokens`, `policies`, `licenses` — 0 PII, jetons hachés),
+  sélectionné par `CLOISON_DATABASE_URL` au boot du binaire.
   Règles du contrat `Store` : `hash_token` fourni par le trait (le store ne
   voit **jamais** le clair) ; `validate_token` compare les digests en temps
-  constant ; rotation = ancien marqué roté (plus aucun usage).
+  constant ; rotation avec grâce ; IDOR vérifié par requête (`WHERE tenant_id`).
 
 ## 5. Contrat de détection (`cloison-detect`, proto `cloison.detect.v1`)
 

@@ -154,6 +154,7 @@ impl From<ControlError> for ApiError {
             ControlError::Ledger(_) | ControlError::Io(_) | ControlError::Json(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, "internal error".to_string())
             }
+            ControlError::Store(_) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
             ControlError::Internal(_) => (StatusCode::BAD_REQUEST, err.to_string()),
         };
         ApiError { status, message }

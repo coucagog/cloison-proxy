@@ -42,6 +42,7 @@
 | `CLOISON_CONTROL_PORT` | control | non | `8788` | port d'écoute du plan de contrôle (le binaire ne lit PAS `CLOISON_LISTEN_ADDR`) |
 | `CLOISON_LEDGER_FILE` | control | non | absent (mémoire) | journal append-only (JSONL, chaîne + signatures) ; posé → persistance |
 | `CLOISON_ROTATION_GRACE_SECONDS` | control | non | `300` | grâce de rotation des jetons `mn_*` |
+| `CLOISON_DATABASE_URL` | control | **oui** | absent (InMemoryStore) | URL PostgreSQL — active `PostgresStore` (feature `pg` ; sinon repli mémoire + warning) |
 | `CLOISON_AGENT_VERIFY_KEY` | control | **oui** | absent (paire éphémère dev) | clé publique Ed25519 de l'agent, hex 64 |
 | `CLOISON_CONTROL_SIGNING_KEY` | control | **oui** | absent (clé générée dev) | clé privée Ed25519 du contrôle, hex 64 |
 

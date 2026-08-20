@@ -59,6 +59,10 @@ pub enum ControlError {
 
     #[error("internal error: {0}")]
     Internal(String),
+
+    /// Erreur du store persistant (PostgresStore, feature `pg`).
+    #[error("store error: {0}")]
+    Store(String),
 }
 
 /// Alias de résultat du plan de contrôle.

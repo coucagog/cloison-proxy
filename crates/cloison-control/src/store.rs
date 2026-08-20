@@ -1,13 +1,13 @@
-//! Persistance du plan de contrôle : trait [`Store`] complet + implémentation mémoire.
+//! Persistance du plan de contrôle : trait [`Store`] complet + implémentations
+//! mémoire et PostgreSQL.
 //!
 //! # Postgres
 //!
-//! TODO STACK-7 — `PostgresStore` (sqlx, feature `pg`) : le schéma cible est documenté
-//! dans `API_DESIGN.md` §2.2 (`tenants`, `licenses`, `policies`, `tokens`, `ledger_entries`).
-//! L'implémentation sqlx + `PgPool` est volontairement différée pour garder le crate
-//! compilable hors-ligne (sqlx+postgres = chaîne de compilation lourde). Le trait [`Store`]
-//! ci-dessous **est le contrat complet** ; [`InMemoryStore`] l'implémente intégralement
-//! pour les tests et le mode sans base.
+//! `PostgresStore` (sqlx, feature **`pg`** — optionnelle pour garder le crate
+//! compilable hors-ligne) : schéma dans `migrations/001_init.sql`, requêtes
+//! paramétrées, pool interne. Le trait [`Store`] **est le contrat complet** ;
+//! [`InMemoryStore`] l'implémente intégralement pour les tests et le mode sans
+//! base.
 //!
 //! Règles de sécurité portées par le contrat :
 //! - `hash_token` est fourni par le trait : un store ne voit **jamais** le clair persisté ;

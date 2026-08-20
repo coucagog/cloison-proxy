@@ -5,6 +5,7 @@
 //!   CLOISON_ROTATION_GRACE_SECONDS (défaut 300)
 //!   CLOISON_AGENT_VERIFY_KEY (clé publique Ed25519 de l'agent, hex 64 — optionnelle)
 //!   CLOISON_CONTROL_SIGNING_KEY (clé privée Ed25519 du control, hex 64 — générée si absente)
+//!   CLOISON_DATABASE_URL  (feature `pg` — PostgreSQL ; absent = InMemoryStore)
 
 use axum::serve;
 use cloison_control::api::{router, AppState};
@@ -68,8 +69,30 @@ async fn main() -> ControlResult<()> {
         }
     };
 
+    // Store : PostgreSQL si CLOISON_DATABASE_URL (feature `pg`), sinon mémoire.
+    let store: Arc<dyn cloison_control::store::Store> = match std::env::var("CLOISON_DATABASE_URL") {
+        #[cfg(feature = "pg")]
+        Ok(url) => {
+            let pool = cloison_control::postgres::PostgresStore::connect(&url, 5).await?;
+            tracing::info!("cloison-control : store PostgreSQL connecté (0 PII, jetons hachés)");
+            Arc::new(pool)
+        }
+        #[cfg(not(feature = "pg"))]
+        Ok(_) => {
+            tracing::warn!(
+                "CLOISON_DATABASE_URL défini mais binaire compilé sans feature `pg` \
+                 (cargo build -p cloison-control --features pg) — repli InMemoryStore"
+            );
+            Arc::new(InMemoryStore::new())
+        }
+        Err(_) => {
+            tracing::warn!("CLOISON_DATABASE_URL absent : InMemoryStore (perte au restart, dev)");
+            Arc::new(InMemoryStore::new())
+        }
+    };
+
     let state = AppState::from_env(
-        Arc::new(InMemoryStore::new()),
+        store,
         agent_verify_key,
         control_signing_key,
     )?;

@@ -19,8 +19,9 @@
 //!   (ETag/long-poll pour les caches proxy) ; rotation avec période de grâce
 //!   (`CLOISON_ROTATION_GRACE_SECONDS`, défaut 300).
 //!
-//! Persistance : trait [`store::Store`] complet + [`store::InMemoryStore`] (tests).
-//! `PostgresStore` (sqlx) est documenté en TODO STACK-7 dans `store.rs`.
+//! Persistance : trait [`store::Store`] complet + [`store::InMemoryStore`] (tests,
+//! mode sans base) ; [`postgres::PostgresStore`] (feature `pg`) pour PostgreSQL
+//! réel (schéma `migrations/001_init.sql`, 0 PII, jetons hachés).
 
 pub mod api;
 pub mod contersign;
@@ -28,6 +29,9 @@ pub mod error;
 pub mod model;
 pub mod store;
 pub mod token;
+
+#[cfg(feature = "pg")]
+pub mod postgres;
 
 pub use error::{ControlError, ControlResult};
 pub use model::{
