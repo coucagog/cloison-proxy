@@ -1,0 +1,263 @@
+{
+  "benchmark_id": "CLOISON-STACK-1-v1.0",
+  "registration_timestamp": "PRÉ-ENREGISTRÉ",
+  "version": "1.0.0",
+
+  "entities": [
+    {
+      "type": "PERSON",
+      "description": "Noms complets sénégalais (prénom + patronyme). Inclut les noms à racine arabo-islamique (Mohamed, Fatou, Aïssata), les noms à racine wolof (Cheikh, Mame), les patronymes courants (Ndiaye, Diop, Fall, Sow, Seck, Diallo, Ba, Ndong, Gueye, Diagne). Exclut les prénoms seuls sans patronyme contextuel. Variations orthographiques incluses (Diacrites: Aïssata vs Aissata, translittérations: Cheikh vs Sheikh).",
+      "weight": 0.30,
+      "examples_synthetic": "Mamadou Diop, Fatou Ndiaye, Cheikh Ahmadou Bamba Mbacké, Aïssata Sow"
+    },
+    {
+      "type": "LOC",
+      "description": "Toponymes sénégalais — niveaux administratifs et locaux. Inclut: 14 régions officielles (Dakar, Thiès, Saint-Louis, Diourbel, Louga, Fatick, Kaffrine, Kaolack, Kolda, Sédhiou, Tambacounda, Kédougou, Matam, Ziguinchor), communes et villes principales, quartiers connus de Dakar (Médina, Plateau, Ouakam, Yoff, Sicap, Grand Yoff, Parcelles Assainies), villages et localités rurales. Exclut les noms de pays et capitales étrangères.",
+      "weight": 0.20,
+      "examples_synthetic": "Dakar, Thiès, Rufisque, Kaolack, Médina, Ouakam, Fatick, Tambacounda"
+    },
+    {
+      "type": "CNI",
+      "description": "Numéro de Carte Nationale d'Identité sénégalaise. Format exact: 13 chiffres structurés comme 1XX XXX XXXX XX. Contraintes: commence obligatoirement par '1', somme de contrôle modulaire sur les 13 chiffres (algorithme Luhn adapté ou validation officielle si documentée). Présence possible de séparateurs (espaces) ou format compact. Aucun numéro réel utilisé — génération synthétique respectant le format.",
+      "weight": 0.25,
+      "regex_pattern": "1[0-9]{2}[\\s]?[0-9]{3}[\\s]?[0-9]{4}[\\s]?[0-9]{2}",
+      "examples_synthetic": "175 234 5678 01, 1824567890123, 168 789 0123 45"
+    },
+    {
+      "type": "MAIL",
+      "description": "Adresses email. Format standard RFC 5322. Inclut domaines génériques (gmail.com, yahoo.fr, outlook.com) et domaines institutionnels synthétiques (.sn, .gouv.sn, organisations fictives sénégalaises). Pas d'email réel ni de domaine propriétaire existant.",
+      "weight": 0.15,
+      "examples_synthetic": "mamadou.diop@email.sn, fatou.ndiaye@exemple.gouv.sn, aissata.sow@organisation.sn"
+    },
+    {
+      "type": "TEL",
+      "description": "Numéros de téléphone sénégalais. Format: indicatif +221 suivi de 9 chiffres. Inclut les préfixes opérateurs reconnus (Orange: 77, 78; Free: 76; Expresso: 70). Formats variés: +221XXXXXXXXX, 00221XXXXXXXXX, 77 XXX XX XX, (+221) 77 XXX XX XX. Aucun numéro réel.",
+      "weight": 0.10,
+      "regex_patterns": [
+        "\\+221[0-9]{9}",
+        "00221[0-9]{9}",
+        "77[0-9]{7}",
+        "78[0-9]{7}",
+        "76[0-9]{7}",
+        "70[0-9]{7}"
+      ],
+      "examples_synthetic": "+221771234567, 00221781234567, 77 123 45 67, (+221) 76 123 45 67"
+    }
+  ],
+
+  "dataset": {
+    "total_documents": 500,
+    "documents_per_difficulty_tier": {
+      "simple": 200,
+      "contextual": 200,
+      "adversarial": 100
+    },
+    "difficulty_definitions": {
+      "simple": "Documents courts (1-3 phrases), une entité par phrase maximum, contexte neutre. Ex: formulaire, annonce simple, message transactionnel.",
+      "contextual": "Documents moyens (3-7 phrases), plusieurs entités entrelacées, contexte ré-identifiant (relations familiales, adresses, métiers). Ex: lettre administrative, rapport social, compte-rendu.",
+      "adversarial": "Documents complexes (5-15 phrases), entités dans contexte piège (faux amis linguistiques, noms communs homonymes de lieux, contextes ambigus, bruit textuel). Ex: article de presse synthétique, rapport détaillé, correspondance professionnelle."
+    },
+    "entity_distribution_target": {
+      "PERSON": "150-200 occurrences",
+      "LOC": "100-150 occurrences",
+      "CNI": "80-120 occurrences",
+      "MAIL": "60-100 occurrences",
+      "TEL": "60-100 occurrences"
+    },
+    "non_pii_ratio": 0.20,
+    "non_pii_description": "20% des documents contiennent zéro entité PII (vrais négatifs) pour mesurer spécificité. Textes neutres: météo, recettes, instructions techniques, descriptions d'objets.",
+    "synthetic_generation": {
+      "method": "génération procédurale avec templates",
+      "name_sources": "listes ouvertes de prénoms et patronymes ouest-africains (sources académiques publiques, pas de données privées)",
+      "location_sources": "nomenclature administrative officielle du Sénégal (répertoire public)",
+      "cni_generation": "algorithme synthétique respectant format 1XX XXX XXXX XX avec somme de contrôle",
+      "no_real_data": "AUCUNE donnée PII réelle utilisée — validation par inspection manuelle d'un échantillon"
+    },
+    "train_test_separation": {
+      "test_set_only": true,
+      "visibility_rule": "Le détecteur cible ne voit JAMAIS le jeu de test avant le run. La baseline Presidio n'est pas réentraînée sur ces données."
+    }
+  },
+
+  "metrics": {
+    "primary_metrics": ["precision", "recall", "f1"],
+    "span_matching_method": "exact_match",
+    "span_matching_definition": {
+      "exact_match": "Un span est correct si et seulement si: (1) positions de début et fin identiques, (2) type d'entité correct. Tolérance zéro sur les frontières.",
+      "partial_match_not_used": "Le matching partiel (chevauchement) n'est PAS utilisé pour le score principal car il masque les erreurs de délimitation critiques pour la pseudonymisation.",
+      "overlap_handling": "Les spans prédits qui se chevauchent partiellement avec un span gold sont comptés comme faux positifs ET le span gold non détecté est compté comme faux négatif."
+    },
+    "tokenization_normalization": {
+      "case_normalization": "Insensible à la casse — comparaison en lowercase",
+      "accent_normalization": "Les variantes avec/sans diacritiques sont considérées équivalentes (Aïssata = Aissata = AISSATA)",
+      "whitespace_normalization": "Les espaces multiples sont réduits à un espace unique avant comparaison",
+      "punctuation_handling": "La ponctuation adjacente n'est pas incluse dans le span (ex: 'Diop,' → span sur 'Diop' sans la virgule)"
+    },
+    "scoring_per_entity": {
+      "true_positive": "Span prédit avec type correct et frontières exactes",
+      "false_positive": "Span prédit qui ne correspond à aucun span gold OU type incorrect",
+      "false_negative": "Span gold non détecté ou détecté avec type incorrect",
+      "precision_formula": "TP / (TP + FP)",
+      "recall_formula": "TP / (TP + FN)",
+      "f1_formula": "2 * (precision * recall) / (precision + recall)"
+    },
+    "aggregation": {
+      "per_entity_scores": "Precision, Recall, F1 calculés séparément pour chaque type d'entité",
+      "macro_f1_global": "Moyenne non pondérée des F1 de chaque entité: (F1_PERSON + F1_LOC + F1_CNI + F1_MAIL + F1_TEL) / 5",
+      "weighted_f1_global": "Moyenne pondérée par les poids définis dans 'entities': somme(F1_i * weight_i)",
+      "primary_decision_metric": "macro_F1_global ET F1_PERSON ET F1_CNI (critères combinés)"
+    },
+    "confidence_intervals": {
+      "method": "bootstrap",
+      "n_iterations": 1000,
+      "confidence_level": 0.95,
+      "reporting": "Les scores doivent être rapportés avec intervalle de confiance [IC95%]"
+    }
+  },
+
+  "baseline": {
+    "name": "Presidio FR Baseline Fort",
+    "version": "presidio-analyzer>=2.2.0",
+    "configuration": {
+      "language": "fr",
+      "default_score_threshold": 0.0,
+      "analyzer_engine": "StanfordNLPRecognizerWrapper + regex recognizers custom"
+    },
+    "recognizers_enabled": [
+      {
+        "name": "SpacyRecognizer",
+        "language": "fr",
+        "model": "fr_core_news_lg ou fr_core_news_md",
+        "entities": ["PERSON", "LOC"],
+        "note": "Modèle spaCy français large installé et chargé"
+      },
+      {
+        "name": "EmailRecognizer",
+        "language": "any",
+        "entities": ["MAIL"],
+        "preset": "Presidio built-in"
+      },
+      {
+        "name": "PhoneRecognizer",
+        "language": "any",
+        "entities": ["TEL"],
+        "preset": "Presidio built-in",
+        "customization": "Patterns étendus pour formats sénégalais (+221, 00221)"
+      },
+      {
+        "name": "CNI_Senegal_Recognizer",
+        "language": "any",
+        "entities": ["CNI"],
+        "type": "custom_regex",
+        "regex": ["1[0-9]{2}[\\s]?[0-9]{3}[\\s]?[0-9]{4}[\\s]?[0-9]{2}"],
+        "context_words": ["CNI", "carte", "identité", "numéro", "NINA"],
+        "score_boost": 0.4
+      }
+    ],
+    "gazetteers": {
+      "enabled": true,
+      "description": "Listes de noms et lieux sénégalais injectées comme patterns personnalisés",
+      "person_gazetteer": {
+        "source": "Listes publiques de prénoms et patronymes ouest-africains (articles académiques, registres ouverts)",
+        "min_frequency": "Occurrences >= 1000 dans les sources publiques",
+        "examples_included": "Ndiaye, Diop, Fall, Sow, Seck, Diallo, Ba, Ndong, Gueye, Diagne, Sy, Wade, Thiam, Faye, Sall, Gaye, Mbaye, Ndiaye, Sarr, Diaw"
+      },
+      "location_gazetteer": {
+        "source": "Répertoire officiel des collectivités locales du Sénégal (direction de l'aménagement du territoire)",
+        "includes": "14 régions, 45 départements, communes et arrondissements",
+        "examples_included": "Dakar, Thiès, Saint-Louis, Diourbel, Louga, Fatick, Kaffrine, Kaolack, Kolda, Sédhiou, Tambacounda, Kédougou, Matam, Ziguinchor, Rufisque, Mbour, Pikine, Guédiawaye"
+      },
+      "injection_method": "PatternRecognizer avec deny-list ou context enhancement, PAS de réentraînement de modèle"
+    },
+    "no_retraining": "La baseline utilise les modèles pré-entraînés spaCy FR tels quels. Les gazetteers sont des ajouts de patterns, pas du fine-tuning. AUCUN entraînement sur les données du benchmark."
+  },
+
+  "criteria": {
+    "go_condition": {
+      "description": "Le projet CLOISON passe GO si le fossé de détection est statistiquement significatif et substantiel sur les entités critiques",
+      "conditions": [
+        {
+          "metric": "macro_F1_global",
+          "threshold": "baseline_macro_F1 + 0.10",
+          "description": "Amélioration d'au moins 10 points absolus sur le F1 macro global"
+        },
+        {
+          "metric": "F1_PERSON",
+          "threshold": "baseline_F1_PERSON + 0.12",
+          "description": "Amélioration d'au moins 12 points absolus sur F1 PERSON (entité critique pour pseudonymisation)"
+        },
+        {
+          "metric": "F1_CNI",
+          "threshold": "baseline_F1_CNI + 0.08",
+          "description": "Amélioration d'au moins 8 points absolus sur F1 CNI (entité critique pour ré-identification)"
+        }
+      ],
+      "all_conditions_required": "Les TROIS conditions doivent être remplies simultanément pour GO",
+      "statistical_significance": "La différence doit être significative avec p < 0.05 (test de McNemar ou bootstrap sur la différence de F1)"
+    },
+    "no_go_condition": {
+      "description": "Le projet CLOISON est arrêté ou réorienté si",
+      "conditions": [
+        {
+          "scenario": "AU MOINS UNE des conditions GO n'est pas remplie",
+          "interpretation": "Le fossé n'est pas assez grand pour justifier le développement d'un détecteur dédié"
+        },
+        {
+          "scenario": "Amélioration < 5 points sur macro_F1_global",
+          "interpretation": "Aucun fossé détectable — la baseline Presidio bien configurée suffit"
+        }
+      ],
+      "fallback_options": [
+        "Réorientation vers contribution upstream à Presidio (plugins FR Africa)",
+        "Focus sur d'autres marchés où le fossé existe",
+        "Abandon de l'hypothèse produit"
+      ]
+    },
+    "pre_registered_commitment": "Ces critères sont fixés avant le run et ne seront PAS modifiés après observation des résultats. Les seuils sont gravés dans ce JSON et constituent l'engagement méthodologique.",
+    "baseline_scores_unknown": "Les scores exacts de la baseline seront mesurés pendant le run. Les seuils GO sont définis en DIFFÉRENCE par rapport à la baseline mesurée, pas en score absolu."
+  },
+
+  "reproducibility": {
+    "random_seed": 42,
+    "seed_scope": [
+      "Génération du dataset synthétique",
+      "Rééchantillonnage bootstrap pour intervalles de confiance",
+      "Shuffle des documents (si applicable)"
+    ],
+    "dependencies_versions": {
+      "python": ">=3.10,<3.13",
+      "presidio-analyzer": ">=2.2.0",
+      "spacy": ">=3.7.0",
+      "fr_core_news_lg": "version spécifique à figer au moment du run",
+      "numpy": ">=1.24.0",
+      "pandas": ">=2.0.0"
+    },
+    "environment": {
+      "os": "Linux (Ubuntu 22.04 ou équivalent)",
+      "hardware_description": "CPU only, 8GB RAM minimum",
+      "container": "Optionnel: Dockerfile fourni pour reproducibilité exacte"
+    },
+    "dataset_hash": {
+      "method": "SHA-256 sur le fichier JSON/CSV du dataset généré",
+      "reported_in_output": "Le hash du dataset est inclus dans le rapport final"
+    },
+    "code_version": {
+      "repository": "À définir — code du benchmark versionné",
+      "commit_tag": "v1.0-benchmark-stack1"
+    }
+  },
+
+  "ethical safeguards": {
+    "no_real_pii": "Certification qu'aucune donnée PII réelle n'est utilisée. Les noms sont générés ou extraits de sources publiques ouvertes. Les CNI sont synthétiques. Les téléphones respectent le format mais ne correspondent à aucun abonné.",
+    "synthetic_verification": "Un échantillon de 50 documents est inspecté manuellement pour confirmer l'absence de données réelles.",
+    "no_memorization_risk": "Les modèles NER ne sont pas entraînés sur ce dataset — seules les performances de détection sont mesurées en zero-shot."
+  },
+
+  "output_artifacts": {
+    "dataset_file": "stack1_dataset.json",
+    "baseline_predictions": "stack1_baseline_predictions.json",
+    "scoring_results": "stack1_scores.json",
+    "report": "STACK1_BENCHMARK_REPORT.md",
+    "all_files_versioned": "Tous les artifacts sont archivés avec timestamp et hash"
+  }
+}

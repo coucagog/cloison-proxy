@@ -1,0 +1,23 @@
+# CLOISON STACK-1 Benchmark Requirements
+# Python >= 3.10, < 3.13
+
+# Core dependencies
+presidio-analyzer>=2.2.0
+spacy>=3.7.0
+numpy>=1.24.0
+
+# Spacy French model (install separately with: python -m spacy download fr_core_news_md)
+# fr_core_news_md or fr_core_news_lg
+
+# Optional: for enhanced functionality
+# pandas>=2.0.0
+
+# Development/Testing
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
+# Note: Install the French spaCy model after installing the base requirements:
+#   python -m spacy download fr_core_news_md
+#
+# Or for better accuracy (larger model):
+#   python -m spacy download fr_core_news_lg

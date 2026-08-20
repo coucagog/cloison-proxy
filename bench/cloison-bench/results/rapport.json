@@ -1,0 +1,224 @@
+{
+  "summary": {
+    "macro_f1": 0.7501316784769958,
+    "macro_f1_ci_95": [
+      0.7422589701146372,
+      0.7582619451545353
+    ],
+    "weighted_f1": 0.7374851930338808,
+    "weighted_f1_ci_95": [
+      0.729343232862866,
+      0.7465245141368761
+    ],
+    "total_documents": 500,
+    "total_gold_entities": 2345,
+    "total_pred_entities": 3737,
+    "non_pii_specificity": 0.42,
+    "go_criteria_met": false
+  },
+  "per_entity": {
+    "PERSON": {
+      "true_positives": 516,
+      "false_positives": 734,
+      "false_negatives": 226,
+      "precision": 0.4128,
+      "recall": 0.6954177897574124,
+      "f1": 0.5180722891566265,
+      "f1_ci_95": [
+        0.49208517424864756,
+        0.5445455042770478
+      ],
+      "weight": 0.3
+    },
+    "LOC": {
+      "true_positives": 636,
+      "false_positives": 863,
+      "false_negatives": 0,
+      "precision": 0.4242828552368246,
+      "recall": 1.0,
+      "f1": 0.595784543325527,
+      "f1_ci_95": [
+        0.5813480938340402,
+        0.6101550897289963
+      ],
+      "weight": 0.2
+    },
+    "CNI": {
+      "true_positives": 182,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f1_ci_95": [
+        1.0,
+        1.0
+      ],
+      "weight": 0.25
+    },
+    "MAIL": {
+      "true_positives": 350,
+      "false_positives": 0,
+      "false_negatives": 11,
+      "precision": 1.0,
+      "recall": 0.9695290858725761,
+      "f1": 0.9845288326300984,
+      "f1_ci_95": [
+        0.974357034795764,
+        0.9930089274487615
+      ],
+      "weight": 0.15
+    },
+    "TEL": {
+      "true_positives": 287,
+      "false_positives": 169,
+      "false_negatives": 137,
+      "precision": 0.6293859649122807,
+      "recall": 0.6768867924528302,
+      "f1": 0.6522727272727273,
+      "f1_ci_95": [
+        0.625155446745679,
+        0.6783336577769125
+      ],
+      "weight": 0.1
+    }
+  },
+  "per_difficulty": {
+    "contextual": {
+      "total_docs": 160,
+      "total_gold": 684,
+      "total_pred": 990,
+      "per_entity": {
+        "PERSON": {
+          "precision": 0.40875912408759124,
+          "recall": 0.7,
+          "f1": 0.5161290322580645
+        },
+        "LOC": {
+          "precision": 0.4932249322493225,
+          "recall": 1.0,
+          "f1": 0.6606170598911071
+        },
+        "CNI": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "MAIL": {
+          "precision": 1.0,
+          "recall": 0.9777777777777777,
+          "f1": 0.9887640449438202
+        },
+        "TEL": {
+          "precision": 0.625,
+          "recall": 0.65625,
+          "f1": 0.6402439024390244
+        }
+      }
+    },
+    "adversarial": {
+      "total_docs": 80,
+      "total_gold": 1244,
+      "total_pred": 1947,
+      "per_entity": {
+        "PERSON": {
+          "precision": 0.40384615384615385,
+          "recall": 0.6469194312796208,
+          "f1": 0.4972677595628415
+        },
+        "LOC": {
+          "precision": 0.43886743886743884,
+          "recall": 1.0,
+          "f1": 0.6100178890876564
+        },
+        "CNI": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "MAIL": {
+          "precision": 1.0,
+          "recall": 0.9679144385026738,
+          "f1": 0.9836956521739131
+        },
+        "TEL": {
+          "precision": 0.6310679611650486,
+          "recall": 0.6951871657754011,
+          "f1": 0.6615776081424937
+        }
+      }
+    },
+    "non_pii": {
+      "total_docs": 100,
+      "total_gold": 0,
+      "total_pred": 135,
+      "per_entity": {
+        "PERSON": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "LOC": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "CNI": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "MAIL": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "TEL": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      }
+    },
+    "simple": {
+      "total_docs": 160,
+      "total_gold": 417,
+      "total_pred": 665,
+      "per_entity": {
+        "PERSON": {
+          "precision": 0.515748031496063,
+          "recall": 0.81875,
+          "f1": 0.6328502415458936
+        },
+        "LOC": {
+          "precision": 0.42803030303030304,
+          "recall": 1.0,
+          "f1": 0.5994694960212202
+        },
+        "CNI": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "MAIL": {
+          "precision": 1.0,
+          "recall": 0.9487179487179487,
+          "f1": 0.9736842105263158
+        },
+        "TEL": {
+          "precision": 0.6341463414634146,
+          "recall": 0.6753246753246753,
+          "f1": 0.6540880503144655
+        }
+      }
+    }
+  },
+  "criteria": {},
+  "metadata": {
+    "benchmark_id": "CLOISON-STACK-1-v1.0",
+    "timestamp": "2026-08-20T00:46:13.390886",
+    "seed": 42,
+    "total_documents": 500,
+    "dataset_hash": "324a7612200e05e556455c06f4895c13dc8e34000f25185894ab0bd0b84dddc8"
+  }
+}

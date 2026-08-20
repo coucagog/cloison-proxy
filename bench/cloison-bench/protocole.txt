@@ -1,0 +1,315 @@
+PROTOCOL: CLOISON STACK-1 BENCHMARK EXECUTION
+
+================================================================================
+PHASE 0: PRÉPARATION ET FIGEAGE
+================================================================================
+
+Étape 0.1 — Validation de la grille de scoring
+- Lire et valider le JSON de la grille (format, cohérence des poids, faisabilité)
+- Confirmer que les critères GO/NO-GO sont présents et chiffrés
+- AUCUNE modification de la grille après cette étape
+- Archiver la grille avec hash SHA-256
+
+Étape 0.2 — Environnement reproductible
+- Créer un environnement Python isolé (venv ou conda)
+- Installer les versions figées des dépendances (cf. grille.reproducibility.dependencies_versions)
+- Télécharger le modèle spaCy fr_core_news_lg et noter sa version
+- Vérifier les versions: pip freeze > requirements_frozen.txt
+
+Étape 0.3 — Configuration de la baseline Presidio
+- Configurer PresidioAnalyzerEngine avec langue='fr'
+- Activer SpacyRecognizer avec fr_core_news_lg
+- Ajouter le CNI_Senegal_Recognizer custom (regex + context words)
+- Étendre PhoneRecognizer pour les formats +221/00221
+- Charger les gazetteers PERSON et LOC (listes publiques)
+- VALIDATION: Tester sur 5 exemples synthétiques pour confirmer le fonctionnement
+- FIGEAGE: AUCUN ajustement des paramètres après cette validation
+
+================================================================================
+PHASE 1: GÉNÉRATION DU DATASET SYNTHÉTIQUE
+================================================================================
+
+Étape 1.1 — Initialisation du générateur
+- Fixer random.seed(42) et numpy.random.seed(42)
+- Charger les listes de prénoms/patronymes ouest-africains (sources publiques)
+- Charger la nomenclature administrative du Sénégal (lieux)
+- Définir les templates de documents par niveau de difficulté
+
+Étape 1.2 — Génération des documents
+Pour chaque niveau de difficulté:
+
+  NIVEAU SIMPLE (200 documents):
+  - Templates: formulaires, messages courts, annonces
+  - 1-3 phrases par document
+  - Maximum 2 entités par document
+  - Exemples: "Mamadou Diop, né à Thiès, téléphone: +221771234567"
+
+  NIVEAU CONTEXTUEL (200 documents):
+  - Templates: lettres, rapports sociaux, courriers administratifs
+  - 3-7 phrases par document
+  - 3-6 entités par document
+  - Contexte ré-identifiant: relations familiales, adresses, professions
+  - Exemples: "Mme Aïssata Sow, résidant à Médina, a déclaré que son époux Moussa Ndiaye..."
+
+  NIVEAU ADVERSARIAL (100 documents):
+  - Templates: articles de presse synthétiques, rapports détaillés, correspondances
+  - 5-15 phrases par document
+  - 5-10 entités par document
+  - Pièges: noms communs homonymes de lieux (ex: "Dakar" dans "dakar actuel" vs ville)
+  - Contextes ambigus, bruit textuel, entités partielles
+  - Exemples: "Le rapport de la commission, présidé par M. Fall, indique que les travaux à Dakar..."
+
+Étape 1.3 — Génération des non-PII (vrais négatifs)
+- 100 documents sans aucune entité PII (20% du total)
+- Contenu: météo, recettes, instructions techniques, descriptions d'objets
+- Objectif: mesurer le taux de faux positifs de la baseline
+
+Étape 1.4 — Génération des CNI synthétiques
+- Algorithme: générer 13 chiffres commençant par '1'
+- Appliquer somme de contrôle (algorithme à documenter)
+- Formater: 1XX XXX XXXX XX (avec ou sans espaces selon variabilité)
+
+Étape 1.5 — Annotation ground truth
+- Pour chaque document, lister les entités avec:
+  - type (PERSON/LOC/CNI/MAIL/TEL)
+  - span (start, end) en caractères
+  - text (valeur textuelle exacte)
+- Format de sortie: JSON avec structure:
+  {
+    "doc_id": "doc_001",
+    "text": "...",
+    "entities": [
+      {"type": "PERSON", "start": 12, "end": 24, "text": "Mamadou Diop"},
+      ...
+    ],
+    "difficulty": "simple",
+    "seed": 42
+  }
+
+Étape 1.6 — Validation du dataset
+- Vérifier la distribution des entités (cf. grille.dataset.entity_distribution_target)
+- Vérifier la proportion de non-PII (20%)
+- Inspection manuelle d'un échantillon de 50 documents:
+  - Confirmer l'absence de PII réelle
+  - Vérifier la qualité des annotations
+  - Noter les corrections si nécessaires (appliquer avant figeage)
+- Calculer hash SHA-256 du dataset final
+- Archiver: stack1_dataset.json + dataset_hash.txt
+
+================================================================================
+PHASE 2: EXÉCUTION DE LA BASELINE PRESIDIO
+================================================================================
+
+Étape 2.1 — Chargement du dataset
+- Lire stack1_dataset.json
+- Extraire les textes uniquement (sans les annotations ground truth)
+- Les annotations NE sont PAS fournies à Presidio
+
+Étape 2.2 — Analyse par Presidio
+Pour chaque document:
+  - Appeler analyzer.analyze(text, language='fr')
+  - Collecter les résultats avec:
+    - entity_type
+    - start, end
+    - score (confidence)
+  - Seuil: conserver tous les résultats (score_threshold=0.0 pour maximiser rappel)
+  - Format de sortie: JSON identique au ground truth
+
+Étape 2.3 — Sauvegarde des prédictions baseline
+- Fichier: stack1_baseline_predictions.json
+- Inclure la configuration exacte de Presidio utilisée
+- Inclure les temps de traitement par document
+
+================================================================================
+PHASE 3: SCORING ET ANALYSE
+================================================================================
+
+Étape 3.1 — Comparaison span à span
+Pour chaque document:
+  - Comparer prédictions baseline vs ground truth
+  - Appliquer la règle exact match STRICTE:
+    - Même position start
+    - Même position end
+    - Même type d'entité
+  - Normalisation appliquée:
+    - Comparaison en lowercase
+    - Diacrites équivalents (NFC normalization)
+    - Espaces normalisés
+
+Étape 3.2 — Calcul des métriques
+Pour chaque type d'entité (PERSON, LOC, CNI, MAIL, TEL):
+  - Compter: TP, FP, FN
+  - Calculer: Precision, Recall, F1
+  - Intervalle de confiance bootstrap (1000 iterations, IC 95%)
+
+Calcul des scores globaux:
+  - macro_F1 = moyenne(F1_PERSON, F1_LOC, F1_CNI, F1_MAIL, F1_TEL)
+  - weighted_F1 = somme(F1_i * weight_i)
+
+Étape 3.3 — Analyse des erreurs
+Catégoriser les erreurs:
+  - Faux négatifs par type:
+    - Entités non détectées du tout
+    - Entités détectées avec mauvais type
+    - Entités détectées avec mauvaises frontières
+  - Faux positifs par type:
+    - Non-entités détectées
+    - Entités correctes mais mauvais type
+    - Chevauchements partiels
+  - Par niveau de difficulté:
+    - Performance sur simple vs contextual vs adversarial
+
+Étape 3.4 — Analyse des non-PII
+- Calculer le taux de faux positifs sur les documents sans entité
+- Métrique: spécificité = TN / (TN + FP)
+- Signalement si faux positifs > 10% sur non-PII
+
+================================================================================
+PHASE 4: DÉCISION GO/NO-GO
+================================================================================
+
+Étape 4.1 — Application des critères PRÉ-ENREGISTRÉS
+Lire les critères depuis la grille (pas de modification):
+
+  Critère 1: macro_F1_global >= baseline_macro_F1 + 0.10
+  Critère 2: F1_PERSON >= baseline_F1_PERSON + 0.12
+  Critère 3: F1_CNI >= baseline_F1_CNI + 0.08
+
+Les scores baseline sont MESURÉS en Phase 3.
+Les seuils sont des DIFFÉRENCES, pas des valeurs absolues.
+
+Étape 4.2 — Test de significativité statistique
+- Test de McNemar sur les paires de prédictions (baseline vs hypothétique)
+- OU test bootstrap sur la différence de F1
+- Seuil: p < 0.05 pour significativité
+
+Étape 4.3 — DÉCISION FINALE
+SI les 3 critères sont remplis ET significativité statistique:
+  → DÉCISION: GO
+  → Le projet CLOISON continue vers le développement du détecteur dédié
+
+SINON SI amélioration < 0.05 sur macro_F1_global:
+  → DÉCISION: NO-GO — Aucun fossé détectable
+  → Réorientation: contribution upstream à Presidio ou abandon
+
+SINON:
+  → DÉCISION: NO-GO — Fossé insuffisant
+  → Analyse: quelles entités posent problème ?
+  → Recommandation: ajuster la stratégie produit
+
+IMPORTANT: La décision est binaire et basée sur les critères figés. PAS de négociation post-hoc.
+
+================================================================================
+PHASE 5: RAPPORT FINAL
+================================================================================
+
+Le rapport final (STACK1_BENCHMARK_REPORT.md) DOIT contenir:
+
+SECTION 1 — Résumé exécutif
+- Décision GO/NO-GO
+- Scores clés (baseline vs hypothétique) en tableau
+- Intervalle de confiance [IC 95%]
+- Conditions remplies/non remplies
+
+SECTION 2 — Méthodologie
+- Description du dataset (taille, distribution, difficultés)
+- Configuration exacte de la baseline Presidio
+- Métriques et règles de scoring
+- Hash du dataset et version du code
+
+SECTION 3 — Résultats détaillés
+- Tableau par entité: TP, FP, FN, Precision, Recall, F1
+- Scores globaux: macro_F1, weighted_F1
+- Performance par niveau de difficulté
+- Performance sur non-PII (spécificité)
+
+SECTION 4 — Analyse des erreurs
+- Distribution des types d'erreurs par entité
+- Exemples de faux négatifs typiques (anonymisés)
+- Exemples de faux positifs typiques
+- Patterns de défaillance identifiés
+
+SECTION 5 — Comparaison aux critères GO
+- Tableau: critère | seuil | baseline | hypothétique | écart | STATUT
+- Analyse de chaque critère
+- Significativité statistique (p-value)
+
+SECTION 6 — Discussion et recommandations
+- Interprétation du fossé de détection
+- Limites du benchmark
+- Recommandations pour STACK-2 ou développement
+
+SECTION 7 — Reproductibilité
+- Environnement technique complet
+- Commandes exactes pour reproduire
+- Hash de tous les artifacts
+- Lien vers le code archivé
+
+SECTION 8 — Annexes
+- Grille de scoring JSON complète
+- Requirements frozen
+- Exemples de documents par difficulté
+- Définitions détaillées des entités
+
+================================================================================
+PIÈGES D'ÉQUITÉ À ÉVITER
+================================================================================
+
+PIÈGE 1 — Tokenisation différente
+Problème: "Mamadou Diop" peut être tokenisé différemment par spaCy vs système cible
+Solution: Comparer au niveau CARACTÈRE (start/end), pas au niveau token
+Règle: Le span "Mamadou Diop" est (start=0, end=13) en caractères, pas "token 0-2"
+
+PIÈGE 2 — Chevauchement de spans
+Problème: Un système peut prédire "Mamadou" et "Diop" séparément, l'autre "Mamadou Diop"
+Solution: Règle exact match stricte — les deux prédictions sont des FP
+Note: Le matching partiel est EXCLU du score principal car il masque les erreurs de délimitation
+
+PIÈGE 3 — Casse et diacritiques
+Problème: "aïssata" vs "Aïssata" vs "AISSATA"
+Solution: Normalisation NFC + lowercase avant comparaison
+Règle: Ces trois variantes sont considérées identiques
+
+PIÈGE 4 — Entités imbriquées
+Problème: "Jean-Pierre Ndiaye" — "Jean-Pierre" prénom, "Ndiaye" patronyme
+Solution: Le span complet PERSON inclut les deux. Les sous-spans sont des FP.
+Règle: Annotation cohérente — une entité = un span continu
+
+PIÈGE 5 — Contexte et false friends
+Problème: "dakar" dans "le rallye Dakar" vs "la ville de Dakar"
+Solution: Les deux sont annotés LOC (pas de désambiguïsation sémantique)
+Note: Le niveau adversarial teste la capacité à gérer ces ambiguïtés
+
+PIÈGE 6 — Frontières de spans
+Problème: Détecter "Diop," avec la virgule vs "Diop" sans ponctuation
+Solution: Les spans excluent la ponctuation. La ponctuation adjacente est un FP.
+Règle: Annotation ground truth sans ponctuation, comparaison après stripping
+
+PIÈGE 7 — Score threshold tuning
+Problème: Ajuster le seuil de confiance Presidio après avoir vu les résultats
+Solution: Seuil fixé à 0.0 AVANT le run, pas d'ajustement post-hoc
+Règle: Le seuil est documenté dans la grille et non modifié
+
+PIÈGE 8 — Ré-entraînement caché
+Problème: Utiliser les données de test pour "calibrer" la baseline
+Solution: AUCUNE calibration sur les données de test. Configuration une fois, puis run.
+Règle: Les gazetteers sont définis AVANT et ne sont PAS enrichis des entités du test
+
+================================================================================
+ENGAGEMENT MÉTHODOLOGIQUE
+================================================================================
+
+Ce protocole constitue un engagement CONTRACTUEL avec l'équipe projet:
+
+1. La grille de scoring est FIGÉE avant le run
+2. Les critères GO/NO-GO sont NON NÉGOCIABLES après figeage
+3. Les données de test sont JAMAIS vues par le détecteur avant le run
+4. La baseline n'est PAS ré-entraînée ou calibrée sur le test
+5. Les résultats sont rapportés INTÉGRALEMENT, y compris les échecs
+6. La décision est APPLIQUÉE quelle que soit l'issue
+
+VIOLATION DE CES ENGAGEMENTS = NULLITÉ DU BENCHMARK
+
+================================================================================
+FIN DU PROTOCOLE
+================================================================================

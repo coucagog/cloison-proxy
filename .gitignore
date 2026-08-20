@@ -1,3 +1,7 @@
+# Résultats de benchmark : reproductibles par le run, pas versionnés (sauf rapport)
+bench/cloison-bench/results/dataset.jsonl
+bench/cloison-bench/results/predictions.jsonl
+bench/cloison-bench/.venv/
 # ── Rust ─────────────────────────────────────────────────────────────────────
 /target
 **/*.rs.bk
