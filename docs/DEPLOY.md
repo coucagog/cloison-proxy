@@ -143,6 +143,41 @@ hosts: [proxy.wonkom.ai]}]` — le template `templates/ingress.yaml` n'est
 rendu que si `edge.ingress.enabled` est vrai) ; générer le secret :
 `kubectl create secret tls cloison-edge-tls --cert=tls.crt --key=tls.key -n cloison`.
 
+### 5.1 Certificats — renouvellement automatique & surveillance (charte §12)
+
+Objectif : **aucune panne TLS par expiration silencieuse**.
+
+- **Renouvellement auto** : Caddy renouvelle par défaut ~30 jours avant
+  expiration ; ne jamais poser de certificat manuel qui expirerait en
+  silence. Rien qui dépende d'un cron fragile.
+- **Redondance ACME** : configurer un **émetteur de secours** (ZeroSSL en
+  plus de Let's Encrypt) pour qu'une panne d'une autorité ne bloque pas le
+  renouvellement :
+  ```caddyfile
+  {
+      acme_ca https://acme-v02.api.letsencrypt.org/directory
+      acme_ca_root /etc/ssl/certs/ca-certificates.crt
+      # Émetteur de secours (ZeroSSL) :
+      acme_ca https://acme.zerossl.com/v2/DV90
+      email ops@wonkom.ai
+  }
+  ```
+- **Persistance** : le dossier de certificats/état ACME de Caddy
+  (`/var/lib/caddy/`) doit vivre sur un **volume persistant** — un
+  redéploiement qui perd l'état redemande des certificats et peut heurter
+  les quotas Let's Encrypt.
+- **Rodage** : valider d'abord contre l'**endpoint de staging** Let's Encrypt
+  (`acme_ca https://acme-staging-v02.api.letsencrypt.org/directory`) pour ne
+  pas épuiser les quotas de production pendant les tests.
+- **Surveillance active de l'expiration** : sonde Prometheus
+  blackbox-exporter `probe_ssl_earliest_cert_expiry` (ou équivalent) avec
+  **alerte à J-14** ; un renouvellement qui échoue doit déclencher une alerte
+  **avant** l'incident, pas après.
+- **Agrafage OCSP** activé (défaut Caddy) ; en dev, HSTS optionnel (à
+  réserver au vrai domaine de prod).
+- **Impératif reverse-proxy** : ne journaliser **ni** l'en-tête
+  `Authorization` **ni** les query strings (leçon access-log — invariant I1).
+
 ## 6. Healthchecks
 
 | Composant | Sonde | Port | Où |

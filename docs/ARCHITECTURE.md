@@ -33,7 +33,7 @@ le client reçoit toujours son texte d'origine.
 | `cloison-core` (STACK-2) | Tokenisation déterministe portable : détection (regex, gazetteers Aho-Corasick, Luhn), jetons HMAC-BLAKE3 + sentinelles `⟦b32·TAG⟧`, registre d'émission par requête, vault chiffré (redb + AES-256-GCM), généralisation. Buildable WASM (`src/wasm.rs`). | bibliothèque | — |
 | `cloison-proxy` (STACK-3) | Passerelle OpenAI-compatible : `POST /v1/chat/completions` (stream/non-stream), `POST /v1/completions` (legacy, non-stream), `GET /v1/models`, `GET /v1/audit/report` (mode audit). Auth par clé composite `Bearer mn_<jeton>.<cle_amont>`. | **oui** (`src/main.rs`) | 8787 |
 | `cloison-audit` (STACK-4) | Mode audit observe-only : reçus signés Ed25519 (`Receipt`, compteurs entiers uniquement), k-anonymat, rapport de conformité `ConformanceReport`. | bibliothèque | — |
-| `cloison-control` (STACK-5) | Plan de contrôle aveugle : tenants, licences, politiques, jetons `mn_*` (seul le hash est stocké). API admin REST axum (`/admin/*`, `/healthz`). Persistance : `Store` trait — `InMemoryStore` aujourd'hui, `PostgresStore` (feature `pg`) en cible STACK-7. | bibliothèque (binaire STACK-7 en cours) | 8788 |
+| `cloison-control` (STACK-5) | Plan de contrôle aveugle : tenants, licences, politiques, jetons `mn_*` (seul le hash est stocké). API admin REST axum (`/admin/*`, `/healthz`) + pipeline ingest → ledger (contresignature). Persistance : `Store` trait — `InMemoryStore` aujourd'hui, `PostgresStore` en dette ouverte. | **oui** (`src/main.rs`) | 8788 |
 | `cloison-ledger` (STACK-5) | Journal de transparence append-only vérifiable : chaîne de hachage (`entry_hash = SHA-256(header 80 o)`), signatures Ed25519 du contrôle, payload = compteurs k-anonymisés + hash de reçus (jamais de texte). | bibliothèque | — |
 | `cloison-verify` (STACK-5) | Vérificateur public stateless : `verify_chain`, `prove_inclusion`, `InclusionProof`. Exports WASM (`verify_chain_bytes`, `prove_inclusion_bytes`). | bibliothèque (feature `wasm`) | — |
 | `cloison-detect` (STACK-6, Python) | Sidecar NER stateless : Presidio (oracle FR, regex CNI, gazetteers) + GLiNER zéro-shot (lazy) + fusion pondérée + alias intra-session (R1–R7) + jauge quasi-id. Détecte uniquement — ne tokenise ni ne persiste rien. | **oui** (`python -m src.main`) | REST 8080, gRPC 50051 |
@@ -72,9 +72,9 @@ rapport de conformité **k-anonyme** (`cloison-audit::report`).
 révocation, politiques, licences) et `/healthz`. Aucun texte client ne
 transite : le clair `mn_` n'apparaît qu'une fois dans la réponse d'émission.
 Le journal `cloison-ledger` est append-only et vérifiable par
-`cloison-verify` (chaîne + signatures). Le binaire serveur (thin `main.rs`
-posant le routeur sur :8788 et persistant `CLOISON_LEDGER_FILE`) est un
-**pré-requis STACK-7** — le crate est aujourd'hui une bibliothèque.
+`cloison-verify` (chaîne + signatures). Le binaire serveur (`src/main.rs`,
+posant le routeur sur :8788 et persistant `CLOISON_LEDGER_FILE`) est committé
+(STACK-7) — cf. `docs/DEPLOY.md` §1.2.
 
 ## 6. Sidecar detect (STACK-6)
 

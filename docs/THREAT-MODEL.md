@@ -25,6 +25,22 @@ Périmètre des données sensibles : le **texte clair n'existe que dans le
 processus edge** (et transitoirement dans detect). `control`, `ledger`,
 `verify`, le corpus d'audit et le fournisseur ne voient **jamais** de texte.
 
+### 1.1 Adversaires × niveaux de cloisonnement (charte §4)
+
+| Adversaire | N0 local (poste utilisateur) | N1 site (serveur client) | N2 enclave (hors périmètre v1) | N3 hébergé (entrée de gamme) |
+|---|---|---|---|---|
+| Opérateur CLOISON (éditeur) | ne lit rien (moteur chez le client) | ne lit rien (moteur chez le client) | ne lit rien, **et c'est prouvé** (attestation) | lit le clair (assumé, jamais l'argument) |
+| Fournisseur LLM | reçoit uniquement des sentinelles ⟦ (jamais le clair) | idem | idem | idem |
+| Poste compromis (malware/vol) | **non protégé** — le coffre et la clé vivent sur le poste (honnêteté N0) | surface réduite au serveur client | idem N1 | idem N1 |
+| Réseau (écoute) | TLS + sentinelles (le clair ne sort pas) | idem | idem | idem |
+| Admin du site client | lit le clair (N1 est chez lui) | lit le clair | ne lit rien | — |
+
+> **Honnêteté N0** : la promesse « nous ne voyons pas vos données » est
+> garantie par architecture (edge), mais **N0 ne protège pas contre un poste
+> compromis** : le coffre chiffré et les clés y vivent. Un malware local peut
+> lire le clair avant/pendant la tokenisation. C'est un risque résiduel
+> assumé et documenté — jamais présenté comme résolu.
+
 ## 2. STRIDE par composant
 
 ### 2.1 Edge (`cloison-proxy`)
@@ -114,3 +130,6 @@ processus edge** (et transitoirement dans detect). `control`, `ledger`,
    corrélation statistique.
 5. **WASM** : `@cloison/core` s'exécute dans le navigateur ; sa sandbox est
    celle du navigateur, pas celle du conteneur.
+6. **Poste compromis (N0)** : voir §1.1 — le clair est lisible par un malware
+   local avant la tokenisation ; le coffre et les clés vivent sur le poste.
+   La promesse N0 couvre l'éditeur et le réseau, pas le poste.

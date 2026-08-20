@@ -33,6 +33,10 @@ du proxy (seul le edge voit le clair).
 | I6 | **Pass-through conservateur** | champs inconnus (aller/retour) transmis intacts ; seuls `content`/`arguments`/`text`/`prompt` sont transformés |
 | I7 | **Rotation de session** | `CLOISON_SESSION_SALT_HEX` absent → sel aléatoire par boot → jetons différents entre redémarrages |
 | I8 | **Échec = échec** | aucune transformation silencieuse : toute erreur interne de `cloison-core` remonte en 500 avec `request_id` |
+| I9 | **Le coffre reste au bord** (charte #2) | la table `jeton ↔ valeur` ne vit que côté client (N0/N1/N2) : vault redb chiffré dans `cloison-core`, **jamais** envoyé ni persisté sur le cloud ; le plan de contrôle ne voit que des compteurs |
+| I10 | **Généraliser, pas tokeniser les faibles cardinalités** (charte #5) | sexe, ville, jour, tranche d'âge, quasi-identifiants → `Generalizer` (tranches k-anonymes, suppression) ; **jamais** de jeton pour une faible cardinalité (la fréquence trahirait) |
+| I11 | **Périmètre honnête** (charte #11) | quasi-identifiants : jauge de densité `quasi_id` (signal, jamais de résolution prétendue) ; PII hallucinée en sortie : signalée comme recherche ouverte, jamais présentée comme résolue |
+| I12 | **Le benchmark précède le produit** (charte #12) | porte GO/NO-GO STACK-1 (grille v1.1, baseline Presidio forte, critères pré-enregistrés) : sans fossé prouvé sur PERSON/LOC/CNI + spécificité, le produit n'est pas justifié ; verdict courant consigné dans `journal/REPRISE.md` |
 
 Verrous de base (STACK-2, `crates/cloison-core/tests/invariants.rs`) :
 roundtrip `restore(tokenize(x)) == x`, aucune valeur claire dans le texte
@@ -53,6 +57,7 @@ Luhn (CNI valide détectée, invalide rejetée).
 | I-A7 | Fail-closed du mode : un en-tête `X-Cloison-Mode: mask` est ignoré en audit ; `effective_mode` non rétrograble |
 | I-A8 | Reçu vérifiable hors-ligne : `cloison-verify` accepte un reçu produit par le proxy |
 | I-A9 | Aucune fuite de clé : `Debug` de `AgentKeys`/`Config` ne montre jamais la graine |
+| I-A10 | Reçus durables sans texte : journal JSONL append-only **0600** (`CLOISON_AUDIT_LEDGER_FILE`), rechargé au boot ; ligne corrompue ignorée (warn), jamais un crash ; contenu = compteurs signés uniquement |
 
 ## 4. Invariants opérationnels (STACK-7, déploiement)
 
