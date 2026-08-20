@@ -43,17 +43,48 @@ def main() -> int:
     baseline = load_baseline_ref()
     gold_docs = load_gold()
 
-    # --- détecteur cible : pipeline cloison-detect --------------------------
+    # --- détecteur cible : PIPELINE COMPLET CLOISON -------------------------
+    # core Rust (CNI/MAIL/TEL structures via detect_cli) + sidecar Python
+    # (PERSON/LOC par NER, Presidio + GLiNER + africains + alias).
     sys.path.insert(0, str(DETECT))
     from src.detect_service import DetectRequest, DetectService
     from src.spans import Policy, SessionContext, SpanType
     from src.config import Config
 
     svc = DetectService(Config())
-    # PII simulée -> spans du pipeline (Presidio + GLiNER + africains + alias)
+    CORE_BIN = ROOT.parent.parent / "target" / "debug" / "detect_cli"
+    import subprocess
+
+    # Mapping core Rust vers les types de la grille CLOISON
+    CORE_TYPE_MAP = {
+        "Email": "MAIL", "PhoneSn": "TEL", "CniSn": "CNI",
+        "CreditCard": "CREDIT_CARD", "Ip": "IP", "Date": "DATE",
+    }
+
+    def core_spans(text: str) -> list:
+        # Spans structures du core Rust (CNI/MAIL/TEL).
+        if not CORE_BIN.exists():
+            return []
+        try:
+            r = subprocess.run([str(CORE_BIN)], input=text.encode(), capture_output=True, timeout=10)
+            if r.returncode != 0:
+                return []
+            spans = json.loads(r.stdout.decode())
+            out = []
+            for sp in spans:
+                t = CORE_TYPE_MAP.get(sp["type"], sp["type"])
+                if t in ("CNI", "MAIL", "TEL"):
+                    out.append({"start": sp["start"], "end": sp["end"], "type": t})
+            return out
+        except Exception:
+            return []
+
     pred_docs = []
     for doc in gold_docs:
         text = doc["text"]
+        # 1) core Rust (structure)
+        core = core_spans(text)
+        # 2) sidecar NER (PERSON/LOC)
         try:
             resp = svc.detect(DetectRequest(
                 text=text,
@@ -62,11 +93,13 @@ def main() -> int:
                 core_spans=(),
                 session=SessionContext(),
             ))
-            preds = [{"start": s.start, "end": s.end, "type": s.type.value}
-                     for s in resp.spans]
-        except Exception as e:  # dégradation : spans vides
-            print(f"  WARN detect échec {doc['doc_id']}: {e}")
-            preds = []
+            ner_preds = [{"start": s.start, "end": s.end, "type": s.type.value}
+                         for s in resp.spans]
+        except Exception as e:
+            print(f"  WARN detect echec {doc['doc_id']}: {e}")
+            ner_preds = []
+        # 3) fusion : core + sidecar = le pipeline complet CLOISON
+        preds = core + [p for p in ner_preds if p["type"] in ("PERSON", "LOC")]
         pred_docs.append({"doc_id": doc["doc_id"], "text": text, "entities": preds})
 
     # --- scoring (réutilise scoring.py de cloison-bench) --------------------
@@ -78,11 +111,11 @@ def main() -> int:
     # --- critères GO/NO-GO (grille v1.1) ------------------------------------
     c = baseline["criteria"]
     checks = {
-        "macro_improvement": result.macro_f1 >= baseline["macro_f1"] + c["macro_improvement"],
-        "person_improvement": result.entity_metrics["PERSON"].f1 >= baseline["f1_person"] + c["person_improvement"],
-        "loc_improvement": result.entity_metrics["LOC"].f1 >= baseline["f1_loc"] + c["loc_improvement"],
-        "cni_no_regression": result.entity_metrics["CNI"].f1 >= baseline["f1_cni"],
-        "specificity_min": result.specificity >= c["specificity_min"],
+        "macro_improvement": bool(result.macro_f1 >= baseline["macro_f1"] + c["macro_improvement"]),
+        "person_improvement": bool(result.entity_metrics["PERSON"].f1 >= baseline["f1_person"] + c["person_improvement"]),
+        "loc_improvement": bool(result.entity_metrics["LOC"].f1 >= baseline["f1_loc"] + c["loc_improvement"]),
+        "cni_no_regression": bool(result.entity_metrics["CNI"].f1 >= baseline["f1_cni"]),
+        "specificity_min": bool(result.specificity >= c["specificity_min"]),
     }
     go = all(checks.values())
 
@@ -107,7 +140,7 @@ def main() -> int:
     out.write_text(json.dumps({
         "verdict": "GO" if go else "NO-GO",
         "checks": checks,
-        "metrics": {e: result.entity_metrics[e].f1 for e in result.entity_metrics},
+        "metrics": {e: float(result.entity_metrics[e].f1) for e in result.entity_metrics},
         "macro_f1": result.macro_f1,
         "specificity": result.specificity,
         "baseline_ref": baseline,

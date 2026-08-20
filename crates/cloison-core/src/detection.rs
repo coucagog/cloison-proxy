@@ -189,11 +189,16 @@ impl Detector {
         .map_err(|e| CloisonError::Detection(format!("email regex: {}", e)))?;
 
         let phone_sn_re = Regex::new(
-            r"\+221\s?(7[0-9]\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2}|3[0-9]\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2})"
+            r"(?:\+221|00221)\s?(?:7[0-9]|3[0-9])\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2}|(?:70|75|76|77|78)(?:[0-9]{7}|\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2})"
         )
         .map_err(|e| CloisonError::Detection(format!("phone_sn regex: {}", e)))?;
 
-        let cni_sn_re = Regex::new(r"\b1\d{12}\b")
+        // Frontière = début de chaîne OU caractère non-chiffre (pas de lookaround :
+        // la crate `regex` standard ne les supporte pas). Le préfixe capturé est
+        // retiré par detect_cni_sn (offset ajusté).
+        let cni_sn_re = Regex::new(
+            r"(?:^|[^0-9])(1\d{2}[ \u00A0]?\d{3}[ \u00A0]?\d{4}[ \u00A0]?\d{3}|1\d{12})"
+        )
             .map_err(|e| CloisonError::Detection(format!("cni_sn regex: {}", e)))?;
 
         let credit_card_re = Regex::new(r"\b(?:\d[ -]?){13,19}\b")
@@ -322,16 +327,26 @@ impl Detector {
     fn detect_cni_sn(&self, text: &str) -> Vec<Span> {
         self.cni_sn_re
             .find_iter(text)
-            .filter(|m| {
-                let digits: String = m.as_str().chars().filter(|c| c.is_ascii_digit()).collect();
-                validate_luhn(&digits)
-            })
-            .map(|m| Span {
-                entity_type: DetectorKind::CniSn,
-                start: m.start(),
-                end: m.end(),
-                score: 1.0,
-                value: m.as_str().to_string(),
+            .filter_map(|m| {
+                let raw = m.as_str();
+                // Le match inclut un préfixe non-chiffre (frontière) : le retirer.
+                let (prefix_len, cni) = if raw.starts_with(|c: char| c.is_ascii_digit()) {
+                    (0, raw)
+                } else {
+                    (1, &raw[1..])
+                };
+                let digits: String = cni.chars().filter(|c| c.is_ascii_digit()).collect();
+                if !validate_luhn(&digits) {
+                    return None;
+                }
+                let start = m.start() + prefix_len;
+                Some(Span {
+                    entity_type: DetectorKind::CniSn,
+                    start,
+                    end: start + cni.len(),
+                    score: 1.0,
+                    value: cni.to_string(),
+                })
             })
             .collect()
     }

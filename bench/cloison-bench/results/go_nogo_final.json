@@ -1,0 +1,35 @@
+{
+  "verdict": "NO-GO",
+  "checks": {
+    "macro_improvement": false,
+    "person_improvement": false,
+    "loc_improvement": false,
+    "cni_no_regression": false,
+    "specificity_min": false
+  },
+  "metrics": {
+    "PERSON": 0.6132329209252286,
+    "LOC": 0.6129032258064516,
+    "CNI": 0.7906976744186047,
+    "MAIL": 0.9118881118881119,
+    "TEL": 1.0
+  },
+  "macro_f1": 0.7857443866076793,
+  "specificity": 0.27,
+  "baseline_ref": {
+    "macro_f1": 0.7501316784769958,
+    "f1_person": 0.5180722891566265,
+    "f1_loc": 0.595784543325527,
+    "f1_cni": 1.0,
+    "specificity": 0.42,
+    "grille_version": "1.1.0",
+    "criteria": {
+      "macro_improvement": 0.1,
+      "person_improvement": 0.12,
+      "loc_improvement": 0.15,
+      "cni_no_regression": true,
+      "specificity_min": 0.6
+    }
+  },
+  "note": "OFFLINE"
+}
