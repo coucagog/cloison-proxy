@@ -81,14 +81,19 @@ def main() -> int:
     except Exception as e:
         print(f"  WARN warm-up: {e}")
 
-    # Mapping core Rust vers les types de la grille CLOISON
+    # Mapping core Rust vers les types de la grille CLOISON.
+    # `Gazetteer(ville_sn)` → LOC : le moteur edge produit ces spans (toponymes
+    # SN des régions/villes) — les jeter n'était pas fidèle au pipeline produit.
     CORE_TYPE_MAP = {
         "Email": "MAIL", "PhoneSn": "TEL", "CniSn": "CNI",
         "CreditCard": "CREDIT_CARD", "Ip": "IP", "Date": "DATE",
+        "Gazetteer(ville_sn)": "LOC",
     }
+    # Types retenus du core (les autres types restent hors grille).
+    CORE_KEEP = ("CNI", "MAIL", "TEL", "LOC")
 
     def core_spans(text: str) -> list:
-        # Spans structures du core Rust (CNI/MAIL/TEL).
+        # Spans structures du core Rust (CNI/MAIL/TEL + gazetteer ville_sn).
         if not CORE_BIN.exists():
             return []
         try:
@@ -99,7 +104,7 @@ def main() -> int:
             out = []
             for sp in spans:
                 t = CORE_TYPE_MAP.get(sp["type"], sp["type"])
-                if t in ("CNI", "MAIL", "TEL"):
+                if t in CORE_KEEP:
                     out.append({"start": sp["start"], "end": sp["end"], "type": t})
             return out
         except Exception:
@@ -124,9 +129,18 @@ def main() -> int:
         except Exception as e:
             print(f"  WARN detect echec {doc['doc_id']}: {e}")
             ner_preds = []
-        # 3) fusion : core + sidecar = le pipeline complet CLOISON
+        # 3) fusion : core + sidecar = le pipeline complet CLOISON.
+        #    Dédup stricte (start, end, type) : le scoring compte chaque
+        #    prédiction (un doublon = FP). Le core fait foi sur chevauchement.
         preds = core + [p for p in ner_preds if p["type"] in ("PERSON", "LOC")]
-        pred_docs.append({"doc_id": doc["doc_id"], "text": text, "entities": preds})
+        seen: set[tuple] = set()
+        merged = []
+        for p in preds:
+            k = (p["start"], p["end"], p["type"])
+            if k not in seen:
+                seen.add(k)
+                merged.append(p)
+        pred_docs.append({"doc_id": doc["doc_id"], "text": text, "entities": merged})
 
     # --- scoring (réutilise scoring.py de cloison-bench) --------------------
     sys.path.insert(0, str(BENCH))
