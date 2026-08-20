@@ -1,7 +1,8 @@
 # CLOISON — Document de reprise (handoff)
 
-> Écrit le 20 août 2026 par Ridwan (agent de dev). À lire EN PREMIER par toute
-> session qui reprend le projet. Complète `journal/STACK-*.md` (détails par étape).
+> Écrit le 20 août 2026 par Ridwan (agent de dev), **mis à jour en fin de
+> session STACK-8** (verdict GO rendu). À lire EN PREMIER par toute session qui
+> reprend le projet. Complète `journal/STACK-*.md` (détails par étape).
 
 ---
 
@@ -14,7 +15,7 @@ contrôle aveugle. Projet indépendant de mania.sn. Nom de travail CLOISON.
 
 ## 2. Où est le code
 
-- **Dépôt** : GitHub `coucagog/cloison` (PRIVÉ), branche `main` — **12 commits** (STACK-0 → 7 + correctifs).
+- **Dépôt** : GitHub `coucagog/cloison` (PRIVÉ), branche `main` — **22 commits** (STACK-0 → 8 + correctifs).
 - **Serveur de dev** : machine hôte du VPS OVH (`wonkom.ai`). J'y accède par SSH :
   `ssh debian@172.17.0.1` (clé SSH configurée, sans mot de passe).
 - **Le repo vit sur l'hôte** : `/home/debian/Cloison/cloison/` (c'est la source de vérité).
@@ -31,25 +32,26 @@ contrôle aveugle. Projet indépendant de mania.sn. Nom de travail CLOISON.
    (§7), schémas (§9), plan STACK-N (§13). **Ne pas en sortir.**
 2. **`/home/debian/Cloison/reference/cloison-topologie_PII_V3.html`** — version illustrée de
    la topologie et du vocabulaire.
-3. **`journal/STACK-0.md` → `STACK-7.md`** (dans le repo) — journaux détaillés de chaque
-   étape : décisions, résultats, portes de sortie, dettes.
-4. **`docs/SECURITY.md`** — les 12 invariants (recopiés de la charte).
+3. **`journal/STACK-0.md` → `STACK-8.md`** (dans le repo) — journaux détaillés de chaque
+   étape : décisions, résultats, portes de sortie, dettes. **STACK-8 = verdict GO.**
+4. **`docs/SECURITY.md`** — les invariants (I1–I12 applicatifs + I-A1–A10 audit + O1–O6 ops).
 5. **`docs/DEPLOY.md`, `docs/CONFIG.md`, `docs/API.md`** — comment déployer et configurer.
 
-## 4. État d'avancement (STACK-0 → 7)
+## 4. État d'avancement (STACK-0 → 8)
 
 | STACK | Livrable | Tests | Statut |
 |---|---|---|---|
 | 0 | Monorepo, CI, docs | — | ✅ livré |
 | 1 | Benchmark baseline + grille v1.1 | 32 pytest | ✅ livré |
-| 2 | `cloison-core` (Rust) | 56 (39 unit + 17 invariants) | ✅ livré |
-| 3 | `cloison-proxy` (Axum) | 25 | ✅ livré (3 P0 QA corrigés) |
+| 2 | `cloison-core` (Rust) | 59 (42 unit + 17 invariants) | ✅ livré |
+| 3 | `cloison-proxy` (Axum) | 27 | ✅ livré (3 P0 QA corrigés) |
 | 4 | Mode Audit (reçus signés, k-anonymat) | 56 (34+22) | ✅ livré (3 P0 corrigés) |
 | 5 | control/ledger/verify | 88 | ✅ livré (NO-GO QA résolu) |
-| 6 | `cloison-detect` (Python NER) | 67 pytest | ✅ livré (GO conditionnel résolu) |
-| 7 | Docker, Helm, docs, e2e | 202 Rust + 67 Python | ✅ livré |
+| 6 | `cloison-detect` (Python NER) | 70 pytest | ✅ livré (GO conditionnel résolu) |
+| 7 | Docker, Helm, docs, e2e | 210 Rust + 70 Python | ✅ livré |
+| 8 | **Verdict GO + correctifs + dettes** | **280 verts** | ✅ livré |
 
-**Total : 269 tests verts, clippy -D warnings = 0.** Dernier commit : `15cd2f1`.
+**Total : 280 tests verts, clippy -D warnings = 0.** Dernier commit : `0e0a5b4` (+ docs).
 
 **Preuves de bout en bout (STACK-7) :**
 - E2E mock **12/12 PASS** : le faux LLM reçoit des sentinelles ⟦, jamais la PII ; le client
@@ -59,41 +61,60 @@ contrôle aveugle. Projet indépendant de mania.sn. Nom de travail CLOISON.
 
 ## 5. TÂCHES SUIVANTES (par ordre de priorité)
 
-### ⚠️ PRIORITÉ 1 — Le GO/NO-GO final est NO-GO mais INCOMPLET (à ne pas enterrer)
-Le benchmark `bench/cloison-bench/run_detect_target.py` (commité) tourne, verdict **NO-GO**,
-mais ce run est **offline et tronqué** :
-- Le détecteur africain est **inactif** (« chargement impossible » — modèles HF non
-  téléchargés, pas de réseau GPU).
-- Résultats offline : macro 0.786 (baseline 0.750), PERSON 0.613 (baseline 0.518, +0.095),
-  LOC 0.613 (+0.017), CNI 0.79 (baseline 1.0), TEL 1.0, MAIL 0.91, spécificité 27%.
-- **Le verdict honnête n'est pas encore rendu** : il faut rejouer AVEC les modèles africains
-  réels (SERENGETI/AfroXLMR — GPU) et/ou calibrer. C'est la décision stratégique qui attend
-  MLS : le fossé produit repose sur PERSON/LOC (+0.12/+0.15 exigés, ~+0.095/+0.017 obtenus
-  offline).
-- **Décision à trancher par MLS** : poursuivre le produit (investir GPU/modèles), réorienter
-  (contribution upstream Presidio), ou abandonner. La grille v1.1 (option 1) fixe les seuils.
+### ✅ PRIORITÉ 1 — RÉSOLUE : le GO/NO-GO final est **GO** (20 août 2026, STACK-8)
+Le benchmark a été rejoué **avec les modèles réels** (afroxlmr MasakhaNER, téléchargé
+depuis HF — **sans GPU, CPU suffit**) après correction des bugs de couverture. Verdict
+grille v1.1 (5 conditions simultanées) : **GO** — `results/go_nogo_final.json` :
 
-### PRIORITÉ 2 — Bugs de couverture encore ouverts (découverts pendant le benchmark)
-- **CNI F1 0.79** (baseline 1.0) : conflit CreditCard vs CniSn sur les 13 chiffres précédés
-  d'une lettre (« numéro 1078... ») — le détecteur CreditCard capture avant CniSn dans
-  certains textes. À corriger (priorité au type spécifique CNI sur chevauchement).
-- **Spécificité non-PII 27%** (min 60%) : le pipeline génère beaucoup de faux positifs sur
-  les documents sans PII — à investiguer (quels détecteurs sur-détectent ?).
-- **PERSON/LOC 0.61** : plafonné offline (sans modèles africains + sans GLiNER réel chargé ?).
+| Métrique | baseline | avant-fixes | **final** | seuil |
+|---|---|---|---|---|
+| PERSON | 0.518 | 0.613 | **0.937** | ≥ 0.638 ✅ |
+| LOC | 0.596 | 0.613 | **0.835** | ≥ 0.746 ✅ |
+| CNI | 1.000 | 0.791 | **1.000** | non-régression ✅ |
+| MAIL / TEL | 0.985/0.652 | 0.91/1.0 | **1.000/1.000** | — ✅ |
+| macro | 0.750 | 0.786 | **0.954** | ≥ 0.850 ✅ |
+| spécificité | 0.42 | 0.27 | **0.77** | ≥ 0.60 ✅ |
 
-### PRIORITÉ 3 — Dettes techniques consignées (dans les journaux STACK)
-- `PostgresStore` : le trait Store est prêt, l'impl Postgres réelle reste à faire (STACK-5 debt).
-- Journal des reçus audit **en mémoire** : perte au restart → stockage JSONL 0600 à ajouter.
-- `GET /v1/audit/report?period=...` : le paramètre period est accepté mais pas filtrant.
-- Modèles africains (SERENGETI E250, AfroXLMR) : non téléchargés, GPU requis.
-- `[profile.release]` (strip/lto) non configuré ; `trivy-action@master` non pinné.
-- E2E réel : le `invalid JSON from upstream` initial a mené à la correction de l'URL (doublon
-  /v1) — vérifier que le e2e complet passe en `CLOISON_E2E_MODE=both` sur un repo frais.
+**Le fossé ouest-africain est prouvé.** Recommandation à MLS : **poursuivre le produit**
+(le GPU n'est pas requis pour le verdict ; il réduira la latence 2-6 s/doc en prod).
+Runs historiques conservés : `go_nogo_final.offline-avant-fixes.json`,
+`go_nogo_final.fixes-offline-serengeti.json`, `go_nogo_final.afroxlmr-sans-ville.json`,
+`go_nogo_final.afroxlmr-ville.json`, `go_nogo_final.afroxlmr-ville-consensus.json`.
 
-### PRIORITÉ 4 — Déploiement wonkom.ai (quand le GO est tranché)
+### ✅ PRIORITÉ 2 — RÉSOLUE : bugs de couverture corrigés (STACK-8)
+- **CNI vs CreditCard** : précédence du type spécifique (CniSn prime) dans
+  `crates/cloison-core/src/detection.rs` (63/182 FN) → CNI 1.0.
+- **MAIL** : regex `\p{L}` (emails accentués) → 1.0.
+- **Spécificité 27% → 77%** : spacy `md` par défaut (fr_sm hallucinait), seuil GLiNER
+  câblé (0.45), seuils par source, **consensus PERSON/LOC** (mono-source < 0.90 refusé ;
+  `CLOISON_CONSENSUS_PERSON_LOC`, exempté `recall_only`).
+- **LOC 0.61 → 0.835** : gazetteer core `ville_sn` → LOC dans le benchmark (pipeline
+  fidèle) + afroxlmr + consensus.
+- **Défaut produit** : NER africain = `afroxlmr` (le défaut `serengeti` pointait sur un
+  LM sans tête NER, inutilisable ; `masakha` est gated 401).
+
+### PRIORITÉ 3 — Dettes : réglées en STACK-8 (sauf PostgresStore)
+- ✅ Journaux `STACK-6.md`/`STACK-7.md` intégrés au repo (étaient restés dans le staging).
+- ✅ Journal des reçus audit **persisté** : JSONL append-only 0600 (`CLOISON_AUDIT_LEDGER_FILE`),
+  rechargé au boot, ligne corrompue ignorée (+ invariant I-A10).
+- ✅ `period` **filtrant** (hourly/daily/weekly/all) sur `GET /v1/audit/report` (+ tests).
+- ✅ Modèles africains **téléchargés sur l'hôte** (afroxlmr 2,1 Go, serengeti 1,1 Go ; masakha
+  gated 401) — CPU suffisant, GPU non requis pour le verdict.
+- ✅ `[profile.release]` strip+lto thin+codegen-units=1 ; `trivy-action@v0.36.0` pinné.
+- ✅ Docs à jour : README/ARCHITECTURE (STACK-7 réel), THREAT-MODEL (adversaires × N0–N3 +
+  honnêteté N0), DEPLOY (volet certificats charte §12), SECURITY (invariants I9–I12 + I-A10),
+  CONFIG (défauts detect), gabarit « Comment lancer/tester » dans STACK-3..7.
+- ⏳ **`PostgresStore`** : trait prêt, impl réelle (sqlx, feature `pg`) reste à faire — le
+  report initial est volontaire (compilable hors-ligne) ; à faire avec le déploiement.
+- ⏳ E2E `CLOISON_E2E_MODE=both` sur repo frais : à re-vérifier au déploiement (docker sudo OK).
+
+### PRIORITÉ 4 — Déploiement wonkom.ai (le GO est tranché → poursuivre)
 - Suivre `docs/DEPLOY.md` : docker compose (edge 8787, control 8788, detect), Caddy TLS
   (déjà présent sur l'hôte — conteneur caddy tourne), secrets via `.env` (jamais commités).
 - Sous-domaines prévus : api.wonkom.ai, cp.wonkom.ai, journal.wonkom.ai, detect.wonkom.ai.
+- À décider : image detect **non-LITE** (le fossé GO repose sur afroxlmr — `CLOISON_LITE=1`
+  par défaut exclut torch/transformers), GPU pour la latence (2-6 s/doc CPU), calibration
+  fine des seuils en prod (`measure_clusters.py` laissé dans bench).
 
 ## 6. Infos pratiques pour reprendre
 
