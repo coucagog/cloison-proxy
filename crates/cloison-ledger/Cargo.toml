@@ -1,8 +1,18 @@
 [package]
 name = "cloison-ledger"
-version.workspace = true
+version = "0.1.0"
 edition.workspace = true
-license.workspace = true
-repository.workspace = true
+description = "Journal de transparence append-only verifiable : chaine de hachage SHA-256 + signatures Ed25519. Zero PII : jamais de texte, uniquement des compteurs signes. Checkpoints signes anti-troncature + persistance JSONL append-only."
 
 [dependencies]
+# NOTE : volontairement SANS `rand` — le ledger est pur et buildable WASM ; le tirage
+# aléatoire n'appartient qu'à cloison-control (génération des jetons mn_).
+# SHA-256 (design STACK-5 §3.2) : pas de blake3 — format public verrouillé.
+ed25519-dalek.workspace = true
+sha2.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

@@ -1,8 +1,20 @@
 [package]
 name = "cloison-verify"
-version.workspace = true
+version = "0.1.0"
 edition.workspace = true
-license.workspace = true
-repository.workspace = true
+description = "Verificateur public d'attestation CLOISON : recompose la chaine du journal, valide les signatures Ed25519 et les inclusions par hash. Buildable WASM (feature `wasm`)."
 
 [dependencies]
+cloison-ledger = { path = "../cloison-ledger" }
+ed25519-dalek.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[features]
+# Exports wasm-bindgen — à activer UNIQUEMENT pour wasm32-unknown-unknown :
+#   cargo build -p cloison-verify --target wasm32-unknown-unknown --features wasm
+wasm = ["dep:wasm-bindgen"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = { version = "0.2", optional = true }
