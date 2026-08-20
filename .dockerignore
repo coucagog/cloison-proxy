@@ -1,0 +1,17 @@
+# CLOISON — .dockerignore racine : exclure du contexte de build ce que les
+# Dockerfiles ne consomment pas (les cibles cargo font des Go, _stage pareil).
+# Rust
+target/
+.git/
+# Python
+**/__pycache__/
+**/*.pyc
+# Secrets & matériel crypto (jamais dans une image)
+.env
+.env.*
+*.pem
+*.key
+*.crt
+# Artefacts locaux
+core.*
+*.log

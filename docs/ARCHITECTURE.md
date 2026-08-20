@@ -1,77 +1,108 @@
 # CLOISON — Architecture
 
-> Fondation (STACK-0). Vue d'ensemble : topologie, composants, flux.
-> Source détaillée : note technique fondatrice (charte v1) + topologie v2.
+> STACK-7 · Dernière mise à jour : build & packaging final.
+> Document de vérité : le code (`crates/*`, `services/cloison-detect`). Toute
+> divergence signalée ici est un bug de documentation.
 
-## Topologie
+## 1. Vue d'ensemble
+
+CLOISON est un **proxy de confidentialité PII** placé entre une interface IA
+et un fournisseur LLM (OpenRouter, DeepSeek…). À l'aller, le texte est
+**tokenisé** (PII → sentinelles) ; au retour, les sentinelles émises par la
+requête en cours sont **restaurées**. Le fournisseur ne voit jamais la PII ;
+le client reçoit toujours son texte d'origine.
 
 ```
-                     ┌───────────────────────── Chez le CLIENT (edge, N0) ──────────────────────────┐
- Interface IA        │                                                                              │
- (Open WebUI /       │   ┌───────────────┐        ┌─────────────────────────┐                       │
-  bolt.diy /   ──────┼──▶│ cloison-proxy │──────▶ │ cloison-core (moteur)   │                       │
-  agent Hermes)      │   │ (OpenAI-comp) │  clair │  détection + tokenisation│                      │
-   base URL + clé    │   └──────┬────────┘        │  + coffre chiffré local  │                      │
-   composite         │          │  jetons         └─────────────┬───────────┘                       │
-                     │          │                               │ (option) gRPC/HTTP                │
-                     │          │                     ┌─────────▼─────────┐                          │
-                     │          │                     │ cloison-detect    │ (sidecar Python NER,     │
-                     │          │                     │  recall, alias    │  paliers serveur/enclave)│
-                     │          │                     └───────────────────┘                          │
-                     └──────────┼──────────────────────────────────────────────────────────────────┘
-                                │ jetons + clé LLM du client (sortie réseau)
-                                ▼
-                       ┌──────────────────┐
-                       │ Fournisseur LLM  │  ne reçoit QUE des jetons
-                       │ OpenAI / Anthropic│
-                       └──────────────────┘
-
-        ────────────────────────── Plan de contrôle CLOUD (aveugle) ──────────────────────────
-        │  cloison-control : licences, politiques par locataire (0 PII), réception des reçus  │
-        │  cloison-ledger  : journal de transparence append-only vérifiable (compteurs signés)│
-        │  cloison-verify  : vérificateur public d'attestation                                │
-        ───────────────────────────────────────────────────────────────────────────────────
+  Client IA ──► edge (cloison-proxy, :8787) ──► LLM réel (OpenRouter/DeepSeek)
+                │  tokenisation/restauration PII
+                │  mode audit observe-only (reçus Ed25519, rapport k-anonyme)
+                │
+                ├──► detect (cloison-detect, :8080 REST / :50051 gRPC)
+                │        sidecar NER stateless (rappel PERSON/LOC, STACK-6)
+                │
+                └──► control (cloison-control, :8788) — plan de contrôle aveugle
+                         tenants, jetons mn_* (hash seul), politiques, licences
+                         journal append-only cloison-ledger (CLOISON_LEDGER_FILE)
+                         vérification publique hors-ligne : cloison-verify (WASM)
 ```
 
-## Composants
+## 2. Composants (crates)
 
-| Composant | Langage | Rôle | STACK |
+| Crate | Rôle | Binaire ? | Port |
 |---|---|---|---|
-| `cloison-core` | Rust (natif + WASM) | détection déterministe, tokenisation, coffre | STACK-2 |
-| `cloison-proxy` | Rust (Axum) | passerelle OpenAI-compatible, aller/retour | STACK-3 |
-| `cloison-detect` | Python (FastAPI + gRPC) | NER lourd optionnel (sidecar) | STACK-6 |
-| `cloison-control` | Rust (Axum + Postgres) | plan de contrôle aveugle | STACK-5 |
-| `cloison-ledger` | Rust | journal de transparence vérifiable | STACK-5 |
-| `cloison-verify` | Rust (natif + WASM) | vérificateur public d'attestation | STACK-5 |
-| `cloison-cli` | Rust | outillage admin/ops | au fil des STACK |
-| `cloison-wasm` | Rust (wasm-bindgen) | wrapper WASM de cloison-core | STACK-2 |
-| `cloison-bench` | Python | harnais de benchmark + scoring | STACK-1 |
+| `cloison-core` (STACK-2) | Tokenisation déterministe portable : détection (regex, gazetteers Aho-Corasick, Luhn), jetons HMAC-BLAKE3 + sentinelles `⟦b32·TAG⟧`, registre d'émission par requête, vault chiffré (redb + AES-256-GCM), généralisation. Buildable WASM (`src/wasm.rs`). | bibliothèque | — |
+| `cloison-proxy` (STACK-3) | Passerelle OpenAI-compatible : `POST /v1/chat/completions` (stream/non-stream), `POST /v1/completions` (legacy, non-stream), `GET /v1/models`, `GET /v1/audit/report` (mode audit). Auth par clé composite `Bearer mn_<jeton>.<cle_amont>`. | **oui** (`src/main.rs`) | 8787 |
+| `cloison-audit` (STACK-4) | Mode audit observe-only : reçus signés Ed25519 (`Receipt`, compteurs entiers uniquement), k-anonymat, rapport de conformité `ConformanceReport`. | bibliothèque | — |
+| `cloison-control` (STACK-5) | Plan de contrôle aveugle : tenants, licences, politiques, jetons `mn_*` (seul le hash est stocké). API admin REST axum (`/admin/*`, `/healthz`). Persistance : `Store` trait — `InMemoryStore` aujourd'hui, `PostgresStore` (feature `pg`) en cible STACK-7. | bibliothèque (binaire STACK-7 en cours) | 8788 |
+| `cloison-ledger` (STACK-5) | Journal de transparence append-only vérifiable : chaîne de hachage (`entry_hash = SHA-256(header 80 o)`), signatures Ed25519 du contrôle, payload = compteurs k-anonymisés + hash de reçus (jamais de texte). | bibliothèque | — |
+| `cloison-verify` (STACK-5) | Vérificateur public stateless : `verify_chain`, `prove_inclusion`, `InclusionProof`. Exports WASM (`verify_chain_bytes`, `prove_inclusion_bytes`). | bibliothèque (feature `wasm`) | — |
+| `cloison-detect` (STACK-6, Python) | Sidecar NER stateless : Presidio (oracle FR, regex CNI, gazetteers) + GLiNER zéro-shot (lazy) + fusion pondérée + alias intra-session (R1–R7) + jauge quasi-id. Détecte uniquement — ne tokenise ni ne persiste rien. | **oui** (`python -m src.main`) | REST 8080, gRPC 50051 |
 
-## Flux principal (aller)
+## 3. Flux de bout en bout (edge, mode masquage)
 
-1. L'interface IA envoie une requête OpenAI-compatible (chat/completions, stream ou non)
-   avec une **clé composite** `mn_<jeton_acces>.<clé_amont>`.
-2. `cloison-proxy` sépare la clé sur le premier `.` : identifie le locataire (jeton
-   rotatif, résolu localement ou via control) et retient la clé amont.
-3. Le texte passe par `cloison-core` : détection (structuré → gazetteers → NER sidecar),
-   tokenisation (HMAC + sel de session), généralisation des faibles cardinalités,
-   stockage coffre chiffré local.
-4. Le proxy forwarde **uniquement des jetons** + la clé amont vers le LLM.
+1. **Auth** : le client présente `Authorization: Bearer mn_<access_token>.<upstream_key>`
+   (`crates/cloison-proxy/src/auth.rs`). Découpage sur le **premier point** ;
+   validation à temps constant si `CLOISON_EXPECTED_ACCESS_TOKEN` est configuré ;
+   la clé amont ne sort qu'en header de la requête amont (jamais en log/URL).
+2. **Aller** : `POST /v1/chat/completions` → le corps complet est tokenisé
+   (`cloison-core::engine`, registre d'émission = périmètre de la requête) :
+   `content`, `tool_calls[].function.arguments`, `prompt` sont transformés ;
+   les champs inconnus passent intacts (I6). PII → sentinelles `⟦b32·TAG⟧`.
+3. **Amont** : le corps tokenisé est envoyé au fournisseur
+   (`CLOISON_UPSTREAM_BASE_URL` + chemins configurables).
+4. **Retour non-stream** : la réponse JSON est restaurée — seules les
+   sentinelles émises par cette requête sont résolues (MAC vérifié). Une
+   sentinelle non résoluble → marqueur neutre `[REDACTED]` + compteur (fail-loud).
+5. **Retour stream** : SSE buffer-and-scan, restauration par jeton, sentinelles
+   découpées sur les chunks reconstituées, keep-alive, clôture `[DONE]`,
+   erreur en cours de flux → `data: {"error":…}` puis `[DONE]`.
 
-## Flux principal (retour)
+## 4. Mode audit (observe-only, STACK-4)
 
-1. Réponse (stream SSE ou complète) : buffer-and-scan, un jeton coupé entre chunks est
-   tamponné jusqu'à résolution.
-2. Restauration : uniquement les jetons du registre d'émission de la requête en cours,
-   somme de contrôle valide. Échec → blocage ou marqueur neutre + compteur.
-3. Le client reçoit les vraies valeurs. Rien n'est persisté côté cloud.
+`CLOISON_AUDIT_MODE=1` : le proxy **ne masque pas**, il compte. Corps aller et
+réponse amont sont transmis à l'identique ; chaque requête produit un
+**reçu signé** (`Receipt`, compteurs entiers uniquement) posé en header
+`X-Cloison-Audit-Receipt` (non-stream) et accumulé dans le journal du
+processus. `GET /v1/audit/report?period=hourly|daily|weekly|all` sert un
+rapport de conformité **k-anonyme** (`cloison-audit::report`).
 
-## Principes structurants
+## 5. Plan de contrôle (STACK-5)
 
-- **Deux vitesses** : cœur déterministe portable (Rust/WASM) + sidecar lourd Python
-  optionnel. Jamais un artefact unique forcé à faire les deux.
-- **Le cloud est aveugle par construction** : 0 PII persistée, coffre au bord.
-- **Séparation des préoccupations** : `cloison-core` sans framework HTTP (compilable
-  WASM), `cloison-proxy` seul crate réseau vers le LLM.
-- **Reproductibilité** : tout l'environnement de dev est scripté (`deploy/`) ; le serveur
-  de dev n'est pas une source de vérité, le dépôt l'est.
+`cloison-control` sert l'API admin `/admin/*` (tenants, jetons, rotation,
+révocation, politiques, licences) et `/healthz`. Aucun texte client ne
+transite : le clair `mn_` n'apparaît qu'une fois dans la réponse d'émission.
+Le journal `cloison-ledger` est append-only et vérifiable par
+`cloison-verify` (chaîne + signatures). Le binaire serveur (thin `main.rs`
+posant le routeur sur :8788 et persistant `CLOISON_LEDGER_FILE`) est un
+**pré-requis STACK-7** — le crate est aujourd'hui une bibliothèque.
+
+## 6. Sidecar detect (STACK-6)
+
+Stateless : `Detect(text, locale, policy, session, core_spans) -> spans[]`.
+Transport nominal gRPC (`proto/detect.proto`), repli REST (`POST /detect`).
+Le core Rust valide les spans contre sa propre tokenisation ; le sidecar ne
+persiste rien et dégrade gracieusement si un modèle est absent (jamais de
+crash). Wire edge→detect (`CLOISON_DETECT_URL`) : **cible STACK-7**, non
+encore lu par le binaire.
+
+## 7. Déploiement (STACK-7)
+
+- **Images** : `deploy/Dockerfile.proxy` (edge), `deploy/Dockerfile.control`,
+  `deploy/Dockerfile.detect` — multi-stage, runtime **distroless non-root**
+  (uid 65532 ; 10001 pour detect), read-only + tmpfs. Voir `docs/DEPLOY.md`.
+- **Compose dev** : `deploy/docker-compose.dev.yml` (hôte wonkom.ai).
+- **Kubernetes** : charte Helm `deploy/helm/` (edge/control/detect, une
+  charte, le rôle est une valeur).
+- **CI** : `.github/workflows/ci.yml` — fmt/clippy/test, pytest, bench,
+  build + SBOM (syft) + scans (grype/trivy) + cosign.
+- **Distribution WASM** : `cloison-core` et `cloison-verify` buildables
+  `wasm32-unknown-unknown` (features `wasm`) → rédaction PII dans le
+  navigateur (`@cloison/core`) et vérification de reçus/chaîne côté client
+  (`@cloison/verify`).
+
+## 8. Références
+
+- Modèle de données : `docs/DATA-MODEL.md`
+- API complète : `docs/API.md`
+- Configuration : `docs/CONFIG.md`
+- Menaces : `docs/THREAT-MODEL.md` · Sécurité : `docs/SECURITY.md`

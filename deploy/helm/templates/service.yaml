@@ -1,0 +1,42 @@
+{{- /*
+CLOISON STACK-7 — templates/service.yaml
+Un Service ClusterIP par rôle activé. Ports :
+  edge    8787   (HTTP OpenAI-compatible)
+  control 8788   (HTTP admin /admin/*, /healthz)
+  detect  8080   (REST /detect) + 50051 (gRPC DetectService)
+*/ -}}
+
+{{- $roles := list "edge" "control" "detect" }}
+{{- range $role := $roles }}
+{{- if index $.Values $role "enabled" }}
+{{- $v := index $.Values $role }}
+{{- $httpPort := $v.port }}
+{{- if eq $role "detect" }}{{ $httpPort = $v.restPort }}{{ end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $.Release.Name }}-{{ $role }}
+  labels:
+    app.kubernetes.io/name: cloison
+    app.kubernetes.io/component: {{ $role }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: cloison
+    app.kubernetes.io/component: {{ $role }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+  ports:
+    - name: http
+      port: {{ $httpPort }}
+      targetPort: {{ $httpPort }}
+      protocol: TCP
+    {{- if eq $role "detect" }}
+    - name: grpc
+      port: {{ $v.grpcPort }}
+      targetPort: {{ $v.grpcPort }}
+      protocol: TCP
+    {{- end }}
+{{- end }}
+{{- end }}

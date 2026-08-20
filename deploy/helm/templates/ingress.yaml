@@ -1,0 +1,41 @@
+{{- /*
+CLOISON STACK-7 — templates/ingress.yaml
+Ingress minimal pour le rôle edge (passerelle OpenAI-compatible, port 8787).
+Rendu uniquement si `edge.enabled` ET `edge.ingress.enabled` (values.yaml).
+TLS optionnel : liste de blocs {secretName, hosts[]} (ex. cloison-edge-tls,
+généré via `kubectl create secret tls …` — voir docs/DEPLOY.md §TLS).
+*/ -}}
+
+{{- if and .Values.edge.enabled .Values.edge.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-edge
+  labels:
+    app.kubernetes.io/name: cloison
+    app.kubernetes.io/component: edge
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  {{- with .Values.edge.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.edge.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- with .Values.edge.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.edge.ingress.host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.edge.ingress.path | default "/" | quote }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-edge
+                port:
+                  number: {{ .Values.edge.port }}
+{{- end }}

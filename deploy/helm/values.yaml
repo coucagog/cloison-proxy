@@ -1,0 +1,97 @@
+# =============================================================================
+# CLOISON STACK-7 — Helm values (charte minimale, 3 rôles dans une charte).
+#
+# Installer :
+#   helm lint deploy/helm
+#   helm install cloison deploy/helm --namespace cloison --create-namespace \
+#     --set global.tenantKeyHex="$CLOISON_TENANT_KEY_HEX" \
+#     --set global.accessToken="$CLOISON_ACCESS_TOKEN"
+#
+# Voir docs/DEPLOY.md §Helm pour les secrets (preferExistingSecret), le TLS
+# (Caddy/ingress) et le rollback.
+# =============================================================================
+
+global:
+  # --- Secrets (jamais en dur dans values.yaml ; --set ou secret externe) ----
+  # Clé locataire 32 octets en hex (64 caractères).
+  tenantKeyHex: ""
+  # Jeton d'accès local attendu par edge (partie mn_* de la clé composite).
+  accessToken: ""
+  # Remplacer par un secret existant contenant les clés tenant-key-hex /
+  # access-token (clés attendues par templates/secret.yaml). "" = générer
+  # le secret depuis les valeurs ci-dessus.
+  existingSecret: ""
+  # Clé du fournisseur LLM (partie amont de la clé composite). Non montée en
+  # env par la charte : la clé composite est portée par le client/CI
+  # (Authorization: Bearer mn_<token>.<upstream_key>). Utiliser un secret
+  # existant si un usage interne s'impose.
+  # upstreamApiKey: ""
+
+  # --- Amont (non secret) ----------------------------------------------------
+  upstream:
+    baseUrl: https://openrouter.ai/api/v1
+    chatPath: /chat/completions
+    completionsPath: /v1/completions
+    modelsPath: /models
+
+  imagePullSecrets: []
+
+# --- Rôle edge : passerelle OpenAI-compatible ---------------------------------
+edge:
+  enabled: true
+  replicas: 2
+  image:
+    repository: ghcr.io/coucagog/cloison-proxy
+    tag: edge
+    pullPolicy: IfNotPresent
+  port: 8787
+  audit:
+    mode: "1"
+    k: "5"
+    keys: /data/audit_key
+  resources:
+    requests: { cpu: 100m, memory: 64Mi }
+    limits: { cpu: "1", memory: 256Mi }
+  # Sondes : tcpSocket :8787 (le proxy n'expose pas /healthz ; /v1/models
+  # exige la clé composite → 401 sans Authorization, inutilisable en sonde).
+  ingress:
+    enabled: true
+    host: proxy.wonkom.ai
+    path: /
+    className: nginx
+    annotations: {}
+    # TLS : une liste de blocs {secretName, hosts[]} — voir templates/ingress.yaml.
+    tls:
+      - secretName: cloison-edge-tls   # secret TLS (Caddy/letsencrypt) — voir DEPLOY.md
+        hosts:
+          - proxy.wonkom.ai
+
+# --- Rôle control : plan de contrôle aveugle ----------------------------------
+control:
+  enabled: true
+  replicas: 1
+  image:
+    repository: ghcr.io/coucagog/cloison-control
+    tag: latest
+    pullPolicy: IfNotPresent
+  port: 8788
+  ledgerFile: /data/ledger.jsonl   # journal append-only (CLOISON_LEDGER_FILE)
+  resources:
+    requests: { cpu: 100m, memory: 64Mi }
+    limits: { cpu: "1", memory: 256Mi }
+
+# --- Rôle detect : sidecar NER stateless ---------------------------------------
+detect:
+  enabled: true
+  replicas: 1
+  image:
+    repository: ghcr.io/coucagog/cloison-detect
+    tag: latest
+    pullPolicy: IfNotPresent
+  restPort: 8080
+  grpcPort: 50051
+  transport: both
+  modelsPvc: 20Gi     # modèles lourds (GLiNER…) hors image
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: "2", memory: 2Gi }

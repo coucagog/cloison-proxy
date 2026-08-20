@@ -1,0 +1,19 @@
+apiVersion: v2
+name: cloison
+description: CLOISON — proxy de confidentialité PII (edge), plan de contrôle aveugle (control) et sidecar de détection (detect). Trois rôles dans une même charte ; le rôle est une valeur.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://wonkom.ai
+keywords:
+  - pii
+  - privacy
+  - llm
+  - proxy
+  - ed25519
+  - ledger
+maintainers:
+  - name: CLOISON
+    email: ops@wonkom.ai
+sources:
+  - https://github.com/coucagog/cloison

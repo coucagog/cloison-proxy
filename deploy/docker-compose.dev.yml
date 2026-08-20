@@ -1,0 +1,214 @@
+# =============================================================================
+# CLOISON STACK-7 — docker-compose de développement (hôte cible : wonkom.ai).
+#
+# Usage :
+#   cp deploy/.env.example .env && $EDITOR .env      # secrets uniquement ici
+#   docker compose -f deploy/docker-compose.dev.yml up -d --build
+#   curl http://127.0.0.1:8787/v1/models \
+#     -H "Authorization: Bearer mn_${CLOISON_EXPECTED_ACCESS_TOKEN}.${OPENROUTER_API_KEY}"
+#   docker compose -f deploy/docker-compose.dev.yml down -v
+#
+# Règles :
+#   - AUCUN secret en dur : tout passe par l'environnement (fichier .env ou
+#     variables exportées — l'env du shell prime sur le fichier .env).
+#   - réseau `cloison-net` (bord) : seul edge y est attaché — il publie 8787
+#     sur l'hôte. PAS `internal: true` ici : docker ne publie AUCUN port sur
+#     un réseau interne (moby/moby#53256 — la publication percerait
+#     l'isolation), edge serait injoignable. La frontière « non exposé »
+#     (THREAT-MODEL §3.1) est assurée par l'absence de ports publiés pour
+#     control/detect/postgres, placés sur `cloison-internal` (internal: true,
+#     aucun egress) — leurs lignes `ports:` sont commentées par défaut ;
+#     les décommenter uniquement pour du debug local.
+#   - `read_only: true` + `tmpfs: [/tmp]` + `cap_drop: [ALL]` +
+#     `security_opt: [no-new-privileges:true]` partout (invariant opérationnel O3).
+#   - healthcheck réel uniquement sur `detect` (python présent dans l'image) ;
+#     les images Rust distroless n'ont ni shell ni curl : leur liveness passe
+#     par les sondes K8s httpGet (docs/DEPLOY.md §Healthchecks).
+#
+# ÉTAT STACK-7 :
+#   - `edge` + `detect` sont construits et fonctionnels dès aujourd'hui.
+#   - `control` dépend du binaire `cloison-control` (PRÉREQUIS STACK-7, cf.
+#     deploy/Dockerfile.control) : tant que son main.rs n'est pas committé,
+#     `up --build` échoue sur ce service — le retirer du fichier ou l'arrêter
+#     (`docker compose stop control`) pour ne déployer que edge+detect.
+#   - `CLOISON_ROLE` / `CLOISON_DETECT_URL` ne sont pas encore lus par le
+#     binaire (cible config.rs du STACK-7) : valeurs documentées ci-dessous,
+#     sans effet aujourd'hui.
+# =============================================================================
+
+name: cloison-dev
+
+services:
+  # ---------------------------------------------------------------------------
+  # Edge : passerelle OpenAI-compatible (binaire cloison-proxy).
+  # Port publié : 8787 (seul service exposé hors du réseau interne).
+  # ---------------------------------------------------------------------------
+  edge:
+    image: ghcr.io/coucagog/cloison-proxy:edge
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.proxy
+    environment:
+      # Rôle cible STACK-7 (dispatch config.rs) ; défaut edge, ignoré
+      # par le binaire actuel.
+      CLOISON_ROLE: edge
+      CLOISON_LISTEN_ADDR: 0.0.0.0:8787
+      # Amont réel : OpenRouter. Chemins compatibles : base /api/v1 + chemins
+      # /chat/completions, /models (OpenRouter) OU base /api + chemins
+      # /v1/chat/completions, /v1/models (style OpenAI) OU DeepSeek :
+      # base https://api.deepseek.com + /chat/completions (voir docs/CONFIG.md).
+      CLOISON_UPSTREAM_BASE_URL: ${CLOISON_UPSTREAM_BASE_URL:-https://openrouter.ai/api/v1}
+      CLOISON_UPSTREAM_CHAT_PATH: ${CLOISON_UPSTREAM_CHAT_PATH:-/chat/completions}
+      CLOISON_UPSTREAM_COMPLETIONS_PATH: ${CLOISON_UPSTREAM_COMPLETIONS_PATH:-/v1/completions}
+      CLOISON_UPSTREAM_MODELS_PATH: ${CLOISON_UPSTREAM_MODELS_PATH:-/models}
+      CLOISON_UPSTREAM_CONNECT_TIMEOUT_MS: ${CLOISON_UPSTREAM_CONNECT_TIMEOUT_MS:-5000}
+      CLOISON_UPSTREAM_TIMEOUT_MS: ${CLOISON_UPSTREAM_TIMEOUT_MS:-30000}
+      CLOISON_MAX_BODY_BYTES: ${CLOISON_MAX_BODY_BYTES:-1048576}
+      CLOISON_STREAM_MAX_TOKEN_LEN: ${CLOISON_STREAM_MAX_TOKEN_LEN:-64}
+      CLOISON_STREAM_NEUTRAL_MARKER: ${CLOISON_STREAM_NEUTRAL_MARKER:-[REDACTED]}
+      CLOISON_STREAM_KEEP_ALIVE_MS: ${CLOISON_STREAM_KEEP_ALIVE_MS:-15000}
+      # Secrets (jamais en dur) : jeton local mn_* attendu + clé locataire.
+      CLOISON_EXPECTED_ACCESS_TOKEN: ${CLOISON_EXPECTED_ACCESS_TOKEN:?défini dans .env}
+      CLOISON_TENANT_KEY_HEX: ${CLOISON_TENANT_KEY_HEX:?défini dans .env}
+      CLOISON_SESSION_SALT_HEX: ${CLOISON_SESSION_SALT_HEX:-}
+      CLOISON_MOCK_MODE: ${CLOISON_MOCK_MODE:-0}
+      # Mode audit observe-only (STACK-4) : reçus signés Ed25519 + rapport k-anonyme.
+      # 0 = masquage/restauration actif (nécessaire pour l'e2e réel).
+      CLOISON_AUDIT_MODE: ${CLOISON_AUDIT_MODE:-1}
+      CLOISON_AUDIT_KEYS: ${CLOISON_AUDIT_KEYS:-/data/audit_key}
+      CLOISON_AUDIT_K: ${CLOISON_AUDIT_K:-5}
+      # Wiring edge -> detect (cible STACK-7, non lu par le binaire actuel) :
+      # CLOISON_DETECT_URL: http://detect:8080/detect
+      RUST_LOG: ${RUST_LOG:-cloison_proxy=info}
+    ports:
+      - "8787:8787"          # publié sur wonkom.ai (dev)
+    volumes:
+      - edge-data:/data      # clés d'audit, registres
+    tmpfs:
+      - /tmp
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - cloison-net
+
+  # ---------------------------------------------------------------------------
+  # Control : plan de contrôle aveugle (binaire cloison-control, PRÉREQUIS).
+  # Registre : journal append-only cloison-ledger persisté dans CLOISON_LEDGER_FILE
+  # (/data/ledger.jsonl). Port 8788 NON publié hors dev.
+  # ---------------------------------------------------------------------------
+  control:
+    image: ghcr.io/coucagog/cloison-control:latest
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.control
+    environment:
+      CLOISON_ROLE: control
+      # Le binaire lit CLOISON_CONTROL_PORT (défaut 8788) — pas CLOISON_LISTEN_ADDR.
+      CLOISON_CONTROL_PORT: 8788
+      # Journal de transparence (append-only, chaîne de hachage + signatures
+      # Ed25519) — persistance implémentée par le binaire STACK-7.
+      CLOISON_LEDGER_FILE: ${CLOISON_LEDGER_FILE:-/data/ledger.jsonl}
+      CLOISON_TENANT_KEY_HEX: ${CLOISON_TENANT_KEY_HEX:?défini dans .env}
+      RUST_LOG: ${RUST_LOG:-cloison_proxy=info}
+    # Port 8788 NON publié (réseau interne) : l'API admin ne sort pas du
+    # réseau interne (THREAT-MODEL §3.1). Décommenter pour du debug local :
+    # ports:
+    #   - "8788:8788"
+    volumes:
+      - control-data:/data   # volume du ledger (sauvegarder : docs/DEPLOY.md)
+    tmpfs:
+      - /tmp
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - cloison-internal
+
+  # ---------------------------------------------------------------------------
+  # Detect : sidecar NER stateless (Python). REST 8080 (repli + debug) et
+  # gRPC 50051 (nominal). Healthcheck réel (python dans l'image).
+  # ---------------------------------------------------------------------------
+  detect:
+    image: ghcr.io/coucagog/cloison-detect:latest
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.detect
+      args:
+        CLOISON_LITE: "1"            # sans gliner/torch (image légère)
+        SPACY_MODEL: fr_core_news_sm
+    environment:
+      CLOISON_TRANSPORT: ${CLOISON_TRANSPORT:-both}
+      CLOISON_REST_PORT: ${CLOISON_REST_PORT:-8080}
+      CLOISON_GRPC_PORT: ${CLOISON_GRPC_PORT:-50051}
+      CLOISON_OFFLINE: ${CLOISON_OFFLINE:-0}
+      CLOISON_PRELOAD: ${CLOISON_PRELOAD:-auto}
+      CLOISON_SPACY_SIZE: ${CLOISON_SPACY_SIZE:-sm}
+      CLOISON_MODEL_DIR: /models
+      CLOISON_MODEL_CACHE_GB: ${CLOISON_MODEL_CACHE_GB:-6}
+      CLOISON_BUDGET_SECONDS: ${CLOISON_BUDGET_SECONDS:-2.0}
+      CLOISON_QUARANTINE_SECONDS: ${CLOISON_QUARANTINE_SECONDS:-300}
+      CLOISON_SESSION_MENTIONS_MAX: ${CLOISON_SESSION_MENTIONS_MAX:-200}
+      CLOISON_ONNX: ${CLOISON_ONNX:-0}
+      CLOISON_LOG_LEVEL: ${CLOISON_LOG_LEVEL:-INFO}
+    # Ports NON publiés (réseau interne) : detect n'est consommé que par
+    # edge (wiring STACK-7). Décommenter pour du debug local :
+    # ports:
+    #   - "8080:8080"          # REST /detect — repli, utile pour le debug
+    #   - "50051:50051"        # gRPC nominal — retirer hors dev
+    volumes:
+      - detect-models:/models
+    tmpfs:
+      - /tmp
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=2)"]
+      interval: 30s
+      timeout: 3s
+      start_period: 20s
+      retries: 3
+    networks:
+      - cloison-internal
+
+  # ---------------------------------------------------------------------------
+  # Optionnel : miroir externe du registre (profil volontaire).
+  # Le registre nominal est le journal CLOISON_LEDGER_FILE EMBARQUÉ dans
+  # control ; postgres ne sert que d'export/audit externe (cible PostgresStore,
+  # feature `pg` — cf. crates/cloison-control/src/store.rs). Activer avec :
+  #   docker compose --profile db up -d
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["db"]
+    environment:
+      POSTGRES_USER: cloison
+      POSTGRES_PASSWORD: ${CLOISON_PG_PASSWORD:-cloison-dev-only}
+      POSTGRES_DB: cloison
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    networks:
+      - cloison-internal
+
+volumes:
+  edge-data:
+  control-data:      # ledger (CLOISON_LEDGER_FILE) — sauvegarde critique
+  detect-models:
+  pg-data:
+
+networks:
+  # Réseau « bord » : edge (port 8787 publié sur l'hôte). Non-internal (voir
+  # l'en-tête) ; edge rejoindra cloison-internal au STACK-7 wiring edge→detect.
+  cloison-net:
+  # Réseau interne strict : detect, control, postgres — aucun port publié,
+  # aucun egress (internal: true). La frontière de confiance §3.1 THREAT-MODEL.
+  cloison-internal:
+    internal: true

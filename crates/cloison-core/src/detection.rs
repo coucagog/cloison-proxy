@@ -64,6 +64,15 @@ pub struct Span {
     pub value: String,
 }
 
+/// Identifiant du gazetteer des prénoms sénégalais (construit dans `Detector::new`).
+/// Référencé par `DetectorPolicy::all_enabled` (cloison-core) : les noms
+/// sont masqués par défaut (sentinelles `GZ*`, cf. docs/DATA-MODEL.md §1).
+pub const GAZETTEER_NOM_SN: &str = "nom_sn";
+
+/// Identifiant du gazetteer des toponymes sénégalais (construit dans `Detector::new`).
+/// Référencé par `DetectorPolicy::all_enabled` (cloison-core).
+pub const GAZETTEER_VILLE_SN: &str = "ville_sn";
+
 /// A compiled gazetteer (Aho-Corasick) for a named set of terms.
 pub struct Gazetteer {
     /// Gazetteer identifier (e.g., "ville_sn").
@@ -206,13 +215,13 @@ impl Detector {
 
         // Add built-in gazetteers
         let nom_gaz = Gazetteer::new(
-            "nom_sn".to_string(),
+            GAZETTEER_NOM_SN.to_string(),
             DEFAULT_NAMES_SN.iter().map(|s| s.to_string()).collect(),
         )?;
         detector.add_gazetteer(nom_gaz)?;
 
         let ville_gaz = Gazetteer::new(
-            "ville_sn".to_string(),
+            GAZETTEER_VILLE_SN.to_string(),
             DEFAULT_VILLES_SN.iter().map(|s| s.to_string()).collect(),
         )?;
         detector.add_gazetteer(ville_gaz)?;

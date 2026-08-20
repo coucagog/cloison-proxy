@@ -1,0 +1,173 @@
+{{- /*
+CLOISON STACK-7 — templates/deployment.yaml
+Un Deployment par rôle activé (edge/control/detect). Le rôle est une valeur ;
+tous partagent le même securityContext durci :
+  runAsNonRoot, readOnlyRootFilesystem, allowPrivilegeEscalation: false,
+  capabilities.drop ALL, tmpfs /tmp (emptyDir).
+
+Sondes (opérationnelles par défaut, SANS clé) :
+  - edge   : tcpSocket :8787 — le proxy n'expose PAS de /healthz ; seul
+             `/v1/models` répond (et exige la clé composite → 401 sans
+             Authorization, donc un httpGet serait KO en permanence).
+  - control: httpGet /healthz :8788 (implémenté dans cloison_control::api).
+  - detect : httpGet /healthz :8080 (FastAPI, services/cloison-detect).
+*/ -}}
+
+{{- $roles := list "edge" "control" "detect" }}
+{{- range $role := $roles }}
+{{- if index $.Values $role "enabled" }}
+{{- $v := index $.Values $role }}
+{{- $uid := ternary "10001" "65532" (eq $role "detect") }}
+{{- $probePort := 0 }}
+{{- if eq $role "detect" }}{{ $probePort = $v.restPort }}{{ else }}{{ $probePort = $v.port }}{{ end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $.Release.Name }}-{{ $role }}
+  labels:
+    app.kubernetes.io/name: cloison
+    app.kubernetes.io/component: {{ $role }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+spec:
+  replicas: {{ $v.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cloison
+      app.kubernetes.io/component: {{ $role }}
+      app.kubernetes.io/instance: {{ $.Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cloison
+        app.kubernetes.io/component: {{ $role }}
+        app.kubernetes.io/instance: {{ $.Release.Name }}
+    spec:
+      {{- with $.Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ $uid }}
+        fsGroup: {{ $uid }}
+      containers:
+        - name: {{ $role }}
+          image: "{{ $v.image.repository }}:{{ $v.image.tag }}"
+          imagePullPolicy: {{ $v.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          {{- if eq $role "edge" }}
+          env:
+            - name: CLOISON_ROLE
+              value: edge
+            - name: CLOISON_LISTEN_ADDR
+              value: "0.0.0.0:{{ $v.port }}"
+            - name: CLOISON_UPSTREAM_BASE_URL
+              value: {{ $.Values.global.upstream.baseUrl | quote }}
+            - name: CLOISON_UPSTREAM_CHAT_PATH
+              value: {{ $.Values.global.upstream.chatPath | quote }}
+            - name: CLOISON_UPSTREAM_COMPLETIONS_PATH
+              value: {{ $.Values.global.upstream.completionsPath | quote }}
+            - name: CLOISON_UPSTREAM_MODELS_PATH
+              value: {{ $.Values.global.upstream.modelsPath | quote }}
+            - name: CLOISON_AUDIT_MODE
+              value: {{ $v.audit.mode | quote }}
+            - name: CLOISON_AUDIT_K
+              value: {{ $v.audit.k | quote }}
+            - name: CLOISON_AUDIT_KEYS
+              value: {{ $v.audit.keys | quote }}
+            - name: CLOISON_EXPECTED_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.global.existingSecret | default (printf "%s-secrets" $.Release.Name) }}
+                  key: access-token
+            - name: CLOISON_TENANT_KEY_HEX
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.global.existingSecret | default (printf "%s-secrets" $.Release.Name) }}
+                  key: tenant-key-hex
+          {{- else if eq $role "control" }}
+          env:
+            - name: CLOISON_ROLE
+              value: control
+            - name: CLOISON_CONTROL_PORT
+              value: {{ $v.port | quote }}
+            - name: CLOISON_LEDGER_FILE
+              value: {{ $v.ledgerFile | quote }}
+            - name: CLOISON_TENANT_KEY_HEX
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.global.existingSecret | default (printf "%s-secrets" $.Release.Name) }}
+                  key: tenant-key-hex
+          {{- else }}
+          env:
+            - name: CLOISON_TRANSPORT
+              value: {{ $v.transport | quote }}
+            - name: CLOISON_REST_PORT
+              value: {{ $v.restPort | quote }}
+            - name: CLOISON_GRPC_PORT
+              value: {{ $v.grpcPort | quote }}
+            - name: CLOISON_MODEL_DIR
+              value: /models
+          {{- end }}
+          ports:
+            - name: {{ $role }}-port
+              containerPort: {{ $probePort }}
+              protocol: TCP
+          {{- if eq $role "detect" }}
+            - name: grpc
+              containerPort: {{ $v.grpcPort }}
+              protocol: TCP
+          {{- end }}
+          readinessProbe:
+            {{- if eq $role "edge" }}
+            tcpSocket:
+              port: {{ $probePort }}
+            {{- else }}
+            httpGet:
+              path: /healthz
+              port: {{ $probePort }}
+            {{- end }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            {{- if eq $role "edge" }}
+            tcpSocket:
+              port: {{ $probePort }}
+            {{- else }}
+            httpGet:
+              path: /healthz
+              port: {{ $probePort }}
+            {{- end }}
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            {{- toYaml $v.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- if eq $role "detect" }}
+            - name: models
+              mountPath: /models
+            {{- else }}
+            - name: data
+              mountPath: /data
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- if eq $role "detect" }}
+        - name: models
+          persistentVolumeClaim:
+            claimName: {{ $.Release.Name }}-detect-models
+        {{- else }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $.Release.Name }}-{{ $role }}-data
+        {{- end }}
+{{- end }}
+{{- end }}

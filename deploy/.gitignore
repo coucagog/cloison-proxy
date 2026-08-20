@@ -1,0 +1,24 @@
+# =============================================================================
+# CLOISON — deploy/.gitignore
+# Matériel cryptographique et fichiers locaux de déploiement : JAMAIS committés
+# (invariant I1, docs/SECURITY.md). Le .gitignore racine couvre déjà .env et
+# target/ ; ici : secrets/Clés propres au déploiement.
+# =============================================================================
+
+# Secrets d'environnement locaux (le .gitignore racine couvre aussi .env)
+.env
+.env.*
+!.env.example
+
+# Matériel cryptographique (TLS, clés d'audit/contrôle, PKCS#12…)
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# Journaux & artefacts locaux
+*.log
+core.*
+mock_llm_last_body.json

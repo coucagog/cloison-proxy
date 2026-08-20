@@ -1,0 +1,84 @@
+# =============================================================================
+# CLOISON STACK-7 — Image du proxy de bord (rôle `edge`).
+#
+# Binaire : `cloison-proxy` (le SEUL binaire Rust du workspace aujourd'hui).
+# Port par défaut : 8787 (CLOISON_LISTEN_ADDR / CLOISON_PROXY_PORT).
+#
+# Arborescence attendue à la racine du dépôt (monorepo CLOISON fusionné) :
+#   Cargo.toml            (workspace, members = crates/*)
+#   Cargo.lock
+#   crates/cloison-proxy  (+ cloison-core, cloison-audit, cloison-control,
+#                           cloison-ledger, cloison-verify)
+#   services/cloison-detect
+#   deploy/               (ce répertoire)
+#
+# Build context = racine du dépôt, ex. :
+#   docker build -f deploy/Dockerfile.proxy -t ghcr.io/coucagog/cloison-proxy:edge .
+#
+# PRÉREQUIS STACK-7 (code, hors périmètre de ce Dockerfile) :
+#   - `reqwest` doit être compilé avec TLS pour parler HTTPS aux fournisseurs
+#     réels (OpenRouter / DeepSeek) : dans `crates/cloison-proxy/Cargo.toml`,
+#     passer `features = ["json", "stream", "rustls-tls"]` (actuellement
+#     `default-features = false, features = ["json", "stream"]` — sans TLS,
+#     seuls les amonts HTTP fonctionnent ; voir docs/DEPLOY.md §Pré-requis).
+#   - garde-fou uid 0 dans `main.rs` (refus de démarrer en root) — cible
+#     `config.rs` (CLOISON_ROLE) + main.rs du STACK-7.
+#
+# Lien statique : ce Dockerfile produit un binaire glibc (build natif) et le
+# pose sur `distroless/cc-debian12:nonroot` (qui contient glibc). Pour une
+# image 100 % statique (`distroless/static-debian12`), compiler en musl :
+#   rustup target add x86_64-unknown-linux-musl && apt-get install musl-tools
+#   cargo build --release --target x86_64-unknown-linux-musl -p cloison-proxy
+# =============================================================================
+
+# ---------- stage 1 : builder (dépendances + binaire) ------------------------
+# Toolchain 1.97 : les transitives du Cargo.lock (icu 2.3 via idna/url 1.x)
+# exigent rustc >= 1.88 (rust:1.85 echoue) ; 1.97 = toolchain de validation
+# (CI dtolnay stable / hote). A revoir si Cargo.lock evolue.
+FROM rust:1.97-bookworm AS builder
+
+# CA racines (requises pour HTTPS amont ; rustls-tls embarque webpki-roots,
+# mais la copie système reste utile aux outils de diagnostic).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# Caches BuildKit : registry cargo + target/ persistés entre builds CI.
+# NB : le contenu d'un `--mount=type=cache` N'EST PAS dans la couche image —
+# le binaire doit être copié dans /out (hors cache) pour être récupéré par le
+# stage runtime.
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/build/target \
+    cargo build --release -p cloison-proxy --locked \
+    && mkdir -p /out \
+    && cp /build/target/release/cloison-proxy /out/cloison-proxy
+
+# Vérification du lien (diagnostic uniquement — le runtime distroless n'a pas ldd) :
+# RUN ldd /out/cloison-proxy || true
+
+# ---------- stage 2 : runtime distroless (non-root, ni shell, ni paquets) ----
+FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
+
+# CA racines : requis si une résolution système est utilisée par le binaire.
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
+# Binaire unique (le design historique nommait l'artefact `cloison`).
+COPY --from=builder /out/cloison-proxy /usr/local/bin/cloison
+
+# nonroot distroless : uid/gid 65532 — le binaire refuse uid 0 (garde-fou STACK-7).
+USER 65532:65532
+
+# Données runtime : clés d'audit (CLOISON_AUDIT_KEYS), registre, config montée.
+# À lancer avec `--read-only --tmpfs /tmp` (compose/k8s) : seuls /data et /tmp
+# sont inscriptibles.
+WORKDIR /data
+VOLUME ["/data"]
+
+EXPOSE 8787
+
+ENTRYPOINT ["/usr/local/bin/cloison"]

@@ -207,7 +207,7 @@ fn invariant_anti_collision_cross_session() {
     let keys1 = make_keys(0x21);
     let keys2 = make_keys(0x22);
     let mut engine1 = Engine::new(keys1).unwrap();
-    let mut engine2 = Engine::new(keys2).unwrap();
+    let engine2 = Engine::new(keys2).unwrap();
     let policy = make_policy();
 
     // Tokenize with engine1

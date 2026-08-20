@@ -229,16 +229,16 @@ fn canonicalize(value: &mut serde_json::Value) {
             *map = entries.into_iter().collect();
         }
         serde_json::Value::Array(arr) => {
-            if arr
-                .iter()
-                .all(|v| matches!(v, serde_json::Value::String(_) | serde_json::Value::Number(_) | serde_json::Value::Bool(_) | serde_json::Value::Null))
-            {
-                arr.sort_by_key(|a| a.to_string());
-            } else {
-                for v in arr.iter_mut() {
-                    canonicalize(v);
-                }
+            // Normalise d'abord les éléments (objets imbriqués, ex.
+            // DetectorKind::Gazetteer -> {"Gazetteer":"nom_sn"})…
+            for v in arr.iter_mut() {
+                canonicalize(v);
             }
+            // …puis TRI : un tableau JSON issu d'un HashSet/HashMap n'a PAS
+            // d'ordre d'itération déterministe — le hash canonique (I-A4)
+            // doit trier aussi les tableaux mixtes (tri par représentation
+            // canonique, stable entre machines).
+            arr.sort_by_key(|a| a.to_string());
         }
         _ => {}
     }

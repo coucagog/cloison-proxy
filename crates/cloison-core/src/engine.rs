@@ -347,6 +347,25 @@ mod tests {
     }
 
     #[test]
+    fn test_restore_canonicalized_value() {
+        // Régression : le MAC est calculé sur la valeur canonique ("Aminata" ->
+        // "aminata"). La restauration doit accepter la valeur brute du
+        // registre (capitalisée), sinon toute valeur non-canonique échoue.
+        let keys = test_keys();
+        let mut engine = Engine::new(keys).unwrap();
+        let policy = Policy::default();
+
+        let original = "Nom: Aminata Diop, tel +221 77 123 45 67";
+        let result = engine.tokenize(original, &policy, "req-cap").unwrap();
+        assert!(!result.text_out.contains("Aminata"));
+
+        let restored = engine.restore(&result.text_out, "req-cap").unwrap();
+        assert_eq!(restored.text_out, original, "nom capitalisé + téléphone restaurés");
+        assert_eq!(restored.counters.blocked, 0, "aucun jeton bloqué");
+        assert_eq!(restored.counters.restored, 2, "nom + téléphone restaurés");
+    }
+
+    #[test]
     fn test_no_clear_leaving() {
         let keys = test_keys();
         let mut engine = Engine::new(keys).unwrap();

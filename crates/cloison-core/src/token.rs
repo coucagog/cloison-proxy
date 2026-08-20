@@ -343,7 +343,11 @@ pub fn verify_body(
     kind: &DetectorKind,
     keys: &SessionKeys,
 ) -> bool {
-    match token_body(keys, plain_value, kind) {
+    // Le MAC est calculé sur la valeur CANONIQUE (canonicalize) à l'émission :
+    // vérifier aussi sur la valeur canonique, sinon toute valeur dont la forme
+    // canonique diffère (majuscules, espaces, NFC) échoue à la restauration.
+    let canonical = canonicalize(plain_value);
+    match token_body(keys, &canonical, kind) {
         Ok(expected) => expected == *body,
         Err(_) => false,
     }

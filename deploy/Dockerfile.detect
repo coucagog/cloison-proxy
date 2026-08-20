@@ -1,0 +1,131 @@
+# =============================================================================
+# CLOISON STACK-7 — Image du sidecar de détection (`cloison-detect`, Python).
+#
+# ÉTAT RÉEL DU CODE (services/cloison-detect/src/config.py) :
+#   - REST  : CLOISON_REST_PORT, défaut **8080** (uvicorn, POST /detect,
+#             GET /healthz, /version, /models) ;
+#   - gRPC  : CLOISON_GRPC_PORT, défaut **50051** (DetectService,
+#             proto/detect.proto — nominal en production) ;
+#   - transport par défaut : "rest" (CLOISON_TRANSPORT=grpc|rest|both).
+#   NB : la consigne « EXPOSE 8789 » de la spec STACK-7 est volontairement
+#   écartée : le service écoute sur 8080/50051 (défauts du code). Si un port
+#   externe 8789 est souhaité, mapper `8789:8080` dans le compose — le port
+#   interne reste celui configuré par CLOISON_REST_PORT.
+#
+# **Multi-stage réel** (2 étapes, python:3.11-slim) :
+#   - `builder` : installe les dépendances Python dans /opt/deps
+#     (`pip install --target`), y compris le modèle spaCy — la couche
+#     d'installation est ainsi séparée du runtime, qui ne reçoit que les
+#     paquets installés + le code applicatif (plus de pip/compilateurs
+#     inutiles au runtime, builds plus légers et reproductibles).
+#   - `runtime` : copie /opt/deps (site-packages) + src, codegen gRPC,
+#     **USER non-root** (uid 10001) ; les modèles lourds restent hors image.
+#   NB : un mono-stage aurait été défendable à cause de torch/transformers
+#   (gliner), mais ceux-ci sont exclus par défaut (CLOISON_LITE=1) — le
+#   multi-stage est donc le choix techniquement juste ici.
+#
+# Options de build :
+#   - `CLOISON_LITE=1` (défaut) : installe requirements.txt SANS gliner
+#     (qui tirerait torch/transformers, +2–3 Go) → image ~300–450 Mo,
+#     pipeline Presidio (oracle) + regex CNI + gazetteers, dégradation
+#     gracieuse si un modèle est absent. `CLOISON_LITE=0` : install complète
+#     (GLiNER inclus, image beaucoup plus lourde).
+#   - `SPACY_MODEL=fr_core_news_sm` (défaut) : téléchargé au build (réseau
+#     requis). Passer `--build-arg SPACY_MODEL=` pour un build hors-ligne
+#     (le service démarre alors en mode dégradé, jamais de crash).
+#
+# Arborescence attendue à la racine du dépôt :
+#   services/cloison-detect/{requirements.txt,proto,src,tests}
+#   deploy/                (ce répertoire)
+#
+# Build context = racine du dépôt, ex. :
+#   docker build -f deploy/Dockerfile.detect -t ghcr.io/coucagog/cloison-detect:latest .
+# =============================================================================
+
+# --- Stage 1 : builder — installation des dépendances (une seule fois) --------
+FROM python:3.11-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    # Cible d'installation unique : tout (requirements + modèle spaCy) va
+    # dans /opt/deps, copié tel quel dans le stage runtime.
+    PIP_TARGET=/opt/deps \
+    # PYTHONPATH : rend /opt/deps importable dès le builder (spacy download
+    # a besoin du module spacy installé via --target).
+    PYTHONPATH=/opt/deps
+
+WORKDIR /build
+
+# --- Dépendances --------------------------------------------------------------
+COPY services/cloison-detect/requirements.txt .
+
+# CLOISON_LITE=1 : on retire gliner (et ses transitives lourdes torch/
+# transformers) du fichier d'installation ; le reste (fastapi, uvicorn,
+# grpcio, grpcio-tools, protobuf, presidio-analyzer, presidio-anonymizer,
+# spacy, numpy, pydantic, pytest) est installé tel quel.
+ARG CLOISON_LITE=1
+RUN if [ "$CLOISON_LITE" = "1" ]; then \
+      grep -vE '^[[:space:]]*(gliner|torch|transformers)([#=].*)?$' requirements.txt \
+        > requirements-lite.txt \
+      && pip install --target /opt/deps -r requirements-lite.txt; \
+    else \
+      pip install --target /opt/deps -r requirements.txt; \
+    fi
+
+# Modèle spaCy de l'oracle Presidio (une seule fois ; hors-ligne ensuite).
+# SPACY_MODEL vide → saut (build hors-ligne, mode dégradé au runtime).
+# PIP_TARGET (env ci-dessus) fait atterrir le modèle dans /opt/deps.
+ARG SPACY_MODEL=fr_core_news_sm
+RUN if [ -n "$SPACY_MODEL" ]; then python -m spacy download "$SPACY_MODEL"; fi
+
+# --- Stage 2 : runtime — site-packages + code applicatif, non-root -----------
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    # Site-packages installé au stage builder (/srv/cloison-detect/deps).
+    PYTHONPATH=/srv/cloison-detect/deps
+
+# Non-root : uid/gid 10001 (le design impose un compte applicatif dédié).
+RUN groupadd -r cloison && useradd -r -g cloison -u 10001 cloison
+
+WORKDIR /srv/cloison-detect
+
+# Dépendances installées (aucun pip au runtime) puis code applicatif.
+COPY --from=builder /opt/deps ./deps
+COPY services/cloison-detect/proto ./proto
+COPY services/cloison-detect/src ./src
+
+# Code généré : absent du dépôt (cf. STACK-6), généré au build. Sans lui,
+# src/api.py désactive le transport gRPC (repli REST) — on le génère donc ici
+# pour que l'image serve le transport nominal (grpc_tools vient de ./deps).
+RUN mkdir -p src/gen \
+    && python -m grpc_tools.protoc \
+         -I proto \
+         --python_out=src/gen \
+         --grpc_python_out=src/gen \
+         proto/detect.proto \
+    && touch src/gen/__init__.py
+
+# /models inscriptible par le compte applicatif : en compose, le volume est
+# initialisé depuis l'image (donc avec cette propriété) ; en K8s, fsGroup
+# (déjà posé par la charte) fait le reste.
+RUN mkdir -p /models && chown cloison:cloison /models
+
+USER cloison
+
+# Modèles lourds (GLiNER / SERENGETI) chargés lazyment, HORS image (volume).
+VOLUME ["/models"]
+
+# REST 8080 (défaut CLOISON_REST_PORT) + gRPC 50051 (défaut CLOISON_GRPC_PORT).
+EXPOSE 8080 50051
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
+  CMD python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=2)"
+
+# Entrée : python -m src.main (REST par défaut ; CLOISON_TRANSPORT=both pour
+# servir gRPC en plus).
+ENTRYPOINT ["python", "-m", "src.main"]

@@ -2,7 +2,7 @@
 //!
 //! Règles d'or :
 //! - `entry_hash = SHA-256(header binaire canonique)` où
-//!   `header = seq.to_le_bytes() ‖ prev_hash ‖ payload_hash ‖ ts_unix.to_le_bytes()` (52 octets) ;
+//!   `header = seq.to_le_bytes() ‖ prev_hash ‖ payload_hash ‖ ts_unix.to_le_bytes()` (80 octets) ;
 //! - `payload_hash = SHA-256(JSON canonique compact du LedgerPayload)` (BTreeMap → clés triées) ;
 //! - la signature Ed25519 du contrôle couvre `entry_hash` (message qui lie seq, prev_hash,
 //!   payload_hash et ts) ;
@@ -50,7 +50,7 @@ pub struct LedgerEntry {
 }
 
 impl LedgerEntry {
-    /// Header binaire canonique (52 octets) :
+    /// Header binaire canonique (80 octets) :
     /// `seq.to_le_bytes() ‖ prev_hash ‖ payload_hash ‖ ts_unix.to_le_bytes()`.
     pub fn header_bytes(
         seq: u64,

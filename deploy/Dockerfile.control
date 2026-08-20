@@ -1,0 +1,69 @@
+# =============================================================================
+# CLOISON STACK-7 — Image du plan de contrôle (`cloison-control`).
+#
+# Port par défaut : 8788 (CLOISON_LISTEN_ADDR).
+#
+# ÉTAT RÉEL DU CODE (à lire avant de construire) :
+#   `crates/cloison-control` est aujourd'hui une BIBLIOTHÈQUE : elle expose le
+#   routeur Axum complet (`cloison_control::api::router`, routes /admin/* et
+#   /healthz) mais n'a PAS de binaire. Ce Dockerfile cible le binaire
+#   `cloison-control` introduit par le STACK-7 : un `main.rs` fin qui
+#     - charge la config (CLOISON_LISTEN_ADDR, CLOISON_LEDGER_FILE,
+#       CLOISON_TENANT_KEY_HEX),
+#     - construit le store (mémoire aujourd'hui ; PostgresStore feature `pg`
+#       en cible, cf. crates/cloison-control/src/store.rs),
+#     - sert `cloison_control::api::router(...)` sur 0.0.0.0:8788,
+#     - persiste le journal `cloison-ledger` dans CLOISON_LEDGER_FILE.
+#   Tant que ce main.rs n'est pas committé, `cargo build -p cloison-control`
+#   échoue : le service `control` du compose est alors inactif (voir
+#   docs/DEPLOY.md §Pré-requis).
+#
+# Arborescence attendue à la racine du dépôt (monorepo CLOISON fusionné) :
+#   Cargo.toml            (workspace, members = crates/*)
+#   Cargo.lock
+#   crates/cloison-control (+ cloison-ledger, cloison-verify, cloison-core,
+#                            cloison-audit, cloison-proxy)
+#   deploy/               (ce répertoire)
+#
+# Build context = racine du dépôt, ex. :
+#   docker build -f deploy/Dockerfile.control -t ghcr.io/coucagog/cloison-control:latest .
+# =============================================================================
+
+# ---------- stage 1 : builder -------------------------------------------------
+# Toolchain 1.97 : les transitives du Cargo.lock (icu 2.3 via idna/url 1.x)
+# exigent rustc >= 1.88 (rust:1.85 echoue) ; 1.97 = toolchain de validation
+# (CI dtolnay stable / hote). A revoir si Cargo.lock evolue.
+FROM rust:1.97-bookworm AS builder
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+
+# NB : le contenu d'un `--mount=type=cache` N'EST PAS dans la couche image —
+# le binaire est copié dans /out (hors cache) pour le stage runtime.
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/build/target \
+    cargo build --release -p cloison-control --locked \
+    && mkdir -p /out \
+    && cp /build/target/release/cloison-control /out/cloison-control
+
+# ---------- stage 2 : runtime distroless (non-root) ---------------------------
+FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
+
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=builder /out/cloison-control /usr/local/bin/cloison-control
+
+USER 65532:65532
+
+# Registre redb/JSONL (CLOISON_LEDGER_FILE), clés de contresignature.
+WORKDIR /data
+VOLUME ["/data"]
+
+EXPOSE 8788
+
+ENTRYPOINT ["/usr/local/bin/cloison-control"]

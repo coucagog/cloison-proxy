@@ -1,0 +1,36 @@
+{{- /*
+CLOISON STACK-7 — templates/pvc.yaml
+Persistance :
+  - edge / control : PVC /data (clés d'audit, journal CLOISON_LEDGER_FILE)
+  - detect        : PVC /models (modèles lourds hors image)
+Un PVC par rôle activé. Le journal (control) est la donnée critique :
+sauvegarder le volume (docs/DEPLOY.md §7).
+*/ -}}
+
+{{- $roles := list "edge" "control" "detect" }}
+{{- range $role := $roles }}
+{{- if index $.Values $role "enabled" }}
+{{- $v := index $.Values $role }}
+{{- $claim := printf "%s-%s-data" $.Release.Name $role }}
+{{- $size := "1Gi" }}
+{{- if eq $role "detect" }}
+{{-   $claim = printf "%s-detect-models" $.Release.Name }}
+{{-   $size = $v.modelsPvc }}
+{{- end }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $claim }}
+  labels:
+    app.kubernetes.io/name: cloison
+    app.kubernetes.io/component: {{ $role }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ $size }}
+{{- end }}
+{{- end }}
