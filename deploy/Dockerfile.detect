@@ -77,8 +77,12 @@ RUN if [ "$CLOISON_LITE" = "1" ]; then \
 # Modèle spaCy de l'oracle Presidio (une seule fois ; hors-ligne ensuite).
 # SPACY_MODEL vide → saut (build hors-ligne, mode dégradé au runtime).
 # PIP_TARGET (env ci-dessus) fait atterrir le modèle dans /opt/deps.
-ARG SPACY_MODEL=fr_core_news_sm
-RUN if [ -n "$SPACY_MODEL" ]; then python -m spacy download "$SPACY_MODEL"; fi
+# Le presidio_oracle charge fr + en (config.presidio.languages) : les DEUX
+# modèles sont requis, sinon l'oracle retombe en regex+gazetteers.
+ARG SPACY_MODEL=fr_core_news_md
+ARG SPACY_EN_MODEL=en_core_web_sm
+RUN if [ -n "$SPACY_MODEL" ]; then python -m spacy download "$SPACY_MODEL"; fi \
+    && if [ -n "$SPACY_EN_MODEL" ]; then python -m spacy download "$SPACY_EN_MODEL"; fi
 
 # --- Stage 2 : runtime — site-packages + code applicatif, non-root -----------
 FROM python:3.11-slim AS runtime
@@ -86,8 +90,11 @@ FROM python:3.11-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    # Site-packages installé au stage builder (/srv/cloison-detect/deps).
-    PYTHONPATH=/srv/cloison-detect/deps
+    # Site-packages installé au stage builder (/srv/cloison-detect/deps) +
+    # code gRPC généré (src/gen) : le code généré fait un `import detect_pb2`
+    # de niveau racine — src/gen doit être dans le path (sinon transport gRPC
+    # désactivé au démarrage, constaté au premier déploiement STACK-9).
+    PYTHONPATH=/srv/cloison-detect/deps:/srv/cloison-detect/src/gen
 
 # Non-root : uid/gid 10001 (le design impose un compte applicatif dédié).
 RUN groupadd -r cloison && useradd -r -g cloison -u 10001 cloison
