@@ -25,10 +25,11 @@ from .spans import (
 
 logger = logging.getLogger(__name__)
 
-# Regex CNI (numéro de carte nationale d'identité, 12 chiffres).
+# Regex CNI (numéro de carte nationale d'identité sénégalaise, 13 chiffres
+# débutant par 1 — grille v1.1 ; le 12 chiffres d'origine ne matchait jamais).
 _CNI_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"(?<!\d)\d{12}(?!\d)"),
-    re.compile(r"(?<!\d)\d{2}[ ]\d{4}[ ]\d{4}[ ]\d{2}(?!\d)"),
+    re.compile(r"(?<!\d)1\d{12}(?!\d)"),
+    re.compile(r"(?<!\d)1\d{2}[ ]\d{3}[ ]\d{4}[ ]\d{3}(?!\d)"),
 )
 
 # Correspondance entité Presidio -> SpanType canonique.

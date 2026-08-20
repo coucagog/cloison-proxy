@@ -87,8 +87,13 @@ class GlinerDetector:
         if not labels:
             return []
         try:
-            # seuil interne bas : on garde les candidats, la fusion filtre
-            entities = self._model.predict_entities(text, labels, threshold=0.05)
+            # Seuil interne de candidature : câblé sur la config (défaut 0.45).
+            # Le 0.05 codé en dur inondait la fusion de candidats bruités
+            # (ORG à 0.064, Wolof « Nanga/Maa/Jërëjëf » → PERSON) — contribution
+            # directe aux faux positifs (spécificité 27 % au benchmark).
+            entities = self._model.predict_entities(
+                text, labels, threshold=self._config.gliner.threshold
+            )
         except Exception as exc:
             logger.warning("gliner: prédiction échouée (%s) — spans ignorés", exc)
             self._quarantine_until = time.monotonic() + self._config.quarantine_seconds

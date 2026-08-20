@@ -159,7 +159,12 @@ class Config(BaseModel):
     transport: str = "rest"               # "grpc" | "rest" | "both"
     offline: bool = False                 # 1 = aucun téléchargement réseau
     preload: str = "auto"                 # "none" | "auto" (presidio) | "all"
-    spacy_size: str = "sm"                # "sm" | "lg" (fr_core_news_*)
+    spacy_size: str = "md"                # "sm" | "md" | "lg" (fr_core_news_*)
+    # Décision (GO/NO-GO, run « modèles réels ») : défaut passé de "sm" à "md"
+    # — fr_core_news_sm hallucine PERSON/LOC sur du vocabulaire ordinaire
+    # (« Rotation » → LOC, « Débrancher » → PERSON) et Presidio leur attribue
+    # un score par défaut de 0.85 qui passe tous les seuils : spécificité 27 %
+    # au benchmark. "md" (déjà installé, hors-ligne) divise les faux positifs.
     model_cache_gb: float = 6.0
     model_dir: str = "./models"
     budget_seconds: float = 2.0           # deadline douce par requête
@@ -194,7 +199,7 @@ class Config(BaseModel):
     @field_validator("spacy_size")
     @classmethod
     def _check_spacy_size(cls, v: str) -> str:
-        if v not in ("sm", "lg"):
+        if v not in ("sm", "md", "lg"):
             raise ValueError(f"spacy_size inconnu: {v!r}")
         return v
 

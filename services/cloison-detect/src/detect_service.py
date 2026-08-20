@@ -153,14 +153,20 @@ class DetectService:
                     logger.warning("detect: modèles africains échoués (%s)", exc)
                 skipped = skipped or self._budget_exhausted(deadline)
 
-        # 4) fusion + dédupe core_spans
+        # 4) seuils par source (config.thresholds, calibration STACK-1/6) :
+        #    un candidat mono-source sous son seuil ne vote pas à la fusion.
+        #    Mode-aware : jamais en `recall_only` (le mode existe pour abaisser
+        #    les seuils — maximiser le rappel est sa raison d'être).
+        if policy.mode != "recall_only":
+            results = [self._source_threshold_filter(r) for r in results]
+        # 5) fusion + dédupe core_spans
         spans = self._fuse(text, results, policy, request.core_spans)
-        # 5) alias intra-session
+        # 6) alias intra-session
         if policy.enable_alias_expansion:
             spans = self._expander.expand(text, spans, request.session, policy, request.core_spans)
         # filtrage final (types demandés + seuils mode-aware, alias inclus)
         spans = self._apply_thresholds(spans, policy)
-        # 6) jauge quasi-id
+        # 7) jauge quasi-id
         quasi: QuasiIdReport | None = None
         if policy.enable_quasiid_gauge:
             quasi = self._gauge.evaluate(text, spans, request.core_spans, locale, policy)
@@ -190,6 +196,28 @@ class DetectService:
         if not policy.types:  # vide = tous les types
             return True
         return any(t in (SpanType.PERSON, SpanType.LOC, SpanType.ORG) for t in policy.types)
+
+    def _source_threshold_filter(self, spans: list[Span]) -> list[Span]:
+        """Seuils candidats par source (config.thresholds — calibrés
+        STACK-1/STACK-6, câblés ici ; « surcharge Policy »). Un span mono-source
+        sous le seuil de sa source ne participe pas à la fusion."""
+        t = self.config.thresholds
+        out: list[Span] = []
+        for s in spans:
+            key = s.source.split(":")[0]
+            if key == "presidio":
+                th = t.presidio_person if s.type is SpanType.PERSON else t.presidio_loc
+            elif key == "spacy":
+                th = t.spacy
+            elif key == "gliner":
+                th = t.gliner
+            elif key in ("serengeti", "afro"):
+                th = t.serengeti
+            else:
+                th = 0.0
+            if s.score >= th:
+                out.append(s)
+        return out
 
     def _wants_african(self, policy: Policy) -> bool:
         """NER ouest-africain : types PERSON/LOC/ORG OU demande explicite

@@ -184,7 +184,7 @@ impl Detector {
     /// Construct a detector with default patterns and built-in gazetteers.
     pub fn new() -> CloisonResult<Self> {
         let email_re = Regex::new(
-            r"(?i)[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+"
+            r"(?i)[\p{L}0-9.!#$%&'*+/=?^_`{|}~-]+@[\p{L}0-9](?:[\p{L}0-9-]{0,61}[\p{L}0-9])?(?:\.[\p{L}0-9](?:[\p{L}0-9-]{0,61}[\p{L}0-9])?)+"
         )
         .map_err(|e| CloisonError::Detection(format!("email regex: {}", e)))?;
 
@@ -271,6 +271,12 @@ impl Detector {
         // Sort by start position
         spans.sort_by_key(|s| s.start);
 
+        // Precedence du type specifique : une CNI (13 chiffres Luhn debutant
+        // par 1) prime sur une carte bancaire qui la chevauche — le regex
+        // CreditCard avale le separateur final, son span est donc plus long et
+        // `dedup_overlaps` (longueur) jetterait la CNI (benchmark : 63/182).
+        spans = drop_credit_card_over_cni(spans);
+
         // Remove overlapping spans (keep the first/longest)
         spans = dedup_overlaps(spans);
 
@@ -291,6 +297,7 @@ impl Detector {
         }
 
         spans.sort_by_key(|s| s.start);
+        spans = drop_credit_card_over_cni(spans);
         spans = dedup_overlaps(spans);
         spans
     }
@@ -432,6 +439,29 @@ fn dedup_overlaps(spans: Vec<Span>) -> Vec<Span> {
     result
 }
 
+/// Precedence du type specifique : retire tout span `CreditCard` qui chevauche
+/// un span `CniSn`. Un nombre de 13 chiffres Luhn-validé débutant par 1 est une
+/// CNI (jamais une carte : IIN carte ∈ {2,3,4,5,6}) ; le regex CreditCard peut
+/// avaler le séparateur final (span +1 caractère) et gagner le dedup de
+/// longueur — la CNI serait perdue (63/182 au benchmark STACK-1).
+fn drop_credit_card_over_cni(spans: Vec<Span>) -> Vec<Span> {
+    let cni: Vec<(usize, usize)> = spans
+        .iter()
+        .filter(|s| s.entity_type == DetectorKind::CniSn)
+        .map(|s| (s.start, s.end))
+        .collect();
+    if cni.is_empty() {
+        return spans;
+    }
+    spans
+        .into_iter()
+        .filter(|s| {
+            s.entity_type != DetectorKind::CreditCard
+                || !cni.iter().any(|&(cs, ce)| s.start < ce && cs < s.end)
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -497,6 +527,55 @@ mod tests {
         let spans = det.detect_all("Amadou est arrivé à Dakar");
         assert!(spans.iter().any(|s| matches!(s.entity_type, DetectorKind::Gazetteer(ref n) if n == "nom_sn")));
         assert!(spans.iter().any(|s| matches!(s.entity_type, DetectorKind::Gazetteer(ref n) if n == "ville_sn")));
+    }
+
+    #[test]
+    fn test_cni_wins_over_credit_card_when_followed_by_space() {
+        // Régression benchmark STACK-1 (CNI 0.79) : le regex CreditCard avale
+        // le séparateur final (« 1752345678017 et … ») → span plus long →
+        // dedup de longueur jetait la CNI. La précédence CniSn doit primer.
+        let det = Detector::new().unwrap();
+        // 13 chiffres débutant par 1, Luhn valide, suivis d'un espace.
+        let base = "175234567801";
+        let check = compute_luhn_check(base);
+        let cni = format!("{}{}", base, check);
+        let text = format!("numéro {} et un autre texte", cni);
+        let spans = det.detect_all(&text);
+        let cni_spans: Vec<_> = spans
+            .iter()
+            .filter(|s| s.entity_type == DetectorKind::CniSn)
+            .collect();
+        assert_eq!(cni_spans.len(), 1, "la CNI doit survivre au conflit CreditCard: {:?}", spans);
+        assert!(
+            !spans.iter().any(|s| s.entity_type == DetectorKind::CreditCard),
+            "aucun span CreditCard ne doit chevaucher la CNI: {:?}",
+            spans
+        );
+        let s = cni_spans[0];
+        assert_eq!(&text[s.start..s.end], &cni, "span CNI exact (sans séparateur)");
+    }
+
+    #[test]
+    fn test_credit_card_still_detected_when_no_cni() {
+        // Une vraie carte (IIN 4, 16 chiffres Luhn) reste détectée : la
+        // précédence CniSn ne touche que les chevauchements.
+        let det = Detector::new().unwrap();
+        let spans = det.detect_all("carte 4242424242424242 valide");
+        assert!(
+            spans.iter().any(|s| s.entity_type == DetectorKind::CreditCard),
+            "carte bancaire toujours détectée: {:?}",
+            spans
+        );
+    }
+
+    #[test]
+    fn test_detect_email_with_accents() {
+        // Régression benchmark STACK-1 (MAIL 0.91) : le regex était ASCII-only
+        // et ratait les emails à local-part accentué (marèmesylla@…).
+        let det = Detector::new().unwrap();
+        let spans = det.detect_email("contact: marèmesylla@dakar.sn et amadou.bâ_diallo@entreprise.sn");
+        assert_eq!(spans.len(), 2, "emails accentués détectés: {:?}", spans);
+        assert!(spans.iter().all(|s| s.entity_type == DetectorKind::Email));
     }
 
     /// Helper: compute Luhn check digit for a digit string (to be appended).

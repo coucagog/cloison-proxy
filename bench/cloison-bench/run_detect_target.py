@@ -32,6 +32,8 @@ if OFFLINE:
     os.environ["CLOISON_OFFLINE"] = "1"
 
 AFRICAN_MODEL = os.environ.get("CLOISON_AFRICAN_MODEL", "serengeti").strip().lower()
+# Seuil final de la politique de détection (calibration ; défaut produit 0.40).
+MIN_SCORE = float(os.environ.get("CLOISON_MIN_SCORE", "0.40"))
 
 
 def load_baseline_ref() -> dict:
@@ -59,7 +61,8 @@ def main() -> int:
     from src.config import Config, AfricanConfig
 
     # Sélection du NER ouest-africain (env) ; défaut = défaut produit.
-    print(f"  NER ouest-africain : {AFRICAN_MODEL!r}")
+    print(f"  NER ouest-africain : {AFRICAN_MODEL!r} | min_score : {MIN_SCORE}")
+    policy = Policy(min_score=MIN_SCORE)
     svc = DetectService(Config(african=AfricanConfig(model_name=AFRICAN_MODEL)))
     CORE_BIN = ROOT.parent.parent / "target" / "debug" / "detect_cli"
     import subprocess
@@ -70,7 +73,7 @@ def main() -> int:
         svc.detect(DetectRequest(
             text="Bonjour, document de réchauffement sans donnée personnelle.",
             locale="fr-SN",
-            policy=Policy(),
+            policy=policy,
             core_spans=(),
             session=SessionContext(),
         ))
@@ -112,7 +115,7 @@ def main() -> int:
             resp = svc.detect(DetectRequest(
                 text=text,
                 locale="fr-SN",
-                policy=Policy(),
+                policy=policy,
                 core_spans=(),
                 session=SessionContext(),
             ))
