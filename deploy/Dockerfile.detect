@@ -99,6 +99,12 @@ COPY --from=builder /opt/deps ./deps
 COPY services/cloison-detect/proto ./proto
 COPY services/cloison-detect/src ./src
 
+# Lisible par le compte non-root quel que soit le mode des fichiers du
+# contexte (le working tree peut être en 0600 — Docker COPY préserve les
+# modes ; sans ce chmod, l'uid 10001 ne peut pas lire src/ → PermissionError
+# au démarrage, constaté au premier déploiement STACK-9).
+RUN chmod -R a+rX /srv/cloison-detect && chmod -R u+w /srv/cloison-detect
+
 # Code généré : absent du dépôt (cf. STACK-6), généré au build. Sans lui,
 # src/api.py désactive le transport gRPC (repli REST) — on le génère donc ici
 # pour que l'image serve le transport nominal (grpc_tools vient de ./deps).
