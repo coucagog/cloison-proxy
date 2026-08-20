@@ -3,7 +3,7 @@ name = "cloison-proxy"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
-license = "MIT"
+license.workspace = true
 description = "CLOISON STACK-3 : passerelle OpenAI-compatible avec tokenisation PII"
 
 [dependencies]

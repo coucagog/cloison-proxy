@@ -3,9 +3,9 @@ name = "cloison-audit"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
-license = "MIT"
+license.workspace = true
 description = "CLOISON STACK-4 : Mode Audit observe-only — reçus signés Ed25519, seuils k-anonymes, rapport de conformité"
-repository = "https://github.com/cloison/cloison-audit"
+repository = "https://github.com/coucagog/cloison"
 keywords = ["pii", "audit", "compliance", "k-anonymity", "ed25519"]
 categories = ["cryptography", "privacy"]
 
@@ -22,7 +22,6 @@ tracing = "0.1"
 # Génération de clé aléatoire (AgentKeys) et de sel.
 rand = "0.8"
 # Détection PII réutilisée par le moteur d'audit (STACK-2).
-# Chemin relatif réel : 3 niveaux au-dessus de crates/cloison-audit → _stage → stack2.
 cloison-core = { path = "../cloison-core" }
 
 [dev-dependencies]

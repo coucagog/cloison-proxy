@@ -39,4 +39,4 @@ proto/*_pb2_grpc.py
 *.sqlite3
 vault/
 data/
-_backup_stage4_merge/ Ajouté au .gitignore
+_backup_stage4_merge/

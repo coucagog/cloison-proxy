@@ -91,11 +91,11 @@ jobs:
           python-version: "3.12"
       - run: pip install -r bench/cloison-bench/requirements.txt
       - name: Benchmark STACK-1 (seed 42)
-        run: python bench/cloison-bench/run_benchmark.py --seed 42 --output bench/results
+        run: python bench/cloison-bench/run_benchmark.py --seed 42 --output bench/cloison-bench/results
       - uses: actions/upload-artifact@v4
         with:
           name: bench-results
-          path: bench/results
+          path: bench/cloison-bench/results
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
@@ -150,7 +150,7 @@ jobs:
           severity-cutoff: medium
 
       - name: Scan (trivy) — échec si HIGH/CRITICAL
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.GHCR }}/cloison-${{ matrix.target }}:${{ github.sha }}
           severity: HIGH,CRITICAL
