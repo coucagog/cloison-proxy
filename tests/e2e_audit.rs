@@ -229,6 +229,7 @@ fn audit_config(mock_url: &str, seed_path: Option<&std::path::Path>) -> Config {
         audit_mode: true,
         audit_keys: seed_path.map(|p| p.to_path_buf()),
         audit_k: 5,
+        audit_ledger_file: None,
     }
 }
 
@@ -509,4 +510,118 @@ async fn audit_disabled_report_route_returns_404() {
     // L'amont, lui, n'a jamais vu le clair.
     assert!(!mock.last_body().to_string().contains("user@example.com"), "masking still active upstream");
     assert!(mock.last_body().to_string().contains('\u{27E6}'), "sentinel still sent upstream");
+}
+
+// ---------------------------------------------------------------------------
+// Dette STACK-4 réglée : persistance JSONL 0600 + `period` filtrant.
+// ---------------------------------------------------------------------------
+
+/// La persistance des reçus (JSONL 0600) survit au restart et reste
+/// vérifiable hors-ligne (signature Ed25519 intacte après rechargement).
+#[tokio::test]
+async fn audit_ledger_persists_across_restart() {
+    use cloison_audit::receipt::Counters;
+    use cloison_core::Policy;
+    use cloison_proxy::engine::AuditEngine;
+
+    let dir = tempfile::tempdir().unwrap();
+    let ledger_path = dir.path().join("audit-ledger.jsonl");
+    let policy = Policy::default();
+    let verify_key: VerifyingKey;
+
+    {
+        let engine = AuditEngine::new(&policy, None, 5, Some(&ledger_path)).unwrap();
+        for i in 0..2u64 {
+            let mut c = Counters::default();
+            *c.masked_by_type.entry("MAIL".to_string()).or_insert(0) += 1;
+            let unsigned = engine.build_receipt(
+                policy.tenant_id.clone(),
+                format!("session-{i}"),
+                1_700_000_000 + i,
+                c,
+            );
+            engine.record(engine.sign(&unsigned)).unwrap();
+        }
+        verify_key = engine.verifying_key();
+        assert_eq!(engine.receipts_len(), 2);
+    }
+
+    // Fichier append-only en 0600 (jamais de monde lisible).
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(&ledger_path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "audit ledger file must be 0600");
+    }
+
+    // « Redémarrage » : nouveau moteur, même fichier → rechargé + vérifiable.
+    let engine2 = AuditEngine::new(&policy, None, 5, Some(&ledger_path)).unwrap();
+    assert_eq!(engine2.receipts_len(), 2, "receipts must survive a restart");
+    for r in engine2.receipts() {
+        assert!(r.verify(&verify_key), "reloaded receipt must still verify");
+    }
+
+    // L'append continue après rechargement.
+    let mut c = Counters::default();
+    *c.masked_by_type.entry("TEL".to_string()).or_insert(0) += 2;
+    let unsigned = engine2.build_receipt(policy.tenant_id.clone(), "session-2".to_string(), 1_700_000_010, c);
+    engine2.record(engine2.sign(&unsigned)).unwrap();
+    assert_eq!(engine2.receipts_len(), 3);
+
+    // Une ligne corrompue est ignorée (warn), pas un crash.
+    use std::io::Write;
+    std::fs::OpenOptions::new()
+        .append(true)
+        .open(&ledger_path)
+        .unwrap()
+        .write_all(b"{corrompu}\n")
+        .unwrap();
+    let engine3 = AuditEngine::new(&policy, None, 5, Some(&ledger_path)).unwrap();
+    assert_eq!(engine3.receipts_len(), 3, "corrupt line skipped, valid receipts kept");
+}
+
+/// `period` est désormais filtrant : hourly/daily/weekly/all bornent la
+/// fenêtre du rapport k-anonyme (dette STACK-4).
+#[tokio::test]
+async fn audit_report_period_filters_receipts() {
+    use cloison_audit::receipt::{now_unix, Counters};
+    use cloison_core::Policy;
+    use cloison_proxy::engine::AuditEngine;
+
+    let policy = Policy::default();
+    let engine = AuditEngine::new(&policy, None, 5, None).unwrap();
+    let now = now_unix();
+    let mut c = Counters::default();
+    *c.masked_by_type.entry("MAIL".to_string()).or_insert(0) += 1;
+
+    // 1 reçu ancien (il y a 2 h) + 1 reçu récent (il y a 1 min).
+    let old = engine.sign(&engine.build_receipt(
+        policy.tenant_id.clone(),
+        "old".to_string(),
+        now - 7200,
+        c.clone(),
+    ));
+    let fresh = engine.sign(&engine.build_receipt(
+        policy.tenant_id.clone(),
+        "fresh".to_string(),
+        now - 60,
+        c,
+    ));
+    engine.record(old).unwrap();
+    engine.record(fresh).unwrap();
+
+    let hourly = engine.report_for("hourly").unwrap();
+    assert_eq!(hourly.total_requests, 1, "hourly keeps only receipts of the last hour");
+    assert!(hourly.sig_report.is_some(), "report stays signed");
+    assert!(hourly.period_start <= now.saturating_sub(3600));
+
+    let daily = engine.report_for("daily").unwrap();
+    assert_eq!(daily.total_requests, 2, "daily keeps both receipts");
+    let weekly = engine.report_for("weekly").unwrap();
+    assert_eq!(weekly.total_requests, 2);
+    let all = engine.report_for("all").unwrap();
+    assert_eq!(all.total_requests, 2);
+
+    // Période inconnue → erreur explicite (fail-loud, jamais un rapport vide).
+    assert!(engine.report_for("decade").is_err());
 }

@@ -73,6 +73,10 @@ pub struct Config {
     pub audit_keys: Option<PathBuf>,
     /// Seuil k-anonyme du rapport de conformité (`CLOISON_AUDIT_K`, défaut 5).
     pub audit_k: usize,
+    /// Persistance des reçus d'audit (`CLOISON_AUDIT_LEDGER_FILE`) : JSONL
+    /// append-only 0600, rechargé au boot. `None` = journal en mémoire seule
+    /// (perte au restart, dégradé).
+    pub audit_ledger_file: Option<PathBuf>,
 }
 
 impl std::fmt::Debug for Config {
@@ -95,6 +99,7 @@ impl std::fmt::Debug for Config {
             .field("audit_mode", &self.audit_mode)
             .field("audit_keys", &self.audit_keys)
             .field("audit_k", &self.audit_k)
+            .field("audit_ledger_file", &self.audit_ledger_file)
             .finish_non_exhaustive()
     }
 }
@@ -227,6 +232,10 @@ pub fn load() -> Result<Config, ProxyError> {
         s => Some(PathBuf::from(s)),
     };
     let audit_k = env_usize("CLOISON_AUDIT_K", DEFAULT_AUDIT_K)?.max(2);
+    let audit_ledger_file = match env("CLOISON_AUDIT_LEDGER_FILE", "") {
+        s if s.is_empty() => None,
+        s => Some(PathBuf::from(s)),
+    };
 
     Ok(Config {
         listen_addr,
@@ -239,6 +248,7 @@ pub fn load() -> Result<Config, ProxyError> {
         audit_mode,
         audit_keys,
         audit_k,
+        audit_ledger_file,
     })
 }
 

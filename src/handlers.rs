@@ -67,6 +67,7 @@ impl AppState {
                 &policy,
                 config.audit_keys.as_deref(),
                 config.audit_k,
+                config.audit_ledger_file.as_deref(),
             )?))
         } else {
             None
@@ -304,7 +305,15 @@ fn audit_build_and_record(
     let ts_unix = receipt::now_unix();
     let unsigned = audit.build_receipt(tenant_id, session_ref_hashed, ts_unix, counters);
     let signed = audit.sign(&unsigned);
-    audit.record(signed.clone());
+    // Fail-loud : une erreur de persistance est loguée (le reçu reste signé
+    // et en mémoire ; seul l'historique disque est perdu pour ce reçu).
+    if let Err(e) = audit.record(signed.clone()) {
+        tracing::error!(
+            request_id = %request_id,
+            detail = %e,
+            "audit receipt persist failed (in-memory only)"
+        );
+    }
     tracing::info!(
         request_id = %request_id,
         key_id = %audit.key_id(),
@@ -540,8 +549,9 @@ fn event_data_payload(event: &[u8]) -> Option<String> {
 /// k-anonyme sur le journal accumulé.
 ///
 /// Disponible **uniquement** en mode audit (`CLOISON_AUDIT_MODE=1`) : sinon
-/// 404. Le paramètre `period` est validé ; le rapport agrège le journal
-/// courant (snapshot de la période en cours depuis le boot).
+/// 404. `period` est validé **et filtrant** (dette STACK-4 réglée) : `hourly`
+/// = dernière heure, `daily` = dernières 24 h, `weekly` = 7 jours, `all` =
+/// tout le journal (persisté si `CLOISON_AUDIT_LEDGER_FILE` est configuré).
 pub async fn audit_report(
     State(state): State<Arc<AppState>>,
     Query(params): Query<std::collections::HashMap<String, String>>,
@@ -560,7 +570,7 @@ pub async fn audit_report(
         )
         .with_field("period", period));
     }
-    let report = audit.report()?;
+    let report = audit.report_for(period)?;
     tracing::info!(
         period = %period,
         total_requests = report.total_requests,
