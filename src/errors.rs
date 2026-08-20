@@ -22,6 +22,8 @@ pub enum ErrorKind {
     BadRequest,
     /// Corps trop volumineux → 413.
     PayloadTooLarge,
+    /// Ressource indisponible (ex. rapport d'audit hors mode audit) → 404.
+    NotFound,
     /// Quota / débit → 429.
     RateLimited,
     /// Erreur du fournisseur → 502.
@@ -40,6 +42,7 @@ impl ErrorKind {
             ErrorKind::Forbidden => StatusCode::FORBIDDEN,
             ErrorKind::BadRequest => StatusCode::BAD_REQUEST,
             ErrorKind::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
+            ErrorKind::NotFound => StatusCode::NOT_FOUND,
             ErrorKind::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             ErrorKind::Upstream => StatusCode::BAD_GATEWAY,
             ErrorKind::UpstreamTimeout => StatusCode::GATEWAY_TIMEOUT,
@@ -52,7 +55,7 @@ impl ErrorKind {
         match self {
             ErrorKind::Auth => "authentication_error",
             ErrorKind::Forbidden => "permission_error",
-            ErrorKind::BadRequest | ErrorKind::PayloadTooLarge => "invalid_request_error",
+            ErrorKind::BadRequest | ErrorKind::PayloadTooLarge | ErrorKind::NotFound => "invalid_request_error",
             ErrorKind::RateLimited => "rate_limit_error",
             ErrorKind::Upstream | ErrorKind::UpstreamTimeout | ErrorKind::Internal => "server_error",
         }
@@ -65,6 +68,7 @@ impl ErrorKind {
             ErrorKind::Forbidden => "permission_denied",
             ErrorKind::BadRequest => "invalid_request_error",
             ErrorKind::PayloadTooLarge => "request_too_large",
+            ErrorKind::NotFound => "not_found",
             ErrorKind::RateLimited => "rate_limit_exceeded",
             ErrorKind::Upstream => "upstream_error",
             ErrorKind::UpstreamTimeout => "upstream_timeout",

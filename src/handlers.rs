@@ -7,18 +7,22 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
-use axum::body::Bytes;
-use axum::extract::{Extension, State};
+use axum::body::{Body, Bytes};
+use axum::extract::{Extension, Query, State};
+use axum::http::HeaderValue;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
+use cloison_audit::receipt::{self, Counters, Receipt};
 use cloison_core::{Policy, SessionKeys};
+use futures_util::StreamExt;
+use serde_json::Value;
 use zeroize::Zeroizing;
 
 use crate::auth::CompositeKey;
 use crate::config::{Config, StreamConfig};
-use crate::engine::{self, RequestEngine};
+use crate::engine::{self, AuditEngine, RequestEngine};
 use crate::errors::{ErrorKind, ProxyError};
-use crate::openai::{ChatCompletionRequest, CompletionRequest};
+use crate::openai::{ChatCompletionRequest, CompletionRequest, Content, Prompt};
 use crate::stream;
 use crate::upstream::UpstreamClient;
 
@@ -45,6 +49,10 @@ pub struct AppState {
     pub metrics: Metrics,
     /// Jeton d'accès attendu (validation à temps constant), si configuré.
     pub expected_access_token: Option<Zeroizing<String>>,
+    /// Moteur d'audit observe-only (STACK-4) ; `Some` uniquement si
+    /// `CLOISON_AUDIT_MODE=1`. Quand il est présent, chaque requête est
+    /// **comptée sans être masquée** et produit un reçu signé.
+    pub audit: Option<Arc<AuditEngine>>,
 }
 
 impl AppState {
@@ -53,13 +61,24 @@ impl AppState {
         let keys = SessionKeys::derive(config.tenant_key, config.session_salt)
             .map_err(|e| ProxyError::new(ErrorKind::Internal, "failed to derive session keys").with_field("detail", e.to_string()))?;
         let upstream = UpstreamClient::new(&config.upstream)?;
+        let policy = Policy::default();
+        let audit = if config.audit_mode {
+            Some(Arc::new(AuditEngine::new(
+                &policy,
+                config.audit_keys.as_deref(),
+                config.audit_k,
+            )?))
+        } else {
+            None
+        };
         Ok(Self {
             keys,
-            policy: Policy::default(),
+            policy,
             upstream,
             stream_cfg: config.stream.clone(),
             metrics: Metrics::default(),
             expected_access_token: config.expected_access_token.clone(),
+            audit,
         })
     }
 }
@@ -89,6 +108,12 @@ pub async fn chat_completions(
             .with_field("request_id", &request_id)
             .with_field("detail", e.to_string())
     })?;
+
+    // STACK-4 : mode audit observe-only — détecter + compter SANS masquer.
+    // Le corps est transmis amont tel quel ; un reçu signé est généré.
+    if state.audit.is_some() {
+        return audit_chat_completions(state, key, req, request_id).await;
+    }
 
     let req_engine = Arc::new(Mutex::new(RequestEngine::new(&state.keys, &request_id)?));
 
@@ -163,6 +188,11 @@ pub async fn completions_legacy(
         .with_field("request_id", &request_id));
     }
 
+    // STACK-4 : mode audit observe-only (legacy, non-stream).
+    if state.audit.is_some() {
+        return audit_completions_legacy(state, key, req, request_id).await;
+    }
+
     let mut req_engine = RequestEngine::new(&state.keys, &request_id)?;
     engine::tokenize_completion_request(&mut req, &mut req_engine, &state.policy)?;
     let tokenized = serde_json::to_value(&req).map_err(|e| {
@@ -209,4 +239,333 @@ pub async fn models(
         }
     };
     Ok(Json(upstream))
+}
+
+// ---------------------------------------------------------------------------
+// STACK-4 — mode audit observe-only
+// ---------------------------------------------------------------------------
+
+/// Header posé sur la réponse auditée : `base64url(canonical_json(receipt))`.
+const AUDIT_RECEIPT_HEADER: &str = "x-cloison-audit-receipt";
+
+/// Compte les PII du corps aller **sans le modifier** (mode audit).
+fn audit_count_request(req: &ChatCompletionRequest, audit: &AuditEngine, policy: &Policy, counters: &mut Counters) {
+    for msg in &req.messages {
+        if let Some(content) = &msg.content {
+            match content {
+                Content::Text(s) => audit.count_text(s, policy, counters),
+                Content::Parts(parts) => {
+                    for part in parts {
+                        if part.type_ == "text" {
+                            if let Some(text) = &part.text {
+                                audit.count_text(text, policy, counters);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if let Some(calls) = &msg.tool_calls {
+            for call in calls {
+                audit.count_text(&call.function.arguments, policy, counters);
+            }
+        }
+    }
+}
+
+/// Compte les sentinelles de **toutes** les chaînes d'une réponse JSON
+/// (mode audit : aucune réécriture, aucun marqueur neutre).
+fn audit_count_response(value: &Value, audit: &AuditEngine, counters: &mut Counters) {
+    match value {
+        Value::String(s) => audit.count_response(s, counters),
+        Value::Array(arr) => {
+            for v in arr {
+                audit_count_response(v, audit, counters);
+            }
+        }
+        Value::Object(map) => {
+            for v in map.values() {
+                audit_count_response(v, audit, counters);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Construit, signe et accumule le reçu de la requête auditée.
+fn audit_build_and_record(
+    audit: &AuditEngine,
+    policy: &Policy,
+    request_id: &str,
+    counters: Counters,
+) -> Receipt {
+    let tenant_id = policy.tenant_id.clone();
+    let session_ref_hashed = receipt::hash_session_ref(&tenant_id, request_id);
+    let ts_unix = receipt::now_unix();
+    let unsigned = audit.build_receipt(tenant_id, session_ref_hashed, ts_unix, counters);
+    let signed = audit.sign(&unsigned);
+    audit.record(signed.clone());
+    tracing::info!(
+        request_id = %request_id,
+        key_id = %audit.key_id(),
+        "audit receipt signed and recorded (counters only, never text)"
+    );
+    signed
+}
+
+/// Pose le header `X-Cloison-Audit-Receipt` sur une réponse.
+fn attach_receipt_header(resp: &mut Response, receipt: &Receipt) {
+    let value = receipt.to_base64url_json();
+    if let Ok(hv) = HeaderValue::from_str(&value) {
+        resp.headers_mut().insert(AUDIT_RECEIPT_HEADER, hv);
+    }
+}
+
+/// Flux observe-only non-stream pour `/v1/chat/completions`.
+///
+/// 1. compte le corps aller sans le modifier ;
+/// 2. forward amont **tel quel** (non tokenisé) ;
+/// 3. scanne la réponse (comptage des sentinelles, aucune réécriture) ;
+/// 4. reçu signé + accumulation + header `X-Cloison-Audit-Receipt` ;
+/// 5. réponse pass-through (texte non masqué).
+async fn audit_chat_completions(
+    state: Arc<AppState>,
+    key: CompositeKey,
+    req: ChatCompletionRequest,
+    request_id: String,
+) -> Result<Response, ProxyError> {
+    // Stream SSE : forward count-only (corps émis strictement identique).
+    if req.stream {
+        return audit_chat_stream(state, key, req, request_id).await;
+    }
+
+    let audit = state.audit.as_ref().expect("audit engine present in audit mode").clone();
+    let mut counters = Counters::default();
+
+    // Phase aller : détection + comptage, AUCUNE modification du corps.
+    audit_count_request(&req, &audit, &state.policy, &mut counters);
+
+    // Amont : corps NON tokenisé, tel quel.
+    let body = serde_json::to_value(&req).map_err(|e| {
+        ProxyError::new(ErrorKind::Internal, "failed to serialize request")
+            .with_field("request_id", &request_id)
+            .with_field("detail", e.to_string())
+    })?;
+    let upstream = match state.upstream.chat_completions(&key.upstream_key, body).await {
+        Ok(u) => u,
+        Err(e) => {
+            state.metrics.upstream_errors.fetch_add(1, Ordering::Relaxed);
+            return Err(e.with_field("request_id", &request_id));
+        }
+    };
+
+    // Phase retour : scan sentinelles (aucune réécriture).
+    audit_count_response(&upstream, &audit, &mut counters);
+
+    let receipt = audit_build_and_record(&audit, &state.policy, &request_id, counters);
+    let mut resp = Json(upstream).into_response();
+    attach_receipt_header(&mut resp, &receipt);
+    Ok(resp)
+}
+
+/// Flux observe-only non-stream pour `/v1/completions` (legacy).
+async fn audit_completions_legacy(
+    state: Arc<AppState>,
+    key: CompositeKey,
+    req: CompletionRequest,
+    request_id: String,
+) -> Result<Response, ProxyError> {
+    let audit = state.audit.as_ref().expect("audit engine present in audit mode").clone();
+    let mut counters = Counters::default();
+
+    match &req.prompt {
+        Prompt::Single(s) => audit.count_text(s, &state.policy, &mut counters),
+        Prompt::Batch(v) => {
+            for s in v {
+                audit.count_text(s, &state.policy, &mut counters);
+            }
+        }
+    }
+
+    let body = serde_json::to_value(&req).map_err(|e| {
+        ProxyError::new(ErrorKind::Internal, "failed to serialize request")
+            .with_field("request_id", &request_id)
+            .with_field("detail", e.to_string())
+    })?;
+    let upstream = match state.upstream.completions(&key.upstream_key, body).await {
+        Ok(u) => u,
+        Err(e) => {
+            state.metrics.upstream_errors.fetch_add(1, Ordering::Relaxed);
+            return Err(e.with_field("request_id", &request_id));
+        }
+    };
+
+    audit_count_response(&upstream, &audit, &mut counters);
+
+    let receipt = audit_build_and_record(&audit, &state.policy, &request_id, counters);
+    let mut resp = Json(upstream).into_response();
+    attach_receipt_header(&mut resp, &receipt);
+    Ok(resp)
+}
+
+/// Flux observe-only pour `/v1/chat/completions` **stream** : forward SSE
+/// **strictement identique** à l'amont (aucune réécriture), comptage des
+/// sentinelles des deltas, reçu signé et accumulé à la clôture du flux.
+async fn audit_chat_stream(
+    state: Arc<AppState>,
+    key: CompositeKey,
+    req: ChatCompletionRequest,
+    request_id: String,
+) -> Result<Response, ProxyError> {
+    let audit = state.audit.as_ref().expect("audit engine present in audit mode").clone();
+    let mut counters = Counters::default();
+
+    // Phase aller : comptage sans modification.
+    audit_count_request(&req, &audit, &state.policy, &mut counters);
+
+    let body = serde_json::to_value(&req).map_err(|e| {
+        ProxyError::new(ErrorKind::Internal, "failed to serialize request")
+            .with_field("request_id", &request_id)
+            .with_field("detail", e.to_string())
+    })?;
+    let upstream = match state.upstream.chat_completions_stream(&key.upstream_key, body).await {
+        Ok(u) => u,
+        Err(e) => {
+            state.metrics.upstream_errors.fetch_add(1, Ordering::Relaxed);
+            return Err(e.with_field("request_id", &request_id));
+        }
+    };
+    let content_type = upstream
+        .headers()
+        .get("content-type")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    if !content_type.contains("text/event-stream") {
+        return Err(ProxyError::new(ErrorKind::Upstream, "upstream did not respond with an event stream")
+            .with_field("request_id", &request_id));
+    }
+
+    Ok(audit_count_only_sse(upstream, state, audit, counters, request_id))
+}
+
+/// Forward SSE count-only : les événements amont sont émis **à l'identique**,
+/// les sentinelles des deltas sont comptées, le reçu est signé à la clôture.
+///
+/// (Le header `X-Cloison-Audit-Receipt` n'est posé que sur les réponses
+/// non-stream : en stream, les compteurs ne sont complets qu'à la clôture ;
+/// le reçu est néanmoins accumulé dans le journal.)
+fn audit_count_only_sse(
+    upstream: reqwest::Response,
+    state: Arc<AppState>,
+    audit: Arc<AuditEngine>,
+    mut counters: Counters,
+    request_id: String,
+) -> Response {
+    let mut bytes = upstream.bytes_stream();
+    let body = Body::from_stream(async_stream::stream! {
+        let mut frame: Vec<u8> = Vec::new();
+        loop {
+            match bytes.next().await {
+                Some(Ok(chunk)) => {
+                    frame.extend_from_slice(&chunk);
+                    while let Some((end, sep_len)) = find_event_end(&frame) {
+                        let event: Vec<u8> = frame.drain(..end + sep_len).collect();
+                        if let Some(payload) = event_data_payload(&event) {
+                            if payload != "[DONE]" {
+                                if let Ok(v) = serde_json::from_str::<Value>(&payload) {
+                                    audit_count_response(&v, &audit, &mut counters);
+                                }
+                            }
+                        }
+                        yield Ok::<Bytes, std::convert::Infallible>(Bytes::from(event));
+                    }
+                }
+                Some(Err(e)) => {
+                    tracing::warn!(request_id = %request_id, error = %e, "audit stream: upstream read error");
+                    break;
+                }
+                None => break,
+            }
+        }
+        // Événement résiduel sans séparateur final.
+        if !frame.is_empty() {
+            if let Some(payload) = event_data_payload(&frame) {
+                if payload != "[DONE]" {
+                    if let Ok(v) = serde_json::from_str::<Value>(&payload) {
+                        audit_count_response(&v, &audit, &mut counters);
+                    }
+                }
+            }
+            yield Ok::<Bytes, std::convert::Infallible>(Bytes::from(frame));
+        }
+        // Clôture : reçu signé et accumulé (compteurs uniquement).
+        let _receipt = audit_build_and_record(&audit, &state.policy, &request_id, counters);
+    });
+    Response::builder()
+        .header("content-type", "text/event-stream")
+        .body(body)
+        .expect("valid SSE response")
+}
+
+/// Trouve la fin du premier événement SSE (`\n\n` ou `\r\n\r\n`).
+fn find_event_end(buf: &[u8]) -> Option<(usize, usize)> {
+    if let Some(pos) = buf.windows(2).position(|w| w == b"\n\n") {
+        return Some((pos, 2));
+    }
+    if let Some(pos) = buf.windows(4).position(|w| w == b"\r\n\r\n") {
+        return Some((pos, 4));
+    }
+    None
+}
+
+/// Extrait la charge utile `data:` d'un événement SSE brut.
+fn event_data_payload(event: &[u8]) -> Option<String> {
+    let text = String::from_utf8_lossy(event);
+    let mut parts = Vec::new();
+    for line in text.lines() {
+        let line = line.trim_end_matches('\r');
+        if let Some(rest) = line.strip_prefix("data:") {
+            parts.push(rest.trim_start().to_string());
+        }
+    }
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join("\n"))
+    }
+}
+
+/// GET /v1/audit/report?period=hourly|daily|weekly|all — rapport de conformité
+/// k-anonyme sur le journal accumulé.
+///
+/// Disponible **uniquement** en mode audit (`CLOISON_AUDIT_MODE=1`) : sinon
+/// 404. Le paramètre `period` est validé ; le rapport agrège le journal
+/// courant (snapshot de la période en cours depuis le boot).
+pub async fn audit_report(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<cloison_audit::report::ConformanceReport>, ProxyError> {
+    let Some(audit) = &state.audit else {
+        return Err(ProxyError::new(
+            ErrorKind::NotFound,
+            "audit mode is disabled; /v1/audit/report is not available",
+        ));
+    };
+    let period = params.get("period").map(String::as_str).unwrap_or("all");
+    if !matches!(period, "all" | "hourly" | "daily" | "weekly") {
+        return Err(ProxyError::new(
+            ErrorKind::BadRequest,
+            "invalid period; expected hourly|daily|weekly|all",
+        )
+        .with_field("period", period));
+    }
+    let report = audit.report()?;
+    tracing::info!(
+        period = %period,
+        total_requests = report.total_requests,
+        publishable = report.publishable,
+        "conformance report generated (k-anonymous, counters only)"
+    );
+    Ok(Json(report))
 }

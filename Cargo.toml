@@ -24,6 +24,8 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 rand = "0.8"
 cloison-core = { path = "../cloison-core" }
+cloison-audit = { path = "../cloison-audit" }
 
 [dev-dependencies]
 http-body-util = "0.1"
+tempfile = "3"

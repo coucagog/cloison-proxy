@@ -15,6 +15,7 @@
 //! - `CLOISON_MOCK_MODE` (`1`/`true` : assouplit les prérequis, clé locataire de dev).
 
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::time::Duration;
 
 use url::Url;
@@ -41,6 +42,8 @@ pub const DEFAULT_CONNECT_TIMEOUT_MS: u64 = 5_000;
 pub const DEFAULT_REQUEST_TIMEOUT_MS: u64 = 30_000;
 /// Intervalle de keep-alive SSE par défaut (ms).
 pub const DEFAULT_KEEP_ALIVE_MS: u64 = 15_000;
+/// Seuil k-anonyme du rapport de conformité par défaut (STACK-4).
+pub const DEFAULT_AUDIT_K: usize = 5;
 
 /// Configuration complète du proxy.
 #[derive(Clone)]
@@ -60,6 +63,16 @@ pub struct Config {
     /// Mode mock : assouplit `CLOISON_UPSTREAM_BASE_URL` / `CLOISON_TENANT_KEY_HEX`
     /// (clé de développement fixe) — jamais activé en production.
     pub mock_mode: bool,
+    /// Mode audit observe-only (`CLOISON_AUDIT_MODE=1`) : le proxy détecte et
+    /// **compte** les PII sans rien masquer, produit un reçu signé par requête
+    /// et un rapport de conformité k-anonyme. Défaut : désactivé.
+    pub audit_mode: bool,
+    /// Chemin vers la clé de signature Ed25519 de l'agent au bord
+    /// (`CLOISON_AUDIT_KEYS`) : 32 octets bruts ou 64 hex. Si le fichier
+    /// n'existe pas, une clé est générée et écrite (0600) au boot.
+    pub audit_keys: Option<PathBuf>,
+    /// Seuil k-anonyme du rapport de conformité (`CLOISON_AUDIT_K`, défaut 5).
+    pub audit_k: usize,
 }
 
 impl std::fmt::Debug for Config {
@@ -79,6 +92,9 @@ impl std::fmt::Debug for Config {
             .field("tenant_key_set", &(self.tenant_key != [0u8; 32]))
             .field("session_salt", &hex(&self.session_salt))
             .field("mock_mode", &self.mock_mode)
+            .field("audit_mode", &self.audit_mode)
+            .field("audit_keys", &self.audit_keys)
+            .field("audit_k", &self.audit_k)
             .finish_non_exhaustive()
     }
 }
@@ -202,6 +218,15 @@ pub fn load() -> Result<Config, ProxyError> {
         keep_alive: Duration::from_millis(env_u64("CLOISON_STREAM_KEEP_ALIVE_MS", DEFAULT_KEEP_ALIVE_MS)?),
     };
 
+    // STACK-4 : mode audit observe-only (défaut : désactivé — aucun reçu,
+    // aucun changement de comportement par rapport à STACK-3).
+    let audit_mode = env_bool("CLOISON_AUDIT_MODE")?;
+    let audit_keys = match env("CLOISON_AUDIT_KEYS", "") {
+        s if s.is_empty() => None,
+        s => Some(PathBuf::from(s)),
+    };
+    let audit_k = env_usize("CLOISON_AUDIT_K", DEFAULT_AUDIT_K)?.max(2);
+
     Ok(Config {
         listen_addr,
         upstream,
@@ -210,6 +235,9 @@ pub fn load() -> Result<Config, ProxyError> {
         tenant_key,
         session_salt,
         mock_mode,
+        audit_mode,
+        audit_keys,
+        audit_k,
     })
 }
 
