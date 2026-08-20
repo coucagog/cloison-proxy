@@ -9,8 +9,14 @@ critères GO/NO-GO de la grille v1.1 contre les valeurs baseline enregistrées.
 Porte : le GO exige 5 conditions simultanées (grille v1.1) :
   macro >= baseline + 0.10 ; PERSON >= baseline + 0.12 ; LOC >= baseline + 0.15 ;
   CNI non-régression ; spécificité >= 0.60.
+
+Le NER ouest-africain est sélectionnable par environnement :
+  CLOISON_AFRICAN_MODEL=serengeti|afroxlmr|masakha   (défaut : serengeti,
+  le défaut produit ; afroxlmr = vrai fine-tune MasakhaNER, recommandé pour
+  le run « modèles réels »). La grille v1.1 n'est jamais modifiée ici.
 """
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -23,8 +29,9 @@ RAPPORT = BENCH / "results" / "rapport.json"
 # --- options ---------------------------------------------------------------
 OFFLINE = "--offline" in sys.argv
 if OFFLINE:
-    import os
     os.environ["CLOISON_OFFLINE"] = "1"
+
+AFRICAN_MODEL = os.environ.get("CLOISON_AFRICAN_MODEL", "serengeti").strip().lower()
 
 
 def load_baseline_ref() -> dict:
@@ -49,11 +56,27 @@ def main() -> int:
     sys.path.insert(0, str(DETECT))
     from src.detect_service import DetectRequest, DetectService
     from src.spans import Policy, SessionContext, SpanType
-    from src.config import Config
+    from src.config import Config, AfricanConfig
 
-    svc = DetectService(Config())
+    # Sélection du NER ouest-africain (env) ; défaut = défaut produit.
+    print(f"  NER ouest-africain : {AFRICAN_MODEL!r}")
+    svc = DetectService(Config(african=AfricanConfig(model_name=AFRICAN_MODEL)))
     CORE_BIN = ROOT.parent.parent / "target" / "debug" / "detect_cli"
     import subprocess
+
+    # Warm-up : charger presidio/gliner/africain AVANT la boucle (le 1er appel
+    # paierait 20-60 s de chargement dans un budget court → partial systématique).
+    try:
+        svc.detect(DetectRequest(
+            text="Bonjour, document de réchauffement sans donnée personnelle.",
+            locale="fr-SN",
+            policy=Policy(),
+            core_spans=(),
+            session=SessionContext(),
+        ))
+        print("  Warm-up OK (presidio/gliner/africain chargés)")
+    except Exception as e:
+        print(f"  WARN warm-up: {e}")
 
     # Mapping core Rust vers les types de la grille CLOISON
     CORE_TYPE_MAP = {
@@ -144,7 +167,7 @@ def main() -> int:
         "macro_f1": result.macro_f1,
         "specificity": result.specificity,
         "baseline_ref": baseline,
-        "note": "OFFLINE" if OFFLINE else "avec modèles",
+        "note": ("OFFLINE" if OFFLINE else "avec modèles") + f" · africain={AFRICAN_MODEL}",
     }, ensure_ascii=False, indent=2))
     print(f"  Rapport écrit : {out}")
     return 0 if go else 1
