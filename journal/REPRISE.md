@@ -101,12 +101,18 @@ Runs historiques conservés : `go_nogo_final.offline-avant-fixes.json`,
 - ✅ Modèles africains **téléchargés sur l'hôte** (afroxlmr 2,1 Go, serengeti 1,1 Go ; masakha
   gated 401) — CPU suffisant, GPU non requis pour le verdict.
 - ✅ `[profile.release]` strip+lto thin+codegen-units=1 ; `trivy-action@v0.36.0` pinné.
+- ✅ **`PostgresStore` implémenté** (STACK-8) : feature `pg` (sqlx), `migrations/001_init.sql`,
+  `CLOISON_DATABASE_URL` au boot, IDOR par requête, tests d'intégration PostgreSQL réel 2/2
+  (ignorés sans base) ; compile toujours sans la feature (hors-ligne).
+- ✅ E2E mock re-vérifié sur le repo à jour (SUCCÈS — masquage amont prouvé).
 - ✅ Docs à jour : README/ARCHITECTURE (STACK-7 réel), THREAT-MODEL (adversaires × N0–N3 +
   honnêteté N0), DEPLOY (volet certificats charte §12), SECURITY (invariants I9–I12 + I-A10),
-  CONFIG (défauts detect), gabarit « Comment lancer/tester » dans STACK-3..7.
-- ⏳ **`PostgresStore`** : trait prêt, impl réelle (sqlx, feature `pg`) reste à faire — le
-  report initial est volontaire (compilable hors-ligne) ; à faire avec le déploiement.
-- ⏳ E2E `CLOISON_E2E_MODE=both` sur repo frais : à re-vérifier au déploiement (docker sudo OK).
+  CONFIG (défauts detect + DATABASE_URL), DATA-MODEL (PostgresStore), gabarit
+  « Comment lancer/tester » dans STACK-3..7.
+- ⏳ Reste ouvert : `session_ref_hashed` sur `request_id` ; proxy ne consomme pas
+  `/v1/control/version` (long-poll rotation) ; wiring edge→detect (`CLOISON_DETECT_URL`) ;
+  image detect `CLOISON_LITE=1` (afroxlmr absent en prod — à re-décider) ; latence CPU
+  2-6 s/doc (GPU conseillé).
 
 ### PRIORITÉ 4 — Déploiement wonkom.ai (le GO est tranché → poursuivre)
 - Suivre `docs/DEPLOY.md` : docker compose (edge 8787, control 8788, detect), Caddy TLS

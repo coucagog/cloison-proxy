@@ -159,7 +159,10 @@ d'inférence (2-6 s/doc aujourd'hui).
 
 ## Questions ouvertes / dette
 
-- PostgresStore : trait prêt, impl réelle toujours ouverte (déploiement).
+- ~~PostgresStore~~ → **réglé** : feature `pg` (sqlx), `migrations/001_init.sql`,
+  `CLOISON_DATABASE_URL` au boot, IDOR par requête, tests d'intégration contre
+  PostgreSQL réel (2/2, ignorés sans base) — le crate compile toujours sans la
+  feature (hors-ligne).
 - `session_ref_hashed` sur `request_id` : à renforcer avec une vraie session.
 - Proxy ne consomme pas `/v1/control/version` (long-poll rotation).
 - Wiring edge→detect (`CLOISON_DETECT_URL`) : non lu par le binaire.
@@ -169,6 +172,14 @@ d'inférence (2-6 s/doc aujourd'hui).
 - Latence : afroxlmr-large 2-6 s/doc sur CPU — GPU conseillé en prod.
 - `measure_clusters.py` : outil d'analyse laissé dans bench (utile pour la
   calibration).
+
+## Porte de sortie
+
+- [x] Verdict GO/NO-GO complet avec modèles réels — **GO** (runs D + E, reproductible).
+- [x] Bugs CNI/spécificité/MAIL corrigés et testés (core + sidecar).
+- [x] Dettes STACK-4 réglées (JSONL + period) ; hygiène repo + docs.
+- [x] PostgresStore implémenté et testé (feature `pg`).
+- [x] E2E mock re-vérifié sur le repo à jour (SUCCÈS).
 
 ## Prochaine étape
 
