@@ -54,7 +54,7 @@
 | `CLOISON_TRANSPORT` | detect | non | `rest` | `rest` \| `grpc` \| `both` |
 | `CLOISON_OFFLINE` | detect | non | `0` | `1` = aucun téléchargement réseau |
 | `CLOISON_PRELOAD` | detect | non | `auto` | `none` \| `auto` (presidio) \| `all` |
-| `CLOISON_SPACY_SIZE` | detect | non | `sm` | `sm` \| `lg` (`fr_core_news_*`) |
+| `CLOISON_SPACY_SIZE` | detect | non | `md` | `sm` \| `md` \| `lg` (`fr_core_news_*`) — défaut `md` depuis le verdict GO (fr_sm hallucine PERSON/LOC) |
 | `CLOISON_MODEL_CACHE_GB` | detect | non | `6.0` | cache modèles (Go) |
 | `CLOISON_MODEL_DIR` | detect | non | `./models` | répertoire des modèles lourds (GLiNER…) — volume `/models` |
 | `CLOISON_BUDGET_SECONDS` | detect | non | `2.0` | deadline douce par requête |
@@ -62,6 +62,8 @@
 | `CLOISON_SESSION_MENTIONS_MAX` | detect | non | `200` | borne documentaire (côté core) |
 | `CLOISON_ONNX` | detect | non | `0` | bascule runtime ONNX |
 | `CLOISON_LOG_LEVEL` | detect | non | `INFO` | niveau de log |
+| `CLOISON_CONSENSUS_PERSON_LOC` | detect | non | `1` | `1` = span PERSON/LOC mono-source < 0.90 refusé à la fusion (spécificité ; exempté `recall_only`) |
+| `CLOISON_AFRICAN_MODEL` *(via `CLOISON_PRELOAD=all` ou config)* | detect | non | `afroxlmr` | NER ouest-africain : `serengeti` \| `afroxlmr` \| `masakha` — défaut `afroxlmr` (MasakhaNER 1+2, vrai NER) depuis le verdict GO ; `serengeti` est un LM sans tête NER (inutilisable), `masakha` est gated (401) |
 
 Configurations imbriquées (non exposées en env, réglables dans le code /
 `config.py`) : seuils par détecteur (`presidio_person: 0.45`, `presidio_loc:
