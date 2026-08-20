@@ -390,7 +390,7 @@ struct LicenseRow {
 
 impl LicenseRow {
     fn into_model(self) -> License {
-        use crate::model::{LicenseLimites, Plan};
+        use crate::model::LicenseLimites;
         License {
             tenant_id: self.tenant_id,
             plan: plan_from_sql(&self.plan),
