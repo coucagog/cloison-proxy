@@ -368,6 +368,7 @@ fn test_config(mock_url: &str) -> Config {
         audit_mode: false,
         audit_keys: None,
         audit_k: 5,
+        audit_ledger_file: None,
     }
 }
 

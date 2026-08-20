@@ -11,7 +11,7 @@
 //! le texte passe au client tel quel, seuls les compteurs sont accumulés
 //! dans des reçus signés (jamais de texte).
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use serde_json::Value;
@@ -278,12 +278,25 @@ pub struct AuditEngine {
     k: usize,
     /// Journal des reçus accumulés (pour le rapport) — compteurs uniquement.
     ledger: Mutex<Vec<Receipt>>,
+    /// Persistance append-only des reçus (JSONL 0600, `CLOISON_AUDIT_LEDGER_FILE`).
+    /// `None` = journal en mémoire seule (perte au restart, dégradé).
+    ledger_path: Option<PathBuf>,
 }
 
 impl AuditEngine {
     /// Construit le moteur : détecteur par défaut, clé chargée ou générée,
     /// hash de politique, seuil k validé (≥ 2).
-    pub fn new(policy: &Policy, keys_path: Option<&Path>, k: usize) -> Result<Self, ProxyError> {
+    ///
+    /// `ledger_path` : si fourni, le journal des reçus est **persisté** en
+    /// JSONL append-only (mode 0600) et **rechargé** au boot — les reçus
+    /// survivent au restart (dette STACK-4). Toujours des compteurs signés,
+    /// jamais de texte.
+    pub fn new(
+        policy: &Policy,
+        keys_path: Option<&Path>,
+        k: usize,
+        ledger_path: Option<&Path>,
+    ) -> Result<Self, ProxyError> {
         if k < 2 {
             return Err(ProxyError::new(
                 ErrorKind::Internal,
@@ -300,6 +313,16 @@ impl AuditEngine {
             ProxyError::new(ErrorKind::Internal, "failed to hash audit policy")
                 .with_field("detail", e.to_string())
         })?;
+        let mut ledger = Vec::new();
+        if let Some(path) = ledger_path {
+            ensure_ledger_file(path)?;
+            ledger = load_ledger_file(path)?;
+            tracing::info!(
+                path = %path.display(),
+                reloaded = ledger.len(),
+                "audit ledger rechargé (JSONL 0600)"
+            );
+        }
         Ok(Self {
             detector,
             signing_key,
@@ -307,7 +330,8 @@ impl AuditEngine {
             policy_hash,
             engine_version: env!("CARGO_PKG_VERSION").to_string(),
             k,
-            ledger: Mutex::new(Vec::new()),
+            ledger: Mutex::new(ledger),
+            ledger_path: ledger_path.map(Path::to_path_buf),
         })
     }
 
@@ -386,9 +410,17 @@ impl AuditEngine {
         receipt.sign(&self.signing_key)
     }
 
-    /// Accumule un reçu signé dans le journal (pour le rapport).
-    pub fn record(&self, receipt: Receipt) {
-        self.ledger.lock().expect("audit ledger mutex poisoned").push(receipt);
+    /// Accumule un reçu signé dans le journal (pour le rapport) et, si un
+    /// chemin de persistance est configuré, l'append au JSONL (0600).
+    ///
+    /// Une erreur d'écriture est **remontée** (fail-loud) : le reçu reste
+    /// disponible en mémoire, mais la perte au restart devient visible.
+    pub fn record(&self, receipt: Receipt) -> Result<(), ProxyError> {
+        self.ledger.lock().expect("audit ledger mutex poisoned").push(receipt.clone());
+        if let Some(path) = &self.ledger_path {
+            append_receipt_line(path, &receipt)?;
+        }
+        Ok(())
     }
 
     /// Nombre de reçus accumulés.
@@ -405,14 +437,52 @@ impl AuditEngine {
     ///
     /// Bornes de période : `[min(ts), max(ts)+1)` ; si aucun reçu, `[0, now]`.
     pub fn report(&self) -> Result<ConformanceReport, ProxyError> {
-        let receipts = self.receipts();
-        let period_start = receipts.iter().map(|r| r.ts_unix).min().unwrap_or(0);
-        let period_end = receipts
-            .iter()
-            .map(|r| r.ts_unix)
-            .max()
-            .map(|m| m + 1)
-            .unwrap_or_else(receipt::now_unix);
+        self.report_for("all")
+    }
+
+    /// Rapport de conformité k-anonyme sur la **fenêtre** `period` :
+    /// `hourly` = dernière heure, `daily` = dernières 24 h, `weekly` = 7 jours,
+    /// `all` = tout le journal (dette STACK-4 : `period` devient filtrant).
+    ///
+    /// Les bornes du rapport reflètent la fenêtre demandée (`[now-window, now+1)`
+    /// pour les fenêtres, `[min(ts), max(ts)+1)` pour `all`).
+    pub fn report_for(&self, period: &str) -> Result<ConformanceReport, ProxyError> {
+        let window_secs: Option<u64> = match period {
+            "hourly" => Some(3600),
+            "daily" => Some(86400),
+            "weekly" => Some(604800),
+            "all" => None,
+            other => {
+                return Err(ProxyError::new(
+                    ErrorKind::BadRequest,
+                    "invalid period; expected hourly|daily|weekly|all",
+                )
+                .with_field("period", other));
+            }
+        };
+        let now = receipt::now_unix();
+        let receipts: Vec<Receipt> = match window_secs {
+            Some(w) => {
+                let start = now.saturating_sub(w);
+                self.receipts()
+                    .into_iter()
+                    .filter(|r| r.ts_unix >= start && r.ts_unix < now + 1)
+                    .collect()
+            }
+            None => self.receipts(),
+        };
+        let (period_start, period_end) = match window_secs {
+            Some(w) => (now.saturating_sub(w), now + 1),
+            None => (
+                receipts.iter().map(|r| r.ts_unix).min().unwrap_or(0),
+                receipts
+                    .iter()
+                    .map(|r| r.ts_unix)
+                    .max()
+                    .map(|m| m + 1)
+                    .unwrap_or(now + 1),
+            ),
+        };
         let mut report =
             ConformanceReport::from_receipts(&receipts, period_start, period_end, self.k).map_err(|e| {
                 ProxyError::new(ErrorKind::Internal, "failed to build conformance report")
@@ -465,6 +535,85 @@ fn load_or_create_signing_key(path: Option<&Path>) -> Result<SigningKey, ProxyEr
             Ok(SigningKey::generate(&mut rand::rngs::OsRng))
         }
     }
+}
+
+/// Crée le fichier journal des reçus s'il n'existe pas (mode 0600, jamais
+/// réécrit s'il existe — append-only).
+fn ensure_ledger_file(path: &Path) -> Result<(), ProxyError> {
+    use std::os::unix::fs::OpenOptionsExt;
+    std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .mode(0o600)
+        .open(path)
+        .map_err(|e| {
+            ProxyError::new(ErrorKind::Internal, "failed to create audit ledger file")
+                .with_field("path", path.display().to_string())
+                .with_field("detail", e.to_string())
+        })?;
+    Ok(())
+}
+
+/// Recharge les reçus persistés (JSONL 0600). Une ligne illisible est
+/// signalée (warn) et ignorée — jamais un crash sur un fichier corrompu.
+fn load_ledger_file(path: &Path) -> Result<Vec<Receipt>, ProxyError> {
+    use std::io::BufRead;
+    let file = std::fs::File::open(path).map_err(|e| {
+        ProxyError::new(ErrorKind::Internal, "failed to open audit ledger file")
+            .with_field("path", path.display().to_string())
+            .with_field("detail", e.to_string())
+    })?;
+    let mut out = Vec::new();
+    for (idx, line) in std::io::BufReader::new(file).lines().enumerate() {
+        let line = line.map_err(|e| {
+            ProxyError::new(ErrorKind::Internal, "failed to read audit ledger line")
+                .with_field("path", path.display().to_string())
+                .with_field("line", idx.to_string())
+                .with_field("detail", e.to_string())
+        })?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        match serde_json::from_str::<Receipt>(&line) {
+            Ok(r) => out.push(r),
+            Err(e) => tracing::warn!(
+                path = %path.display(),
+                line = idx,
+                detail = %e,
+                "audit ledger line illisible, ignorée (compteurs uniquement, aucune PII)"
+            ),
+        }
+    }
+    Ok(out)
+}
+
+/// Append d'un reçu au JSONL : une ligne JSON compacte + flush + fsync
+/// (durabilité de la preuve, comme le ledger de transparence).
+fn append_receipt_line(path: &Path, receipt: &Receipt) -> Result<(), ProxyError> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+    let line = serde_json::to_string(receipt).map_err(|e| {
+        ProxyError::new(ErrorKind::Internal, "failed to serialize audit receipt")
+            .with_field("detail", e.to_string())
+    })?;
+    let mut file = std::fs::OpenOptions::new()
+        .append(true)
+        .mode(0o600)
+        .open(path)
+        .map_err(|e| {
+            ProxyError::new(ErrorKind::Internal, "failed to open audit ledger for append")
+                .with_field("path", path.display().to_string())
+                .with_field("detail", e.to_string())
+        })?;
+    file.write_all(line.as_bytes())
+        .and_then(|_| file.write_all(b"\n"))
+        .and_then(|_| file.flush())
+        .and_then(|_| file.sync_all())
+        .map_err(|e| {
+            ProxyError::new(ErrorKind::Internal, "failed to append audit receipt to ledger")
+                .with_field("path", path.display().to_string())
+                .with_field("detail", e.to_string())
+        })
 }
 
 /// Écrit une graine 32 octets avec permissions 0600 (jamais de logs dessus).

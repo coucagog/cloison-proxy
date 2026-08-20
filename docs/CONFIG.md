@@ -31,6 +31,7 @@
 | `CLOISON_AUDIT_MODE` | edge | non | `0` | `1` = observe-only (reçus signés, rapport k-anonyme) |
 | `CLOISON_AUDIT_KEYS` | edge | **oui** | absent (clé générée 0600) | chemin clé Ed25519 de l'agent (32 o bruts ou 64 hex) |
 | `CLOISON_AUDIT_K` | edge | non | `5` | seuil k-anonyme (plancher 2) |
+| `CLOISON_AUDIT_LEDGER_FILE` | edge | non | absent (mémoire seule) | persistance des reçus d'audit en JSONL append-only **0600**, rechargé au boot (survit au restart) |
 | `RUST_LOG` | edge/control | non | `cloison_proxy=info` | filtre tracing (crate = `cloison_proxy`) |
 
 ## 2. Control — plan de contrôle (`cloison-control`)

@@ -45,7 +45,10 @@ Pass-through amont (aucune tokenisation) après auth.
 
 **Mode audit uniquement** (`CLOISON_AUDIT_MODE=1`) — sinon `404 not_found`.
 Retourne le rapport de conformité k-anonyme (`ConformanceReport`) du journal
-du processus. `period` hors `all|hourly|daily|weekly` → `400`.
+des reçus. `period` est validé **et filtrant** : `hourly` = dernière heure,
+`daily` = dernières 24 h, `weekly` = 7 jours, `all` = tout le journal
+(persisté entre restarts si `CLOISON_AUDIT_LEDGER_FILE` est configuré).
+`period` hors `all|hourly|daily|weekly` → `400`.
 
 ### 1.6 Reçus d'audit
 
