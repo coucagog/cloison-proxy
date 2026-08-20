@@ -1,20 +1,20 @@
 {
   "verdict": "NO-GO",
   "checks": {
-    "macro_improvement": true,
+    "macro_improvement": false,
     "person_improvement": true,
     "loc_improvement": false,
     "cni_no_regression": true,
     "specificity_min": false
   },
   "metrics": {
-    "PERSON": 0.8519417475728155,
-    "LOC": 0.7126137841352406,
+    "PERSON": 0.6631578947368422,
+    "LOC": 0.5798090040927696,
     "CNI": 1.0,
     "MAIL": 1.0,
     "TEL": 1.0
   },
-  "macro_f1": 0.9129111063416111,
+  "macro_f1": 0.8485933797659223,
   "specificity": 0.42,
   "baseline_ref": {
     "macro_f1": 0.7501316784769958,
@@ -31,5 +31,5 @@
       "specificity_min": 0.6
     }
   },
-  "note": "OFFLINE · africain=afroxlmr"
+  "note": "OFFLINE · africain=serengeti"
 }

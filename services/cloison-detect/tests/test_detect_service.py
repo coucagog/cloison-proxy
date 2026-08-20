@@ -81,7 +81,7 @@ def person_span(start=0, end=12, score=0.93) -> Span:
     return Span(start, end, SpanType.PERSON, score, source="presidio")
 
 
-def loc_span(start=22, end=33, score=0.88) -> Span:
+def loc_span(start=22, end=33, score=0.92) -> Span:
     return Span(start, end, SpanType.LOC, score, source="presidio")
 
 
@@ -330,3 +330,37 @@ def test_rest_requested_model_unavailable_503():
     r = client.post("/detect", json=payload)
     assert r.status_code == 503
     assert r.json()["error"]["code"] == "FAILED_PRECONDITION"
+def test_consensus_rejects_mono_source_low_score():
+    """Consensus PERSON/LOC (défaut ON) : un span mono-source < 0.90 est refusé."""
+    from src.spans import Policy, SpanType, Span
+    svc = make_service(presidio=StubPresidio([person_span(score=0.85)]))
+    resp = svc.detect(DetectRequest(
+        text=TEXT_PERSON_LOC, locale="fr", policy=Policy(types=frozenset({SpanType.PERSON})),
+        core_spans=(), session=SessionContext()))
+    assert not any(s.type is SpanType.PERSON for s in resp.spans), \
+        "mono-source < 0.90 doit être refusé (spécificité)"
+
+
+def test_consensus_keeps_multi_source_and_high_single():
+    """Un span 2 sources passe ; un mono-source >= 0.90 passe aussi."""
+    from src.spans import Policy, SpanType, Span
+    g1 = StubGliner()
+    g1.spans = [Span(0, 12, SpanType.PERSON, 0.93, source="gliner")]
+    svc = make_service(
+        presidio=StubPresidio([person_span(start=0, end=12, score=0.85)]),
+        gliner=g1,
+    )
+    resp = svc.detect(DetectRequest(
+        text=TEXT_PERSON_LOC, locale="fr", policy=Policy(types=frozenset({SpanType.PERSON})),
+        core_spans=(), session=SessionContext()))
+    assert any(s.type is SpanType.PERSON for s in resp.spans), "consensus 2 sources gardé"
+
+
+def test_consensus_can_be_disabled():
+    """CLOISON_CONSENSUS_PERSON_LOC=0 : le mono-source repasse."""
+    svc = make_service(presidio=StubPresidio([person_span(score=0.85)]),
+                       consensus_person_loc=False)
+    resp = svc.detect(DetectRequest(
+        text=TEXT_PERSON_LOC, locale="fr", policy=Policy(types=frozenset({SpanType.PERSON})),
+        core_spans=(), session=SessionContext()))
+    assert any(s.type is SpanType.PERSON for s in resp.spans), "consensus désactivé → mono-source admis"

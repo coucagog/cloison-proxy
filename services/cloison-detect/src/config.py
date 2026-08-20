@@ -180,6 +180,10 @@ class Config(BaseModel):
     gauge: GaugeConfig = Field(default_factory=GaugeConfig)
     thresholds: ThresholdsConfig = Field(default_factory=ThresholdsConfig)
     weights: WeightsConfig = Field(default_factory=WeightsConfig)
+    # Consensus PERSON/LOC (CLOISON_CONSENSUS_PERSON_LOC, défaut 1) : un span
+    # mono-source < 0.90 est refusé à la fusion (spécificité benchmark 42 % →
+    # objectif 60 % ; les TP mono-source sont < 0,3 % des vrais positifs).
+    consensus_person_loc: bool = True
 
     # -- validation ----------------------------------------------------------
     @field_validator("transport")
@@ -245,4 +249,5 @@ class Config(BaseModel):
             session_mentions_max=_int("CLOISON_SESSION_MENTIONS_MAX", defaults.session_mentions_max),
             onnx=_bool("CLOISON_ONNX", defaults.onnx),
             log_level=_str("CLOISON_LOG_LEVEL", defaults.log_level),
+            consensus_person_loc=_bool("CLOISON_CONSENSUS_PERSON_LOC", defaults.consensus_person_loc),
         )

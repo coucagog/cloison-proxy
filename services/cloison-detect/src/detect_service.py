@@ -315,6 +315,22 @@ class DetectService:
         # filtrage mode-aware
         if policy.mode == "high_precision" and "presidio" not in sources:
             return None
+        # Consensus PERSON/LOC (config.consensus_person_loc, défaut ON) : un
+        # span mono-source dont le MEILLEUR score < 0.90 est refusé — une
+        # seule source générique (spaCy 0.85 par défaut Presidio, gazetteer
+        # seul, GLiNER seul) est trop bruitée (benchmark : 75/121 FP non-PII
+        # mono-source vs 3/1218 TP mono-source). Le NER ouest-africain
+        # (afro/serengeti) seul reste admis à score ≥ 0.85 : c'est le fossé
+        # produit. Jamais en `recall_only`.
+        if (
+            policy.mode != "recall_only"
+            and self.config.consensus_person_loc
+            and winner in (SpanType.PERSON, SpanType.LOC)
+            and len(sources) < 2
+            and max(s.score for s in cluster) < 0.90
+            and not (sources <= {"afro", "serengeti"} and max(s.score for s in cluster) >= 0.85)
+        ):
+            return None
         threshold = policy.threshold_for(winner) * _MODE_THRESHOLD_FACTOR.get(policy.mode, 1.0)
         if score < threshold:
             return None
