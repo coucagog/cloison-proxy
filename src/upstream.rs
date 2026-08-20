@@ -37,11 +37,24 @@ impl UpstreamClient {
 
     /// Construit l'URL à partir de `base_url` + chemin — **jamais** de clé en
     /// query string ni en chemin.
+    ///
+    /// Gère les deux conventions :
+    ///   base = https://openrouter.ai            + /v1/chat/completions
+    ///   base = https://openrouter.ai/api/v1     + /chat/completions
+    /// et évite le doublon de préfixe API :
+    ///   base = https://openrouter.ai/api/v1     + /v1/chat/completions
+    ///   -> https://openrouter.ai/api/v1/chat/completions
     fn url(&self, path: &str) -> Result<Url, ProxyError> {
-        self.config
-            .base_url
-            .join(path)
-            .map_err(|e| ProxyError::new(ErrorKind::Internal, "invalid upstream URL").with_field("detail", e.to_string()))
+        let base = self.config.base_url.as_str().trim_end_matches('/');
+        let mut full = format!("{base}{path}");
+        // Anti-doublon : si la base se termine par /v1 (ou /api/v1) et que le
+        // chemin commence par /v1/, retirer le /v1 du chemin.
+        if (base.ends_with("/v1") || base.ends_with("/api/v1")) && path.starts_with("/v1/") {
+            full = format!("{base}{}", &path["/v1".len()..]);
+        }
+        Url::parse(&full).map_err(|e| {
+            ProxyError::new(ErrorKind::Internal, "invalid upstream URL").with_field("detail", e.to_string())
+        })
     }
 
     /// Non-stream `chat/completions` : envoie le corps (déjà tokenisé) avec
@@ -140,5 +153,45 @@ async fn check_success(resp: reqwest::Response) -> Result<serde_json::Value, Pro
         );
         Err(ProxyError::new(ErrorKind::Upstream, "upstream returned an error status")
             .with_field("status", status.as_u16().to_string()))
+    }
+}
+
+#[cfg(test)]
+mod url_tests {
+    use super::*;
+    use url::Url;
+
+    fn cfg(base: &str, path: &str) -> UpstreamClient {
+        let c = crate::config::UpstreamConfig {
+            base_url: Url::parse(base).unwrap(),
+            chat_completions_path: path.to_string(),
+            completions_path: "/v1/completions".to_string(),
+            models_path: "/v1/models".to_string(),
+            connect_timeout: std::time::Duration::from_secs(1),
+            request_timeout: std::time::Duration::from_secs(1),
+            max_body_bytes: 1048576,
+        };
+        UpstreamClient::new(&c).unwrap()
+    }
+
+    #[test]
+    fn base_without_v1_prefix() {
+        let u = cfg("https://openrouter.ai", "/v1/chat/completions");
+        let url = u.url("/v1/chat/completions").unwrap();
+        assert_eq!(url.as_str(), "https://openrouter.ai/v1/chat/completions");
+    }
+
+    #[test]
+    fn base_with_api_v1_no_double() {
+        let u = cfg("https://openrouter.ai/api/v1", "/v1/chat/completions");
+        let url = u.url("/v1/chat/completions").unwrap();
+        assert_eq!(url.as_str(), "https://openrouter.ai/api/v1/chat/completions");
+    }
+
+    #[test]
+    fn base_with_api_v1_relative_path() {
+        let u = cfg("https://openrouter.ai/api/v1", "/chat/completions");
+        let url = u.url("/chat/completions").unwrap();
+        assert_eq!(url.as_str(), "https://openrouter.ai/api/v1/chat/completions");
     }
 }

@@ -189,11 +189,12 @@ pub fn load() -> Result<Config, ProxyError> {
     };
 
     let session_salt: [u8; 16] = match std::env::var("CLOISON_SESSION_SALT_HEX") {
-        Ok(v) => decode_hex(&v).map_err(|e| {
+        // Chaîne vide = non configuré (le compose passe ) : sel aléatoire par boot.
+        Ok(v) if !v.is_empty() => decode_hex(&v).map_err(|e| {
             ProxyError::new(ErrorKind::Internal, "invalid CLOISON_SESSION_SALT_HEX (32 hex chars required)")
                 .with_field("detail", e.to_string())
         })?,
-        Err(_) => random_salt(),
+        _ => random_salt(),
     };
 
     let expected_access_token = match std::env::var("CLOISON_EXPECTED_ACCESS_TOKEN") {
