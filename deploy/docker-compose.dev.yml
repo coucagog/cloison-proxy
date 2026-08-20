@@ -25,15 +25,15 @@
 #     les images Rust distroless n'ont ni shell ni curl : leur liveness passe
 #     par les sondes K8s httpGet (docs/DEPLOY.md §Healthchecks).
 #
-# ÉTAT STACK-7 :
-#   - `edge` + `detect` sont construits et fonctionnels dès aujourd'hui.
-#   - `control` dépend du binaire `cloison-control` (PRÉREQUIS STACK-7, cf.
-#     deploy/Dockerfile.control) : tant que son main.rs n'est pas committé,
-#     `up --build` échoue sur ce service — le retirer du fichier ou l'arrêter
-#     (`docker compose stop control`) pour ne déployer que edge+detect.
+# ÉTAT STACK-8 :
+#   - `edge` + `control` + `detect` construits et fonctionnels (binaire control
+#     committé, PostgresStore feature `pg` dans l'image control).
+#   - `detect` : image COMPLÈTE par défaut (GLiNER + afroxlmr, cf. verdict GO) ;
+#     `CLOISON_LITE=1` pour l'image légère.
+#   - `postgres` (profil `db`) : persistance du plan de contrôle ; activer avec
+#     `docker compose --profile db up -d --build` + `CLOISON_DATABASE_URL`.
 #   - `CLOISON_ROLE` / `CLOISON_DETECT_URL` ne sont pas encore lus par le
-#     binaire (cible config.rs du STACK-7) : valeurs documentées ci-dessous,
-#     sans effet aujourd'hui.
+#     binaire (cible config.rs) : valeurs documentées ci-dessous, sans effet.
 # =============================================================================
 
 name: cloison-dev
@@ -77,6 +77,9 @@ services:
       CLOISON_AUDIT_MODE: ${CLOISON_AUDIT_MODE:-1}
       CLOISON_AUDIT_KEYS: ${CLOISON_AUDIT_KEYS:-/data/audit_key}
       CLOISON_AUDIT_K: ${CLOISON_AUDIT_K:-5}
+      # Persistance des reçus d'audit (STACK-8) : JSONL append-only 0600,
+      # rechargé au boot — les reçus survivent aux redémarrages.
+      CLOISON_AUDIT_LEDGER_FILE: ${CLOISON_AUDIT_LEDGER_FILE:-/data/audit_ledger.jsonl}
       # Wiring edge -> detect (cible STACK-7, non lu par le binaire actuel) :
       # CLOISON_DETECT_URL: http://detect:8080/detect
       RUST_LOG: ${RUST_LOG:-cloison_proxy=info}
@@ -112,7 +115,15 @@ services:
       # Ed25519) — persistance implémentée par le binaire STACK-7.
       CLOISON_LEDGER_FILE: ${CLOISON_LEDGER_FILE:-/data/ledger.jsonl}
       CLOISON_TENANT_KEY_HEX: ${CLOISON_TENANT_KEY_HEX:?défini dans .env}
+      # PostgresStore (STACK-8, feature `pg` — image construite avec) :
+      # activer avec le profil `db` et CLOISON_DATABASE_URL. Absent →
+      # InMemoryStore (perte au restart, dev).
+      CLOISON_DATABASE_URL: ${CLOISON_DATABASE_URL:-}
       RUST_LOG: ${RUST_LOG:-cloison_proxy=info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
     # Port 8788 NON publié (réseau interne) : l'API admin ne sort pas du
     # réseau interne (THREAT-MODEL §3.1). Décommenter pour du debug local :
     # ports:
@@ -139,16 +150,25 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile.detect
       args:
-        CLOISON_LITE: "1"            # sans gliner/torch (image légère)
-        SPACY_MODEL: fr_core_news_sm
+        # Défaut STACK-8 : image COMPLÈTE (GLiNER + torch/transformers) —
+        # le fossé GO (grille v1.1) repose sur afroxlmr/GLiNER ; passer
+        # CLOISON_LITE=1 pour une image légère sans NER transformer.
+        CLOISON_LITE: ${CLOISON_LITE:-0}
+        SPACY_MODEL: ${SPACY_MODEL:-fr_core_news_md}
     environment:
       CLOISON_TRANSPORT: ${CLOISON_TRANSPORT:-both}
       CLOISON_REST_PORT: ${CLOISON_REST_PORT:-8080}
       CLOISON_GRPC_PORT: ${CLOISON_GRPC_PORT:-50051}
       CLOISON_OFFLINE: ${CLOISON_OFFLINE:-0}
-      CLOISON_PRELOAD: ${CLOISON_PRELOAD:-auto}
-      CLOISON_SPACY_SIZE: ${CLOISON_SPACY_SIZE:-sm}
+      # Préchargement des modèles au boot (défaut STACK-8) : presidio + GLiNER
+      # + NER africain (afroxlmr par défaut produit) — pas de latence au
+      # premier appel ; dégradation gracieuse si un modèle manque.
+      CLOISON_PRELOAD: ${CLOISON_PRELOAD:-all}
+      CLOISON_SPACY_SIZE: ${CLOISON_SPACY_SIZE:-md}
       CLOISON_MODEL_DIR: /models
+      # Cache Hugging Face dans le volume /models (GLiNER, afroxlmr…).
+      HF_HOME: /models
+      HF_HUB_OFFLINE: ${HF_HUB_OFFLINE:-0}
       CLOISON_MODEL_CACHE_GB: ${CLOISON_MODEL_CACHE_GB:-6}
       CLOISON_BUDGET_SECONDS: ${CLOISON_BUDGET_SECONDS:-2.0}
       CLOISON_QUARANTINE_SECONDS: ${CLOISON_QUARANTINE_SECONDS:-300}
@@ -180,11 +200,11 @@ services:
       - cloison-internal
 
   # ---------------------------------------------------------------------------
-  # Optionnel : miroir externe du registre (profil volontaire).
-  # Le registre nominal est le journal CLOISON_LEDGER_FILE EMBARQUÉ dans
-  # control ; postgres ne sert que d'export/audit externe (cible PostgresStore,
-  # feature `pg` — cf. crates/cloison-control/src/store.rs). Activer avec :
-  #   docker compose --profile db up -d
+  # Postgres (profil `db`, STACK-8) : persistance du plan de contrôle via
+  # PostgresStore (feature `pg` — l'image control est construite avec).
+  # Le registre nominal reste le journal CLOISON_LEDGER_FILE embarqué ;
+  # postgres porte tenants/jetons hachés/politiques/licences. Activer avec :
+  #   docker compose --profile db up -d --build
   # ---------------------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
@@ -195,6 +215,11 @@ services:
       POSTGRES_DB: cloison
     volumes:
       - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cloison"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     networks:
       - cloison-internal
 

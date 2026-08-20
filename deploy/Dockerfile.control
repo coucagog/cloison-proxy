@@ -46,9 +46,12 @@ COPY crates ./crates
 
 # NB : le contenu d'un `--mount=type=cache` N'EST PAS dans la couche image —
 # le binaire est copié dans /out (hors cache) pour le stage runtime.
+# FEATURES : `pg` par défaut (PostgresStore STACK-8 — pool sqlx, migrations) ;
+# passer `--build-arg FEATURES=` pour un build sans PostgreSQL.
+ARG FEATURES=pg
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/build/target \
-    cargo build --release -p cloison-control --locked \
+    cargo build --release -p cloison-control --features "$FEATURES" --locked \
     && mkdir -p /out \
     && cp /build/target/release/cloison-control /out/cloison-control
 
