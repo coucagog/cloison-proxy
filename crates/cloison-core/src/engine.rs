@@ -296,6 +296,11 @@ fn extract_sentinel_positions(text: &str) -> Vec<(String, usize, usize)> {
         // Find closing delimiter after the opening
         let after_open = abs_open + open.len_utf8();
         let Some(close_pos) = text[after_open..].find(&close_str) else {
+            // Ouverture non fermee : sentinelle tronquee (ex. coupure max_tokens).
+            // On signale le fragment : le moteur de restauration le remplacera
+            // par le marqueur neutre (fail-loud) et incrementera `incomplete`.
+            // Jamais de jeton brut transmis.
+            positions.push((text[abs_open..].to_string(), abs_open, text.len()));
             break;
         };
         let abs_close = after_open + close_pos + close.len_utf8();
