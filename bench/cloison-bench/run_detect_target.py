@@ -11,9 +11,9 @@ Porte : le GO exige 5 conditions simultanées (grille v1.1) :
   CNI non-régression ; spécificité >= 0.60.
 
 Le NER ouest-africain est sélectionnable par environnement :
-  CLOISON_AFRICAN_MODEL=serengeti|afroxlmr|masakha   (défaut : serengeti,
-  le défaut produit ; afroxlmr = vrai fine-tune MasakhaNER, recommandé pour
-  le run « modèles réels »). La grille v1.1 n'est jamais modifiée ici.
+  CLOISON_AFRICAN_MODEL=serengeti|afroxlmr|masakha   (défaut : afroxlmr,
+  le défaut produit depuis le verdict GO ; afroxlmr = vrai fine-tune
+  MasakhaNER). La grille v1.1 n'est jamais modifiée ici.
 """
 import json
 import os
@@ -31,7 +31,7 @@ OFFLINE = "--offline" in sys.argv
 if OFFLINE:
     os.environ["CLOISON_OFFLINE"] = "1"
 
-AFRICAN_MODEL = os.environ.get("CLOISON_AFRICAN_MODEL", "serengeti").strip().lower()
+AFRICAN_MODEL = os.environ.get("CLOISON_AFRICAN_MODEL", "afroxlmr").strip().lower()
 # Seuil final de la politique de détection (calibration ; défaut produit 0.40).
 MIN_SCORE = float(os.environ.get("CLOISON_MIN_SCORE", "0.40"))
 

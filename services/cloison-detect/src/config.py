@@ -114,7 +114,11 @@ class AfricanConfig(BaseModel):
     """
 
     enabled: bool = True
-    model_name: str = "serengeti"
+    # Défaut : afroxlmr (MasakhaNER 1+2, vrai NER ouest-africain). Le défaut
+    # historique "serengeti" pointait sur un ELECTRA fill-mask SANS tête NER
+    # (poids classifier aléatoires → zéro span) : verdict GO obtenu avec
+    # afroxlmr (benchmark grille v1.1) — décision 2026-08-20.
+    model_name: str = "afroxlmr"
     threshold: float = 0.50               # seuil interne de candidature (la fusion filtre)
     model_ids: dict[str, str] = Field(default_factory=lambda: {
         # SERENGETI : checkpoint de base UBC-NLP (LM) ; configurer un fine-tune

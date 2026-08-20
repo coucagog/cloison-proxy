@@ -69,11 +69,36 @@ class StubGliner:
         return self.available_flag
 
 
-def make_service(presidio=None, gliner=None, **config_over) -> DetectService:
+class StubAfrican:
+    """Stub du NER ouest-africain : muet par défaut (les tests unitaires ne
+    doivent pas charger de vrais modèles)."""
+
+    name = "afro"
+
+    def __init__(self, spans=None):
+        self.spans = spans if spans is not None else []
+
+    def detect(self, text, locale="fr", policy=None):
+        return list(self.spans)
+
+    def available(self):
+        return False
+
+    def loaded(self):
+        return False
+
+    supported_models = ("serengeti", "afroxlmr", "masakha")
+
+    def status(self):
+        return {"loaded": False, "available": False, "model": "stub", "model_id": None}
+
+
+def make_service(presidio=None, gliner=None, african=None, **config_over) -> DetectService:
     cfg = Config(**config_over)
     svc = DetectService(cfg)
     svc._presidio = presidio if presidio is not None else StubPresidio()
     svc._gliner = gliner if gliner is not None else StubGliner()
+    svc._african = african if african is not None else StubAfrican()
     return svc
 
 
