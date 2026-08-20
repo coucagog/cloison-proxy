@@ -1,13 +1,25 @@
-//! CLOISON — cloison-proxy (squelette STACK-0).
+//! CLOISON STACK-3 — `cloison-proxy`.
 //!
-//! Aucune logique produit ici : le code arrive avec le STACK qui le porte.
-//! Ce crate compile et se teste ; les invariants de sécurité (docs/SECURITY.md)
-//! s'appliquent dès la première ligne de code métier.
+//! Passerelle compatible OpenAI qui s'intercale entre une interface IA et un
+//! fournisseur LLM :
+//!
+//! - `POST /v1/chat/completions` (non-stream puis stream SSE buffer-and-scan) ;
+//! - `POST /v1/completions` (legacy, non-stream) ;
+//! - `GET  /v1/models` (pass-through).
+//!
+//! Auth par clé composite `Authorization: Bearer mn_<jeton_acces>.<cle_amont>`
+//! (découpage sur le premier point, la clé amont est transmise telle quelle au
+//! fournisseur). À l'aller : tokenisation PII via `cloison-core` (STACK-2).
+//! Au retour : restauration des jetons émis par la requête en cours uniquement
+//! (registre d'émission par requête + MAC vérifié). Fail-loud : jeton non
+//! résoluble → marqueur neutre + compteur.
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn skeleton_compiles() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+pub mod auth;
+pub mod config;
+pub mod engine;
+pub mod errors;
+pub mod handlers;
+pub mod openai;
+pub mod routes;
+pub mod stream;
+pub mod upstream;

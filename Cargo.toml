@@ -1,8 +1,29 @@
 [package]
 name = "cloison-proxy"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-repository.workspace = true
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT"
+description = "CLOISON STACK-3 : passerelle OpenAI-compatible avec tokenisation PII"
 
 [dependencies]
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+futures-util = "0.3"
+async-stream = "0.3"
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["limit"] }
+url = "2"
+zeroize = { version = "1", features = ["zeroize_derive"] }
+subtle = "2"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+rand = "0.8"
+cloison-core = { path = "../cloison-core" }
+
+[dev-dependencies]
+http-body-util = "0.1"
