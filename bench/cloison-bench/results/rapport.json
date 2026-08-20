@@ -215,10 +215,25 @@
   },
   "criteria": {},
   "metadata": {
-    "benchmark_id": "CLOISON-STACK-1-v1.0",
-    "timestamp": "2026-08-20T00:46:13.390886",
+    "benchmark_id": "CLOISON-STACK-1-v1.1",
+    "timestamp": "2026-08-20T00:53:08.003929",
     "seed": 42,
     "total_documents": 500,
     "dataset_hash": "324a7612200e05e556455c06f4895c13dc8e34000f25185894ab0bd0b84dddc8"
+  },
+  "baseline_ref": {
+    "macro_f1": 0.7501316784769958,
+    "f1_person": 0.5180722891566265,
+    "f1_loc": 0.595784543325527,
+    "f1_cni": 1.0,
+    "specificity": 0.42,
+    "grille_version": "1.1.0",
+    "criteria": {
+      "macro_improvement": 0.1,
+      "person_improvement": 0.12,
+      "loc_improvement": 0.15,
+      "cni_no_regression": true,
+      "specificity_min": 0.6
+    }
   }
 }

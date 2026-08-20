@@ -1,19 +1,18 @@
 {
-  "benchmark_id": "CLOISON-STACK-1-v1.0",
+  "benchmark_id": "CLOISON-STACK-1-v1.1",
   "registration_timestamp": "PRÉ-ENREGISTRÉ",
-  "version": "1.0.0",
-
+  "version": "1.1.0",
   "entities": [
     {
       "type": "PERSON",
       "description": "Noms complets sénégalais (prénom + patronyme). Inclut les noms à racine arabo-islamique (Mohamed, Fatou, Aïssata), les noms à racine wolof (Cheikh, Mame), les patronymes courants (Ndiaye, Diop, Fall, Sow, Seck, Diallo, Ba, Ndong, Gueye, Diagne). Exclut les prénoms seuls sans patronyme contextuel. Variations orthographiques incluses (Diacrites: Aïssata vs Aissata, translittérations: Cheikh vs Sheikh).",
-      "weight": 0.30,
+      "weight": 0.3,
       "examples_synthetic": "Mamadou Diop, Fatou Ndiaye, Cheikh Ahmadou Bamba Mbacké, Aïssata Sow"
     },
     {
       "type": "LOC",
       "description": "Toponymes sénégalais — niveaux administratifs et locaux. Inclut: 14 régions officielles (Dakar, Thiès, Saint-Louis, Diourbel, Louga, Fatick, Kaffrine, Kaolack, Kolda, Sédhiou, Tambacounda, Kédougou, Matam, Ziguinchor), communes et villes principales, quartiers connus de Dakar (Médina, Plateau, Ouakam, Yoff, Sicap, Grand Yoff, Parcelles Assainies), villages et localités rurales. Exclut les noms de pays et capitales étrangères.",
-      "weight": 0.20,
+      "weight": 0.2,
       "examples_synthetic": "Dakar, Thiès, Rufisque, Kaolack, Médina, Ouakam, Fatick, Tambacounda"
     },
     {
@@ -32,7 +31,7 @@
     {
       "type": "TEL",
       "description": "Numéros de téléphone sénégalais. Format: indicatif +221 suivi de 9 chiffres. Inclut les préfixes opérateurs reconnus (Orange: 77, 78; Free: 76; Expresso: 70). Formats variés: +221XXXXXXXXX, 00221XXXXXXXXX, 77 XXX XX XX, (+221) 77 XXX XX XX. Aucun numéro réel.",
-      "weight": 0.10,
+      "weight": 0.1,
       "regex_patterns": [
         "\\+221[0-9]{9}",
         "00221[0-9]{9}",
@@ -44,7 +43,6 @@
       "examples_synthetic": "+221771234567, 00221781234567, 77 123 45 67, (+221) 76 123 45 67"
     }
   ],
-
   "dataset": {
     "total_documents": 500,
     "documents_per_difficulty_tier": {
@@ -64,7 +62,7 @@
       "MAIL": "60-100 occurrences",
       "TEL": "60-100 occurrences"
     },
-    "non_pii_ratio": 0.20,
+    "non_pii_ratio": 0.2,
     "non_pii_description": "20% des documents contiennent zéro entité PII (vrais négatifs) pour mesurer spécificité. Textes neutres: météo, recettes, instructions techniques, descriptions d'objets.",
     "synthetic_generation": {
       "method": "génération procédurale avec templates",
@@ -78,9 +76,12 @@
       "visibility_rule": "Le détecteur cible ne voit JAMAIS le jeu de test avant le run. La baseline Presidio n'est pas réentraînée sur ces données."
     }
   },
-
   "metrics": {
-    "primary_metrics": ["precision", "recall", "f1"],
+    "primary_metrics": [
+      "precision",
+      "recall",
+      "f1"
+    ],
     "span_matching_method": "exact_match",
     "span_matching_definition": {
       "exact_match": "Un span est correct si et seulement si: (1) positions de début et fin identiques, (2) type d'entité correct. Tolérance zéro sur les frontières.",
@@ -114,7 +115,6 @@
       "reporting": "Les scores doivent être rapportés avec intervalle de confiance [IC95%]"
     }
   },
-
   "baseline": {
     "name": "Presidio FR Baseline Fort",
     "version": "presidio-analyzer>=2.2.0",
@@ -128,29 +128,46 @@
         "name": "SpacyRecognizer",
         "language": "fr",
         "model": "fr_core_news_lg ou fr_core_news_md",
-        "entities": ["PERSON", "LOC"],
+        "entities": [
+          "PERSON",
+          "LOC"
+        ],
         "note": "Modèle spaCy français large installé et chargé"
       },
       {
         "name": "EmailRecognizer",
         "language": "any",
-        "entities": ["MAIL"],
+        "entities": [
+          "MAIL"
+        ],
         "preset": "Presidio built-in"
       },
       {
         "name": "PhoneRecognizer",
         "language": "any",
-        "entities": ["TEL"],
+        "entities": [
+          "TEL"
+        ],
         "preset": "Presidio built-in",
         "customization": "Patterns étendus pour formats sénégalais (+221, 00221)"
       },
       {
         "name": "CNI_Senegal_Recognizer",
         "language": "any",
-        "entities": ["CNI"],
+        "entities": [
+          "CNI"
+        ],
         "type": "custom_regex",
-        "regex": ["1[0-9]{2}[\\s]?[0-9]{3}[\\s]?[0-9]{4}[\\s]?[0-9]{2}"],
-        "context_words": ["CNI", "carte", "identité", "numéro", "NINA"],
+        "regex": [
+          "1[0-9]{2}[\\s]?[0-9]{3}[\\s]?[0-9]{4}[\\s]?[0-9]{2}"
+        ],
+        "context_words": [
+          "CNI",
+          "carte",
+          "identité",
+          "numéro",
+          "NINA"
+        ],
         "score_boost": 0.4
       }
     ],
@@ -171,10 +188,9 @@
     },
     "no_retraining": "La baseline utilise les modèles pré-entraînés spaCy FR tels quels. Les gazetteers sont des ajouts de patterns, pas du fine-tuning. AUCUN entraînement sur les données du benchmark."
   },
-
   "criteria": {
     "go_condition": {
-      "description": "Le projet CLOISON passe GO si le fossé de détection est statistiquement significatif et substantiel sur les entités critiques",
+      "description": "Le projet CLOISON passe GO si le fossé de détection est statistiquement significatif et substantiel sur les entités où la baseline est faible (PERSON, LOC) ET sans régression sur CNI (déjà parfaite) ET sans explosion de faux positifs (spécificité)",
       "conditions": [
         {
           "metric": "macro_F1_global",
@@ -184,15 +200,25 @@
         {
           "metric": "F1_PERSON",
           "threshold": "baseline_F1_PERSON + 0.12",
-          "description": "Amélioration d'au moins 12 points absolus sur F1 PERSON (entité critique pour pseudonymisation)"
+          "description": "Amélioration d'au moins 12 points absolus sur F1 PERSON (entité critique pour pseudonymisation, baseline 0.518)"
+        },
+        {
+          "metric": "F1_LOC",
+          "threshold": "baseline_F1_LOC + 0.15",
+          "description": "Amélioration d'au moins 15 points absolus sur F1 LOC (baseline 0.596 — le corpus toponymique ouest-africain est le terrain du fossé)"
         },
         {
           "metric": "F1_CNI",
-          "threshold": "baseline_F1_CNI + 0.08",
-          "description": "Amélioration d'au moins 8 points absolus sur F1 CNI (entité critique pour ré-identification)"
+          "threshold": "baseline_F1_CNI - 0.0",
+          "description": "NON-RÉGRESSION : F1_CNI du détecteur cible >= F1_CNI baseline (1.000). Aucun dépassement exigé — inatteignable par construction. Amendement v1.1 (option 1 validée)."
+        },
+        {
+          "metric": "specificity_non_pii",
+          "threshold": "0.60",
+          "description": "Spécificité non-PII >= 60% : au plus 40% de documents non-PII contaminés par un faux positif (baseline à 42% — un détecteur plus discriminant doit faire mieux)"
         }
       ],
-      "all_conditions_required": "Les TROIS conditions doivent être remplies simultanément pour GO",
+      "all_conditions_required": "Les CINQ conditions doivent être remplies simultanément pour GO",
       "statistical_significance": "La différence doit être significative avec p < 0.05 (test de McNemar ou bootstrap sur la différence de F1)"
     },
     "no_go_condition": {
@@ -213,10 +239,9 @@
         "Abandon de l'hypothèse produit"
       ]
     },
-    "pre_registered_commitment": "Ces critères sont fixés avant le run et ne seront PAS modifiés après observation des résultats. Les seuils sont gravés dans ce JSON et constituent l'engagement méthodologique.",
-    "baseline_scores_unknown": "Les scores exacts de la baseline seront mesurés pendant le run. Les seuils GO sont définis en DIFFÉRENCE par rapport à la baseline mesurée, pas en score absolu."
+    "pre_registered_commitment": "Ces critères v1.1 sont fixés avant le comparatif STACK-2 et ne seront PAS modifiés après observation des résultats. L'amendement v1.0 -> v1.1 est la SEULE déviation autorisée, consignée et justifiée (critère CNI inatteignable).",
+    "baseline_scores_unknown": "Les scores baseline v1.1 sont ceux mesurés au run STACK-1 (seed 42, 500 docs) : macro 0.750, PERSON 0.518, LOC 0.596, CNI 1.000, spécificité 42%."
   },
-
   "reproducibility": {
     "random_seed": 42,
     "seed_scope": [
@@ -246,18 +271,26 @@
       "commit_tag": "v1.0-benchmark-stack1"
     }
   },
-
   "ethical safeguards": {
     "no_real_pii": "Certification qu'aucune donnée PII réelle n'est utilisée. Les noms sont générés ou extraits de sources publiques ouvertes. Les CNI sont synthétiques. Les téléphones respectent le format mais ne correspondent à aucun abonné.",
     "synthetic_verification": "Un échantillon de 50 documents est inspecté manuellement pour confirmer l'absence de données réelles.",
     "no_memorization_risk": "Les modèles NER ne sont pas entraînés sur ce dataset — seules les performances de détection sont mesurées en zero-shot."
   },
-
   "output_artifacts": {
     "dataset_file": "stack1_dataset.json",
     "baseline_predictions": "stack1_baseline_predictions.json",
     "scoring_results": "stack1_scores.json",
     "report": "STACK1_BENCHMARK_REPORT.md",
     "all_files_versioned": "Tous les artifacts sont archivés avec timestamp et hash"
+  },
+  "criteria_amendment": {
+    "from_version": "1.0.0",
+    "decision": "Option 1 validée par MLS (2026-08-20) : le benchmark v1.0 a montré F1_CNI baseline = 1.000 (regex + Luhn sur synthétique = parfait), rendant le critère 'F1_CNI >= baseline + 0.08' mathématiquement inatteignable. Le fossé réel est sur PERSON/LOC (baseline 0.518/0.596) et la spécificité (42%).",
+    "changes": [
+      "Suppression du critère de dépassement CNI ; remplacement par non-régression (F1_CNI >= baseline, pas de faux positif CNI sur non-PII)",
+      "Nouveau seuil LOC : baseline_F1_LOC + 0.15",
+      "Nouveau critère de spécificité non-PII : >= 60%",
+      "PERSON conservé à +0.12, macro conservé à +0.10"
+    ]
   }
 }

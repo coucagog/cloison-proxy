@@ -302,11 +302,30 @@ class BenchmarkRunner:
             
             # Ajouter les métadonnées
             report['metadata'] = {
-                'benchmark_id': 'CLOISON-STACK-1-v1.0',
+                'benchmark_id': 'CLOISON-STACK-1-v1.1',
                 'timestamp': self.timestamp,
                 'seed': self.seed,
                 'total_documents': len(self.documents),
                 'dataset_hash': self.dataset_hash
+            }
+
+            # Valeurs de référence de la baseline (mesurées à ce run).
+            # Le comparatif STACK-2 (détecteur cible vs baseline) s'y appuie
+            # pour appliquer les critères GO/NO-GO de la grille v1.1.
+            report['baseline_ref'] = {
+                'macro_f1': self.result.macro_f1,
+                'f1_person': self.result.entity_metrics['PERSON'].f1,
+                'f1_loc': self.result.entity_metrics['LOC'].f1,
+                'f1_cni': self.result.entity_metrics['CNI'].f1,
+                'specificity': self.result.specificity,
+                'grille_version': '1.1.0',
+                'criteria': {
+                    'macro_improvement': 0.10,
+                    'person_improvement': 0.12,
+                    'loc_improvement': 0.15,
+                    'cni_no_regression': True,
+                    'specificity_min': 0.60,
+                }
             }
             
             # Sauvegarder le rapport JSON

@@ -445,24 +445,29 @@ class Scorer:
         result: ScoringResult,
         baseline_macro_f1: float,
         baseline_f1_person: float,
-        baseline_f1_cni: float
+        baseline_f1_loc: float,
+        baseline_f1_cni: float,
+        baseline_specificity: float
     ) -> ScoringResult:
         """
-        Applique les critères GO/NO-GO de la grille.
-        
-        Critères:
+        Applique les critères GO/NO-GO de la grille v1.1 (option 1 validée).
+
+        Critères (les 5 simultanément pour GO):
         1. macro_F1_global >= baseline + 0.10
-        2. F1_PERSON >= baseline + 0.12
-        3. F1_CNI >= baseline + 0.08
-        
-        Les 3 critères doivent être remplis pour GO.
-        
+        2. F1_PERSON   >= baseline + 0.12
+        3. F1_LOC      >= baseline + 0.15
+        4. F1_CNI      >= baseline (NON-RÉGRESSION — baseline à 1.0, aucun
+           dépassement exigé : inatteignable par construction, amendement v1.1)
+        5. spécificité non-PII >= 0.60
+
         Args:
             result: Résultat du scoring (pour le système testé)
             baseline_macro_f1: macro-F1 de la baseline
             baseline_f1_person: F1 PERSON de la baseline
+            baseline_f1_loc: F1 LOC de la baseline
             baseline_f1_cni: F1 CNI de la baseline
-            
+            baseline_specificity: spécificité non-PII de la baseline
+
         Returns:
             ScoringResult avec critères évalués
         """
@@ -483,21 +488,37 @@ class Scorer:
                 'improvement': result.entity_metrics['PERSON'].f1 - baseline_f1_person,
                 'met': result.entity_metrics['PERSON'].f1 >= baseline_f1_person + 0.12
             },
-            'cni_f1_improvement': {
-                'threshold': 0.08,
+            'loc_f1_improvement': {
+                'threshold': 0.15,
+                'baseline_value': baseline_f1_loc,
+                'required_value': baseline_f1_loc + 0.15,
+                'actual_value': result.entity_metrics['LOC'].f1,
+                'improvement': result.entity_metrics['LOC'].f1 - baseline_f1_loc,
+                'met': result.entity_metrics['LOC'].f1 >= baseline_f1_loc + 0.15
+            },
+            'cni_no_regression': {
+                'threshold': 0.0,
                 'baseline_value': baseline_f1_cni,
-                'required_value': baseline_f1_cni + 0.08,
+                'required_value': baseline_f1_cni,
                 'actual_value': result.entity_metrics['CNI'].f1,
                 'improvement': result.entity_metrics['CNI'].f1 - baseline_f1_cni,
-                'met': result.entity_metrics['CNI'].f1 >= baseline_f1_cni + 0.08
+                'met': result.entity_metrics['CNI'].f1 >= baseline_f1_cni
+            },
+            'specificity_threshold': {
+                'threshold': 0.60,
+                'baseline_value': baseline_specificity,
+                'required_value': 0.60,
+                'actual_value': result.specificity,
+                'improvement': result.specificity - baseline_specificity,
+                'met': result.specificity >= 0.60
             }
         }
-        
+
         result.criteria_details = criteria
         result.go_criteria_met = all(c['met'] for c in criteria.values())
-        
+
         return result
-    
+
     def generate_report(self, result: ScoringResult) -> Dict:
         """
         Génère un rapport détaillé.

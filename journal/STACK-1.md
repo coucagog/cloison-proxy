@@ -138,3 +138,25 @@ registre d'émission, généralisation des faibles cardinalités, coffre chiffr�
 roundtrip, différentiel Presidio, build WASM. **Mais d'abord : valider avec MLS l'amendement
 de la grille v1.1 (critère CNI + éventuel critère de spécificité) et le périmètre du
 comparatif.** Sans grille valide, le GO/NO-GO ne veut rien dire.
+
+---
+
+## DÉCISION 2026-08-20 — Amendement grille v1.1 (validé par MLS, option 1)
+
+**Problème constaté au run v1.0** : F1_CNI baseline = 1.000 (regex + Luhn sur synthétique =
+parfait) → le critère « F1_CNI ≥ baseline + 0.08 » était mathématiquement inatteignable.
+
+**Décision (option 1) :**
+1. **CNI** : critère de dépassement supprimé → remplacé par **non-régression** (F1_CNI ≥ baseline).
+2. **LOC** : nouveau seuil **+0.15** (baseline 0.596 — le corpus toponymique est le terrain du fossé).
+3. **Spécificité non-PII** : nouveau critère **≥ 60 %** (baseline à 42 % — sur-détection).
+4. PERSON **+0.12** et macro **+0.10** conservés.
+
+**Grille v1.1 figée** (`bench/cloison-bench/grille.json`, version 1.1.0) : 5 conditions
+simultanées pour GO. **Aucune autre modification de la grille après ce jour.**
+
+**Valeurs baseline de référence** (gravées dans `results/rapport.json` → `baseline_ref`) :
+macro 0.7501 · PERSON 0.5181 · LOC 0.5958 · CNI 1.0000 · spécificité 0.42.
+
+**Porte STACK-1 mise à jour** : GO/NO-GO final toujours suspendu — il dépend du
+comparatif STACK-2 (détecteur cible vs baseline_ref) sur la grille v1.1.
