@@ -119,7 +119,9 @@ services:
       # activer avec le profil `db` et CLOISON_DATABASE_URL. Absent →
       # InMemoryStore (perte au restart, dev).
       CLOISON_DATABASE_URL: ${CLOISON_DATABASE_URL:-}
-      RUST_LOG: ${RUST_LOG:-cloison_proxy=info}
+      # Logs du control (crate cloison_control) — le filtre par défaut du
+      # compose couvrait uniquement cloison_proxy (logs control invisibles).
+      RUST_LOG: ${RUST_LOG:-cloison_control=info}
     depends_on:
       postgres:
         condition: service_healthy
