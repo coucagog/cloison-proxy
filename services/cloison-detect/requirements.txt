@@ -1,0 +1,40 @@
+# =============================================================================
+# cloison-detect (STACK-6) — sidecar de détection NER (rappel PERSON/LOC)
+# Python 3.10+
+# Chaque dépendance est commentée par rôle.
+#
+# NB : les dépendances lourdes (presidio, spacy, gliner, torch/transformers)
+#      sont chargées LAZYMENT au premier appel ; le service démarre et répond
+#      même si elles sont absentes (dégradation gracieuse, voir README.md).
+# =============================================================================
+
+# --- Transport ---------------------------------------------------------------
+fastapi==0.115.6          # API REST de repli : POST /detect, /healthz, /models
+uvicorn[standard]==0.34.0 # serveur ASGI qui porte l'application FastAPI
+grpcio==1.68.1            # runtime gRPC (transport nominal : DetectService)
+grpcio-tools==1.68.1      # codegen protobuf (proto/detect.proto -> src/gen/)
+protobuf==5.29.1          # messages protobuf (dépendance grpcio)
+
+# --- Oracle de référence (Presidio) ------------------------------------------
+presidio-analyzer==2.2.355  # NER oracle : PERSON/LOC + recognizers custom (CNI, gazetteers)
+presidio-anonymizer==2.2.355# dépendance de presidio-analyzer (jamais utilisé pour anonymiser ici)
+spacy==3.7.5                # moteur NLP de Presidio + NER léger français
+# Modèle spaCy à installer une fois (hors-ligne ensuite) :
+#   python -m spacy download fr_core_news_sm
+
+# --- NER zéro-shot (rappel du fossé PERSON/LOC) ------------------------------
+gliner==0.2.12             # GLiNER zéro-shot : labels custom PERSON/LOC/ORG
+# torch + transformers sont des dépendances transitives de gliner (non épinglées
+# ici, versionnées par gliner). Absents -> GLiNER indisponible, pipeline dégradé.
+
+# --- NER ouest-africain (SERENGETI / AfroXLMR / MasakhaNER 2.0, F-43) ---------
+# transformers est OPTIONNEL (import lazy dans src/african_models.py) : absent
+# ou hors-ligne -> détecteur africain inactif, pipeline dégradé mais fonctionnel.
+#   pip install transformers   # (optionnel) modèles NER ouest-africains
+
+# --- Numérique / validation --------------------------------------------------
+numpy>=1.26,<2             # dépendance presidio/gliner (API stable 1.x)
+pydantic>=2.10,<3          # Config (src/config.py) + schémas REST (src/api.py)
+
+# --- Développement / test ----------------------------------------------------
+pytest>=8.3                # tests unitaires : STUBS des gros modèles, aucun réseau

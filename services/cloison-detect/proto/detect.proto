@@ -1,0 +1,102 @@
+// CLOISON STACK-6 — contrat gRPC du sidecar de détection « cloison-detect ».
+//
+// Miroir exact du contrat REST/JSON (voir src/api.py, POST /detect) : mêmes
+// champs, mêmes règles. Une seule unité de texte par appel. Le core (Rust,
+// STACK-2/4) reste la source de vérité de la tokenisation et des décisions :
+// le sidecar ne fait QUE DÉTECTER (offsets caractères relatifs au texte reçu).
+//
+// Génération du code (voir README.md) :
+//   python -m grpc_tools.protoc -I proto --python_out=src/gen \
+//       --grpc_python_out=src/gen proto/detect.proto
+
+syntax = "proto3";
+
+package cloison.detect.v1;
+
+// DetectService — service unique du sidecar.
+// Chaque appel traite UNE unité de texte. Le core découpe et reste
+// propriétaire de la tokenisation et des décisions.
+service DetectService {
+  // Detect : analyse d'un texte, retourne les spans détectés (+ jauge optionnelle).
+  rpc Detect(DetectRequest) returns (DetectResponse);
+}
+
+// Politique appliquée à cette détection.
+message Policy {
+  // Types demandés. Vide = tous les types supportés.
+  repeated string types = 1;
+
+  // Seuil global de score minimal, dans [0,1]. Défaut : 0.40
+  // (0.0 au wire = « non renseigné », le défaut s'applique).
+  float min_score = 2;
+
+  // Surcharges par type : ex. {"PERSON": 0.45, "LOC": 0.35}.
+  map<string, float> thresholds = 3;
+
+  // Mode de composition : "balanced" (défaut), "high_precision", "recall_only".
+  string mode = 4;
+
+  // Active l'expansion d'alias intra-session (section 5). Défaut : true.
+  optional bool enable_alias_expansion = 5;
+
+  // Active la jauge de quasi-identifiants (section 6). Défaut : false.
+  optional bool enable_quasiid_gauge = 6;
+
+  // Noms de modèles lourds explicitement demandés (outrepasse la sélection
+  // automatique par locale). Ex. ["gliner", "serengeti"]. Vide = auto.
+  repeated string models = 7;
+
+  // Seuil de la jauge de quasi-identifiants, dans [0,1]. Défaut : 0.50.
+  // 1.0 désactive de fait le flag.
+  optional float quasiid_threshold = 8;
+}
+
+// Contexte de session fourni par le core (le sidecar est stateless).
+message SessionContext {
+  // Mentions PERSON/LOC déjà établies dans la session (messages précédents).
+  // Le core garde un store borné (dernières N mentions, LRU) et le passe ici.
+  repeated Mention mentions = 1;
+}
+
+// Une mention canonique établie, pour l'expansion d'alias.
+message Mention {
+  string key = 1;        // forme canonique : "Marie Dupont"
+  string type = 2;       // "PERSON" | "LOC"
+  string locale = 3;
+  int64 seen_count = 4;  // nombre d'occurrences dans la session
+}
+
+// Requête de détection.
+message DetectRequest {
+  string text = 1;            // unité de texte, UTF-8, offsets caractères
+  string locale = 2;          // BCP-47 : "fr", "fr-BF", "wo", "yo", ...
+  Policy policy = 3;
+  SessionContext session = 4; // optionnel ; requis pour l'expansion d'alias
+  repeated Span core_spans = 5; // spans déjà établis par le core (structuré +
+                               // gazetteers), fournis pour la jauge quasi-id et
+                               // pour éviter les doublons en sortie.
+}
+
+// Réponse de détection.
+message DetectResponse {
+  repeated Span spans = 1;     // spans DÉTECTÉS par le sidecar uniquement.
+                               // Le core fusionne avec les siens.
+  QuasiIdReport quasi_id = 2;  // présent si policy.enable_quasiid_gauge.
+}
+
+// Un span détecté. Offsets caractères relatifs à DetectRequest.text.
+// Contract : 0 <= start < end <= len(text) ; start/end ne coupent pas un
+// point de code UTF-8. Le core VALIDE l'alignement contre sa tokenisation.
+message Span {
+  int32 start = 1;
+  int32 end = 2;
+  string type = 3;   // "PERSON" | "LOC" | "ORG" | "DATE" | "AGE" | "ACT" | ...
+  float score = 4;   // confiance fusionnée dans [0,1]
+}
+
+// Jauge de quasi-identifiants : SIGNAL uniquement, jamais de résolution.
+message QuasiIdReport {
+  float score = 1;          // densité normalisée dans [0,1]
+  bool flagged = 2;         // score >= seuil de politique
+  repeated string signals = 3; // catégories présentes : "age", "act", "date", "loc"
+}
