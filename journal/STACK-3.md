@@ -46,6 +46,15 @@ forwarding amont (reqwest) ; buffer-and-scan SSE ; restauration fail-loud ; tool
 - `tests/e2e.rs` — 11 scénarios contre un LLM mock (echo) : roundtrip non-stream, stream
   découpé, troncature→[REDACTED], tool-calls (stream compris), 401, jeton forgé, legacy, models.
 
+## Comment lancer / tester
+
+```bash
+cd cloison && source ~/.cargo/env
+cargo test -p cloison-proxy          # unit + e2e contre LLM mock
+cargo clippy -p cloison-proxy -- -D warnings
+# E2E réel (OpenRouter) : CLOISON_AUDIT_MODE=0 CLOISON_UPSTREAM_BASE_URL=… cargo run -p cloison-proxy
+```
+
 ## Résultats
 
 - **Compilation** : `cargo check -p cloison-proxy` OK.

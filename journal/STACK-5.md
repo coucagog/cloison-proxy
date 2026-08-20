@@ -49,6 +49,16 @@ WASM). Pipeline ingest : reçus audit → k-anonymat → payload redacté → co
 - `cloison-verify/` : verify_chain, prove_inclusion, verify_entry, find_inclusion,
   verify_chain_with_checkpoint, module wasm (feature `wasm`).
 
+## Comment lancer / tester
+
+```bash
+cd cloison && source ~/.cargo/env
+cargo test -p cloison-control -p cloison-ledger -p cloison-verify   # 88 tests
+cargo clippy --workspace -- -D warnings
+# Binaire control : cargo run -p cloison-control (CLOISON_CONTROL_PORT=8788)
+# Vérificateur WASM : cargo check -p cloison-verify --target wasm32-unknown-unknown
+```
+
 ## Résultats
 
 - **Tests** : control 27, ledger 42, verify 19 = **88 verts** ; audit 34 intacts ;

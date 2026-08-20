@@ -43,6 +43,15 @@ quasi-identifiants.
 - `tests/` : 67 tests (spans, alias, quasi_id, detect_service, african_models, REST, stubs).
 - `conftest.py` : CLOISON_OFFLINE garanti.
 
+## Comment lancer / tester
+
+```bash
+cd services/cloison-detect
+source .venv/bin/activate            # ou bench/cloison-bench/.venv (lourd : torch)
+CLOISON_OFFLINE=1 pytest tests -q    # 67 tests, aucun téléchargement
+# Service REST : uvicorn src.main:app --port 8080 ; POST /detect
+```
+
 ## Résultats
 
 - **Tests** : 67/67 verts (57 STACK-6 + 10 modèles africains), sans téléchargement de modèles.

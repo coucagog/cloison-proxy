@@ -44,6 +44,16 @@ documentation de la séparation stricte corpus.
 - Clés Ed25519 : chargées depuis fichier (32 bruts/64 hex) ou générées 0600.
 - Tests : 34 unitaires/integration audit + 5 e2e audit dans le proxy.
 
+## Comment lancer / tester
+
+```bash
+cd cloison && source ~/.cargo/env
+cargo test -p cloison-audit          # 34 tests (reçus, k-anonymat, rapport)
+cargo test -p cloison-proxy --test e2e_audit   # mode audit e2e
+# Mode audit au runtime : CLOISON_AUDIT_MODE=1 CLOISON_AUDIT_KEYS=<fichier> \
+#   cargo run -p cloison-proxy ; GET /v1/audit/report?period=all
+```
+
 ## Résultats
 
 - **Tests** : audit 34/34, proxy 22/22 (11 STACK-3 préservés + 5 audit + 6 unit).

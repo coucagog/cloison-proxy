@@ -43,6 +43,18 @@ l'installation des modèles africains lourds (GPU requis, documenté).
 - Binaire `cloison-control` (main.rs) — le crate était une bibliothèque sans binaire.
 - `bench/cloison-bench/run_detect_target.py` : GO/NO-GO final avec cloison-detect.
 
+## Comment lancer / tester
+
+```bash
+cd cloison && source ~/.cargo/env
+cargo test --workspace               # tout le workspace Rust
+cd services/cloison-detect && CLOISON_OFFLINE=1 .venv/bin/pytest tests -q   # 67
+# E2E anti-pass-through : sudo -E bash deploy/e2e_reel.sh          (mock, sans clé)
+#   CLOISON_E2E_MODE=real OPENROUTER_API_KEY=… bash deploy/e2e_reel.sh  (réel)
+# GO/NO-GO : cd bench/cloison-bench && source .venv/bin/activate
+#   CLOISON_OFFLINE=1 python3 run_detect_target.py --offline
+```
+
 ## Résultats
 
 - **E2E mock : 12/12 PASS** — le faux LLM reçoit des sentinelles, jamais la PII ; le client
