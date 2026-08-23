@@ -157,7 +157,10 @@ mod tests {
     fn debug_redacts_upstream_key() {
         let key = parse_authorization("Bearer mn_token.sk-super-secret").unwrap();
         let dbg = format!("{key:?}");
-        assert!(!dbg.contains("sk-super-secret"), "upstream key leaked in Debug: {dbg}");
+        assert!(
+            !dbg.contains("sk-super-secret"),
+            "upstream key leaked in Debug: {dbg}"
+        );
         assert!(dbg.contains("upstream_key_len"), "{dbg}");
     }
 }

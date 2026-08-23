@@ -130,8 +130,7 @@ impl BufferAndScan {
                 // le sont aussi (leur `⟧` suit nécessairement).
                 break;
             }
-            let close_soon = self
-                .buffer[after_open..]
+            let close_soon = self.buffer[after_open..]
                 .find(Sentinel::L_CLOSE)
                 .map(|rel| rel + after_open - open < self.max_token_len)
                 .unwrap_or(false);
@@ -267,14 +266,21 @@ fn event_data_payload(event: &[u8]) -> Option<String> {
 
 /// Réponse SSE finale du proxy (flux interne muni du keep-alive).
 pub type SseResponse = Sse<
-    axum::response::sse::KeepAliveStream<Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>>>,
+    axum::response::sse::KeepAliveStream<
+        Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>>,
+    >,
 >;
 
 /// Métadonnées de chunk reconstruites : (id, object, created, model).
 type Meta = (String, String, u64, String);
 
 fn default_meta() -> Meta {
-    ("".to_string(), "chat.completion.chunk".to_string(), 0, "".to_string())
+    (
+        "".to_string(),
+        "chat.completion.chunk".to_string(),
+        0,
+        "".to_string(),
+    )
 }
 
 /// Assemble la réponse SSE : découpe le corps amont en événements `data:`,
@@ -290,100 +296,102 @@ pub fn sse_response(
     let neutral_marker = state.stream_cfg.neutral_marker.clone();
     let keep_alive = state.stream_cfg.keep_alive;
 
-    let stream: Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>> = Box::pin(async_stream::stream! {
-        let mut content_buf = BufferAndScan::new(engine.clone(), request_id.clone(), max_token_len, neutral_marker.clone());
-        let mut tool_bufs: Vec<BufferAndScan> = Vec::new();
-        let mut meta: Meta = default_meta();
+    let stream: Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>> = Box::pin(
+        async_stream::stream! {
+            let mut content_buf = BufferAndScan::new(engine.clone(), request_id.clone(), max_token_len, neutral_marker.clone());
+            let mut tool_bufs: Vec<BufferAndScan> = Vec::new();
+            let mut meta: Meta = default_meta();
 
-        // Lecture + découpage en événements SSE.
-        let mut frame: Vec<u8> = Vec::new();
-        let mut bytes = upstream.bytes_stream();
-        let mut done = false;
+            // Lecture + découpage en événements SSE.
+            let mut frame: Vec<u8> = Vec::new();
+            let mut bytes = upstream.bytes_stream();
+            let mut done = false;
 
-        'outer: loop {
-            let chunk = match bytes.next().await {
-                Some(Ok(c)) => c,
-                Some(Err(e)) => {
-                    warn!(request_id = %request_id, error = %e, "upstream stream read error");
-                    break;
+            'outer: loop {
+                let chunk = match bytes.next().await {
+                    Some(Ok(c)) => c,
+                    Some(Err(e)) => {
+                        warn!(request_id = %request_id, error = %e, "upstream stream read error");
+                        break;
+                    }
+                    None => break,
+                };
+                frame.extend_from_slice(&chunk);
+
+                if frame.len() > MAX_FRAME_BYTES {
+                    // Événement amont démesuré : traite ce qui est déjà là puis purge.
+                    warn!(request_id = %request_id, bytes = frame.len(), "upstream SSE frame exceeded limit; force-flushing");
+                    let overflow: Vec<u8> = std::mem::take(&mut frame);
+                    if let Some(payload) = event_data_payload(&overflow) {
+                        if payload != "[DONE]" {
+                            let events = process_payload(&payload, &mut meta, &mut content_buf, &mut tool_bufs, &engine, &request_id, max_token_len, &neutral_marker);
+                            for ev in events {
+                                yield Ok::<Event, Infallible>(ev);
+                            }
+                        } else {
+                            done = true;
+                            break 'outer;
+                        }
+                    }
+                    continue;
                 }
-                None => break,
-            };
-            frame.extend_from_slice(&chunk);
 
-            if frame.len() > MAX_FRAME_BYTES {
-                // Événement amont démesuré : traite ce qui est déjà là puis purge.
-                warn!(request_id = %request_id, bytes = frame.len(), "upstream SSE frame exceeded limit; force-flushing");
-                let overflow: Vec<u8> = std::mem::take(&mut frame);
-                if let Some(payload) = event_data_payload(&overflow) {
+                while let Some((end, sep_len)) = find_event_end(&frame) {
+                    let event_bytes: Vec<u8> = frame.drain(..end + sep_len).collect();
+                    if let Some(payload) = event_data_payload(&event_bytes) {
+                        if payload == "[DONE]" {
+                            done = true;
+                            break 'outer;
+                        }
+                        let events = process_payload(&payload, &mut meta, &mut content_buf, &mut tool_bufs, &engine, &request_id, max_token_len, &neutral_marker);
+                        for ev in events {
+                            yield Ok::<Event, Infallible>(ev);
+                        }
+                    }
+                }
+            }
+
+            // Événement résiduel sans séparateur final (fin de flux propre).
+            if !done {
+                if let Some(payload) = event_data_payload(&frame) {
                     if payload != "[DONE]" {
                         let events = process_payload(&payload, &mut meta, &mut content_buf, &mut tool_bufs, &engine, &request_id, max_token_len, &neutral_marker);
                         for ev in events {
                             yield Ok::<Event, Infallible>(ev);
                         }
-                    } else {
-                        done = true;
-                        break 'outer;
-                    }
-                }
-                continue;
-            }
-
-            while let Some((end, sep_len)) = find_event_end(&frame) {
-                let event_bytes: Vec<u8> = frame.drain(..end + sep_len).collect();
-                if let Some(payload) = event_data_payload(&event_bytes) {
-                    if payload == "[DONE]" {
-                        done = true;
-                        break 'outer;
-                    }
-                    let events = process_payload(&payload, &mut meta, &mut content_buf, &mut tool_bufs, &engine, &request_id, max_token_len, &neutral_marker);
-                    for ev in events {
-                        yield Ok::<Event, Infallible>(ev);
                     }
                 }
             }
-        }
 
-        // Événement résiduel sans séparateur final (fin de flux propre).
-        if !done {
-            if let Some(payload) = event_data_payload(&frame) {
-                if payload != "[DONE]" {
-                    let events = process_payload(&payload, &mut meta, &mut content_buf, &mut tool_bufs, &engine, &request_id, max_token_len, &neutral_marker);
-                    for ev in events {
-                        yield Ok::<Event, Infallible>(ev);
-                    }
-                }
-            }
-        }
-
-        // Clôture : résout les tampons résiduels, émet les fragments restants.
-        let mut pending: Vec<Event> = Vec::new();
-        let mut total = content_buf.finish(&mut |frag| {
-            pending.push(content_event(&meta, frag));
-        });
-        for (idx, tb) in tool_bufs.iter_mut().enumerate() {
-            total += tb.finish(&mut |frag| {
-                pending.push(tool_args_event(&meta, idx, frag));
+            // Clôture : résout les tampons résiduels, émet les fragments restants.
+            let mut pending: Vec<Event> = Vec::new();
+            let mut total = content_buf.finish(&mut |frag| {
+                pending.push(content_event(&meta, frag));
             });
-        }
-        if total.unresolved > 0 {
-            state
-                .metrics
-                .unresolved_tokens
-                .fetch_add(total.unresolved as u64, Ordering::Relaxed);
-            warn!(
-                request_id = %request_id,
-                restored = total.restored,
-                unresolved = total.unresolved,
-                blocked = total.blocked,
-                "stream closure: fail-loud redaction applied"
-            );
-        }
-        for ev in pending {
-            yield Ok::<Event, Infallible>(ev);
-        }
-        yield Ok::<Event, Infallible>(Event::default().data("[DONE]"));
-    });
+            for (idx, tb) in tool_bufs.iter_mut().enumerate() {
+                total += tb.finish(&mut |frag| {
+                    pending.push(tool_args_event(&meta, idx, frag));
+                });
+            }
+            if total.unresolved > 0 {
+                state
+                    .metrics
+                    .unresolved_tokens
+                    .fetch_add(total.unresolved as u64, Ordering::Relaxed);
+                warn!(
+                    request_id = %request_id,
+                    restored = total.restored,
+                    unresolved = total.unresolved,
+                    blocked = total.blocked,
+                    "stream closure: fail-loud redaction applied"
+                );
+            }
+            for ev in pending {
+                yield Ok::<Event, Infallible>(ev);
+            }
+            yield Ok::<Event, Infallible>(Event::default().data("[DONE]"));
+        },
+    );
 
     Sse::new(stream).keep_alive(KeepAlive::new().interval(keep_alive))
 }
@@ -449,7 +457,10 @@ fn process_payload(
     // Canaux tool_calls (un buffer par index).
     if let Some(tool_calls) = delta.get("tool_calls").and_then(|v| v.as_array()) {
         for (pos, tc) in tool_calls.iter().enumerate() {
-            let index = tc.get("index").and_then(|v| v.as_u64()).unwrap_or(pos as u64) as usize;
+            let index = tc
+                .get("index")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(pos as u64) as usize;
             if index >= MAX_TOOL_CALL_BUFFERS {
                 warn!(request_id, index, "tool_call index exceeds cap; skipping");
                 continue;
@@ -462,7 +473,11 @@ fn process_payload(
                     neutral_marker.to_string(),
                 ));
             }
-            if let Some(args) = tc.get("function").and_then(|f| f.get("arguments")).and_then(|v| v.as_str()) {
+            if let Some(args) = tc
+                .get("function")
+                .and_then(|f| f.get("arguments"))
+                .and_then(|v| v.as_str())
+            {
                 routed = true;
                 if !args.is_empty() {
                     let mut frags: Vec<String> = Vec::new();
@@ -532,9 +547,14 @@ mod tests {
     #[test]
     fn data_payload_extraction() {
         assert_eq!(event_data_payload(b"data: {}\n\n").as_deref(), Some("{}"));
-        assert_eq!(event_data_payload(b"data: [DONE]\n\n").as_deref(), Some("[DONE]"));
-        assert_eq!(event_data_payload(b"data: a\ndata: b\n\n").as_deref(), Some("a\nb"));
+        assert_eq!(
+            event_data_payload(b"data: [DONE]\n\n").as_deref(),
+            Some("[DONE]")
+        );
+        assert_eq!(
+            event_data_payload(b"data: a\ndata: b\n\n").as_deref(),
+            Some("a\nb")
+        );
         assert_eq!(event_data_payload(b": keep-alive\n\n"), None);
     }
-
 }

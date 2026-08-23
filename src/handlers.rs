@@ -62,8 +62,10 @@ pub struct AppState {
 impl AppState {
     /// Construit l'état : `SessionKeys::derive(tenant_key, salt)` + client amont.
     pub fn new(config: &Config) -> Result<Self, ProxyError> {
-        let keys = SessionKeys::derive(config.tenant_key, config.session_salt)
-            .map_err(|e| ProxyError::new(ErrorKind::Internal, "failed to derive session keys").with_field("detail", e.to_string()))?;
+        let keys = SessionKeys::derive(config.tenant_key, config.session_salt).map_err(|e| {
+            ProxyError::new(ErrorKind::Internal, "failed to derive session keys")
+                .with_field("detail", e.to_string())
+        })?;
         let upstream = UpstreamClient::new(&config.upstream)?;
         let policy = Policy::default();
         let audit = if config.audit_mode {
@@ -106,7 +108,9 @@ fn new_request_id() -> String {
     use rand::Rng;
     const CHARS: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
     let mut rng = rand::thread_rng();
-    (0..8).map(|_| CHARS[rng.gen_range(0..CHARS.len())] as char).collect()
+    (0..8)
+        .map(|_| CHARS[rng.gen_range(0..CHARS.len())] as char)
+        .collect()
 }
 
 /// POST /v1/chat/completions — aiguille stream / non-stream sur `req.stream`.
@@ -138,7 +142,13 @@ pub async fn chat_completions(
     // Phase aller : tokenisation complète du corps (registre = cette requête).
     // B.1 : le sidecar detect est consulté (dégradation gracieuse s'il est
     // indisponible — jamais d'erreur).
-    engine::tokenize_chat_request(&mut req, &mut req_engine, &state.policy, state.detect.as_ref()).await?;
+    engine::tokenize_chat_request(
+        &mut req,
+        &mut req_engine,
+        &state.policy,
+        state.detect.as_ref(),
+    )
+    .await?;
     let tokenized = serde_json::to_value(&req).map_err(|e| {
         ProxyError::new(ErrorKind::Internal, "failed to serialize request")
             .with_field("request_id", &request_id)
@@ -147,10 +157,17 @@ pub async fn chat_completions(
 
     if req.stream {
         let req_engine = Arc::new(Mutex::new(req_engine));
-        let upstream = match state.upstream.chat_completions_stream(&key.upstream_key, tokenized).await {
+        let upstream = match state
+            .upstream
+            .chat_completions_stream(&key.upstream_key, tokenized)
+            .await
+        {
             Ok(u) => u,
             Err(e) => {
-                state.metrics.upstream_errors.fetch_add(1, Ordering::Relaxed);
+                state
+                    .metrics
+                    .upstream_errors
+                    .fetch_add(1, Ordering::Relaxed);
                 return Err(e.with_field("request_id", &request_id));
             }
         };
@@ -161,20 +178,35 @@ pub async fn chat_completions(
             .unwrap_or("")
             .to_ascii_lowercase();
         if !content_type.contains("text/event-stream") {
-            return Err(ProxyError::new(ErrorKind::Upstream, "upstream did not respond with an event stream")
-                .with_field("request_id", &request_id));
+            return Err(ProxyError::new(
+                ErrorKind::Upstream,
+                "upstream did not respond with an event stream",
+            )
+            .with_field("request_id", &request_id));
         }
         Ok(stream::sse_response(upstream, state, request_id, req_engine).into_response())
     } else {
-        let upstream = match state.upstream.chat_completions(&key.upstream_key, tokenized).await {
+        let upstream = match state
+            .upstream
+            .chat_completions(&key.upstream_key, tokenized)
+            .await
+        {
             Ok(u) => u,
             Err(e) => {
-                state.metrics.upstream_errors.fetch_add(1, Ordering::Relaxed);
+                state
+                    .metrics
+                    .upstream_errors
+                    .fetch_add(1, Ordering::Relaxed);
                 return Err(e.with_field("request_id", &request_id));
             }
         };
-        let restored =
-            engine::restore_chat_response_value(upstream, &req_engine, &state.stream_cfg.neutral_marker, &state.metrics, &request_id)?;
+        let restored = engine::restore_chat_response_value(
+            upstream,
+            &req_engine,
+            &state.stream_cfg.neutral_marker,
+            &state.metrics,
+            &request_id,
+        )?;
         Ok(Json(restored).into_response())
     }
 }
@@ -210,22 +242,39 @@ pub async fn completions_legacy(
     }
 
     let mut req_engine = RequestEngine::new(&state.keys, &request_id)?;
-    engine::tokenize_completion_request(&mut req, &mut req_engine, &state.policy, state.detect.as_ref()).await?;
+    engine::tokenize_completion_request(
+        &mut req,
+        &mut req_engine,
+        &state.policy,
+        state.detect.as_ref(),
+    )
+    .await?;
     let tokenized = serde_json::to_value(&req).map_err(|e| {
         ProxyError::new(ErrorKind::Internal, "failed to serialize request")
             .with_field("request_id", &request_id)
             .with_field("detail", e.to_string())
     })?;
 
-    let mut upstream = match state.upstream.completions(&key.upstream_key, tokenized).await {
+    let mut upstream = match state
+        .upstream
+        .completions(&key.upstream_key, tokenized)
+        .await
+    {
         Ok(u) => u,
         Err(e) => {
-            state.metrics.upstream_errors.fetch_add(1, Ordering::Relaxed);
+            state
+                .metrics
+                .upstream_errors
+                .fetch_add(1, Ordering::Relaxed);
             return Err(e.with_field("request_id", &request_id));
         }
     };
 
-    let agg = engine::restore_completion_response(&mut upstream, &req_engine, &state.stream_cfg.neutral_marker)?;
+    let agg = engine::restore_completion_response(
+        &mut upstream,
+        &req_engine,
+        &state.stream_cfg.neutral_marker,
+    )?;
     if agg.unresolved > 0 {
         state
             .metrics
@@ -250,7 +299,10 @@ pub async fn models(
     let upstream = match state.upstream.models(&key.upstream_key).await {
         Ok(u) => u,
         Err(e) => {
-            state.metrics.upstream_errors.fetch_add(1, Ordering::Relaxed);
+            state
+                .metrics
+                .upstream_errors
+                .fetch_add(1, Ordering::Relaxed);
             return Err(e);
         }
     };
@@ -265,7 +317,12 @@ pub async fn models(
 const AUDIT_RECEIPT_HEADER: &str = "x-cloison-audit-receipt";
 
 /// Compte les PII du corps aller **sans le modifier** (mode audit).
-fn audit_count_request(req: &ChatCompletionRequest, audit: &AuditEngine, policy: &Policy, counters: &mut Counters) {
+fn audit_count_request(
+    req: &ChatCompletionRequest,
+    audit: &AuditEngine,
+    policy: &Policy,
+    counters: &mut Counters,
+) {
     for msg in &req.messages {
         if let Some(content) = &msg.content {
             match content {
@@ -363,7 +420,11 @@ async fn audit_chat_completions(
         return audit_chat_stream(state, key, req, request_id).await;
     }
 
-    let audit = state.audit.as_ref().expect("audit engine present in audit mode").clone();
+    let audit = state
+        .audit
+        .as_ref()
+        .expect("audit engine present in audit mode")
+        .clone();
     let mut counters = Counters::default();
 
     // Phase aller : détection + comptage, AUCUNE modification du corps.
@@ -375,10 +436,17 @@ async fn audit_chat_completions(
             .with_field("request_id", &request_id)
             .with_field("detail", e.to_string())
     })?;
-    let upstream = match state.upstream.chat_completions(&key.upstream_key, body).await {
+    let upstream = match state
+        .upstream
+        .chat_completions(&key.upstream_key, body)
+        .await
+    {
         Ok(u) => u,
         Err(e) => {
-            state.metrics.upstream_errors.fetch_add(1, Ordering::Relaxed);
+            state
+                .metrics
+                .upstream_errors
+                .fetch_add(1, Ordering::Relaxed);
             return Err(e.with_field("request_id", &request_id));
         }
     };
@@ -399,7 +467,11 @@ async fn audit_completions_legacy(
     req: CompletionRequest,
     request_id: String,
 ) -> Result<Response, ProxyError> {
-    let audit = state.audit.as_ref().expect("audit engine present in audit mode").clone();
+    let audit = state
+        .audit
+        .as_ref()
+        .expect("audit engine present in audit mode")
+        .clone();
     let mut counters = Counters::default();
 
     match &req.prompt {
@@ -419,7 +491,10 @@ async fn audit_completions_legacy(
     let upstream = match state.upstream.completions(&key.upstream_key, body).await {
         Ok(u) => u,
         Err(e) => {
-            state.metrics.upstream_errors.fetch_add(1, Ordering::Relaxed);
+            state
+                .metrics
+                .upstream_errors
+                .fetch_add(1, Ordering::Relaxed);
             return Err(e.with_field("request_id", &request_id));
         }
     };
@@ -441,7 +516,11 @@ async fn audit_chat_stream(
     req: ChatCompletionRequest,
     request_id: String,
 ) -> Result<Response, ProxyError> {
-    let audit = state.audit.as_ref().expect("audit engine present in audit mode").clone();
+    let audit = state
+        .audit
+        .as_ref()
+        .expect("audit engine present in audit mode")
+        .clone();
     let mut counters = Counters::default();
 
     // Phase aller : comptage sans modification.
@@ -452,10 +531,17 @@ async fn audit_chat_stream(
             .with_field("request_id", &request_id)
             .with_field("detail", e.to_string())
     })?;
-    let upstream = match state.upstream.chat_completions_stream(&key.upstream_key, body).await {
+    let upstream = match state
+        .upstream
+        .chat_completions_stream(&key.upstream_key, body)
+        .await
+    {
         Ok(u) => u,
         Err(e) => {
-            state.metrics.upstream_errors.fetch_add(1, Ordering::Relaxed);
+            state
+                .metrics
+                .upstream_errors
+                .fetch_add(1, Ordering::Relaxed);
             return Err(e.with_field("request_id", &request_id));
         }
     };
@@ -466,11 +552,16 @@ async fn audit_chat_stream(
         .unwrap_or("")
         .to_ascii_lowercase();
     if !content_type.contains("text/event-stream") {
-        return Err(ProxyError::new(ErrorKind::Upstream, "upstream did not respond with an event stream")
-            .with_field("request_id", &request_id));
+        return Err(ProxyError::new(
+            ErrorKind::Upstream,
+            "upstream did not respond with an event stream",
+        )
+        .with_field("request_id", &request_id));
     }
 
-    Ok(audit_count_only_sse(upstream, state, audit, counters, request_id))
+    Ok(audit_count_only_sse(
+        upstream, state, audit, counters, request_id,
+    ))
 }
 
 /// Forward SSE count-only : les événements amont sont émis **à l'identique**,

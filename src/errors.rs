@@ -55,9 +55,13 @@ impl ErrorKind {
         match self {
             ErrorKind::Auth => "authentication_error",
             ErrorKind::Forbidden => "permission_error",
-            ErrorKind::BadRequest | ErrorKind::PayloadTooLarge | ErrorKind::NotFound => "invalid_request_error",
+            ErrorKind::BadRequest | ErrorKind::PayloadTooLarge | ErrorKind::NotFound => {
+                "invalid_request_error"
+            }
             ErrorKind::RateLimited => "rate_limit_error",
-            ErrorKind::Upstream | ErrorKind::UpstreamTimeout | ErrorKind::Internal => "server_error",
+            ErrorKind::Upstream | ErrorKind::UpstreamTimeout | ErrorKind::Internal => {
+                "server_error"
+            }
         }
     }
 
@@ -128,7 +132,8 @@ impl From<reqwest::Error> for ProxyError {
 
 impl From<serde_json::Error> for ProxyError {
     fn from(e: serde_json::Error) -> Self {
-        ProxyError::new(ErrorKind::BadRequest, "invalid JSON").with_field("detail", truncate(&e.to_string(), 512))
+        ProxyError::new(ErrorKind::BadRequest, "invalid JSON")
+            .with_field("detail", truncate(&e.to_string(), 512))
     }
 }
 
@@ -142,7 +147,8 @@ impl From<CloisonError> for ProxyError {
     /// Toute erreur interne de `cloison-core` remonte en 500 et est loggée
     /// avec le `request_id` (invariant I8 : échec = échec, jamais silencieux).
     fn from(e: CloisonError) -> Self {
-        ProxyError::new(ErrorKind::Internal, "internal tokenization error").with_field("detail", truncate(&e.to_string(), 512))
+        ProxyError::new(ErrorKind::Internal, "internal tokenization error")
+            .with_field("detail", truncate(&e.to_string(), 512))
     }
 }
 

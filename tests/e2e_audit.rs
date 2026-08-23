@@ -77,7 +77,12 @@ impl MockUpstream {
     }
 
     fn last_body(&self) -> Value {
-        self.bodies.lock().unwrap().last().cloned().unwrap_or(Value::Null)
+        self.bodies
+            .lock()
+            .unwrap()
+            .last()
+            .cloned()
+            .unwrap_or(Value::Null)
     }
 }
 
@@ -95,11 +100,16 @@ fn mock_router(bodies: Arc<Mutex<Vec<Value>>>) -> Router {
 }
 
 async fn mock_chat(req: Request, bodies: Arc<Mutex<Vec<Value>>>) -> Response {
-    let body_bytes = axum::body::to_bytes(req.into_body(), 1024 * 1024).await.unwrap();
+    let body_bytes = axum::body::to_bytes(req.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
     let body: Value = serde_json::from_slice(&body_bytes).unwrap_or(Value::Null);
     bodies.lock().unwrap().push(body.clone());
 
-    let stream = body.get("stream").and_then(|s| s.as_bool()).unwrap_or(false);
+    let stream = body
+        .get("stream")
+        .and_then(|s| s.as_bool())
+        .unwrap_or(false);
     if stream {
         mock_chat_stream(&body).into_response()
     } else {
@@ -112,7 +122,9 @@ fn last_content(body: &Value) -> String {
         .and_then(|m| m.as_array())
         .and_then(|arr| {
             arr.iter().rev().find_map(|m| {
-                m.get("content").and_then(|c| c.as_str()).map(str::to_string)
+                m.get("content")
+                    .and_then(|c| c.as_str())
+                    .map(str::to_string)
             })
         })
         .unwrap_or_default()
@@ -185,10 +197,16 @@ fn mock_chat_stream(body: &Value) -> Sse<impl Stream<Item = Result<Event, Infall
 }
 
 async fn mock_completions(req: Request, bodies: Arc<Mutex<Vec<Value>>>) -> Response {
-    let body_bytes = axum::body::to_bytes(req.into_body(), 1024 * 1024).await.unwrap();
+    let body_bytes = axum::body::to_bytes(req.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
     let body: Value = serde_json::from_slice(&body_bytes).unwrap_or(Value::Null);
     bodies.lock().unwrap().push(body.clone());
-    let prompt = body.get("prompt").and_then(|p| p.as_str()).map(str::to_string).unwrap_or_default();
+    let prompt = body
+        .get("prompt")
+        .and_then(|p| p.as_str())
+        .map(str::to_string)
+        .unwrap_or_default();
     let model = body.get("model").cloned().unwrap_or(json!("mock-echo"));
     Json(json!({
         "id": "cmpl-audit-1",
@@ -278,7 +296,10 @@ fn assert_receipt_verified(headers: &axum::http::HeaderMap, vk: &VerifyingKey) -
         .to_str()
         .unwrap();
     let receipt = Receipt::from_base64url_json(encoded).expect("receipt decodes from base64url");
-    assert!(receipt.verify(vk), "receipt signature must verify with the agent public key");
+    assert!(
+        receipt.verify(vk),
+        "receipt signature must verify with the agent public key"
+    );
     receipt
 }
 
@@ -318,7 +339,10 @@ async fn audit_mode_passes_text_unmasked_and_signs_receipts() {
 
     let mock = MockUpstream::start().await;
     let (state, app) = proxy_app(&mock.url(), Some(&seed_path)).await;
-    assert!(state.audit.is_some(), "audit engine must be present in audit mode");
+    assert!(
+        state.audit.is_some(),
+        "audit engine must be present in audit mode"
+    );
 
     let body = json!({
         "model": "mock-echo",
@@ -326,14 +350,27 @@ async fn audit_mode_passes_text_unmasked_and_signs_receipts() {
     });
 
     for i in 0..6 {
-        let (status, headers, resp_body) = send_json(&app, "POST", "/v1/chat/completions", Some(&good_auth()), Some(body.clone())).await;
+        let (status, headers, resp_body) = send_json(
+            &app,
+            "POST",
+            "/v1/chat/completions",
+            Some(&good_auth()),
+            Some(body.clone()),
+        )
+        .await;
         assert_eq!(status, StatusCode::OK, "request {i}");
 
         // Réponse au client : texte NON masqué, aucune sentinelle.
         let resp: Value = serde_json::from_str(&resp_body).unwrap();
         let content = resp["choices"][0]["message"]["content"].as_str().unwrap();
-        assert_eq!(content, PII_TEXT, "observe-only: text must reach the client unchanged");
-        assert!(!content.contains('\u{27E6}'), "no sentinel may appear in audit mode");
+        assert_eq!(
+            content, PII_TEXT,
+            "observe-only: text must reach the client unchanged"
+        );
+        assert!(
+            !content.contains('\u{27E6}'),
+            "no sentinel may appear in audit mode"
+        );
         assert!(!content.contains('\u{27E7}'));
 
         // Reçu : présent, signé, compteurs non nuls, aucun texte.
@@ -342,11 +379,23 @@ async fn audit_mode_passes_text_unmasked_and_signs_receipts() {
         assert_eq!(receipt.engine_version, env!("CARGO_PKG_VERSION"));
         assert_eq!(receipt.sig_agent.len(), 64);
         assert!(
-            receipt.counters.masked_by_type.get("Email").copied().unwrap_or(0) >= 1,
+            receipt
+                .counters
+                .masked_by_type
+                .get("Email")
+                .copied()
+                .unwrap_or(0)
+                >= 1,
             "email must be counted"
         );
         assert!(
-            receipt.counters.masked_by_type.get("PhoneSn").copied().unwrap_or(0) >= 1,
+            receipt
+                .counters
+                .masked_by_type
+                .get("PhoneSn")
+                .copied()
+                .unwrap_or(0)
+                >= 1,
             "phone must be counted"
         );
         assert!(
@@ -354,7 +403,10 @@ async fn audit_mode_passes_text_unmasked_and_signs_receipts() {
             "IP (quasi-identifier) must be flagged"
         );
         let receipt_json = serde_json::to_string(&receipt).unwrap();
-        assert!(!receipt_json.contains("user@example.com"), "receipt must never contain PII text");
+        assert!(
+            !receipt_json.contains("user@example.com"),
+            "receipt must never contain PII text"
+        );
         assert!(!receipt_json.contains("+221 77 123 45 67"));
         assert!(!receipt_json.contains("192.168.1.10"));
     }
@@ -362,12 +414,25 @@ async fn audit_mode_passes_text_unmasked_and_signs_receipts() {
     // L'amont a reçu le corps **tel quel** (texte clair, aucune sentinelle).
     assert_eq!(mock.body_count(), 6);
     let upstream = mock.last_body().to_string();
-    assert!(upstream.contains("user@example.com"), "observe-only: clear text forwarded upstream");
+    assert!(
+        upstream.contains("user@example.com"),
+        "observe-only: clear text forwarded upstream"
+    );
     assert!(upstream.contains("+221 77 123 45 67"));
-    assert!(!upstream.contains('\u{27E6}'), "no tokenization in audit mode");
+    assert!(
+        !upstream.contains('\u{27E6}'),
+        "no tokenization in audit mode"
+    );
 
     // Rapport de conformité : agrégats k-anonymes.
-    let (status, _headers, resp_body) = send_json(&app, "GET", "/v1/audit/report?period=daily", Some(&good_auth()), None).await;
+    let (status, _headers, resp_body) = send_json(
+        &app,
+        "GET",
+        "/v1/audit/report?period=daily",
+        Some(&good_auth()),
+        None,
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
     let report: ConformanceReport = serde_json::from_str(&resp_body).unwrap();
     assert_eq!(report.total_requests, 6);
@@ -382,8 +447,14 @@ async fn audit_mode_passes_text_unmasked_and_signs_receipts() {
     assert_eq!(report.redacted.get("PhoneSn"), Some(&6));
     assert!(report.period_start <= report.period_end);
     let report_json = serde_json::to_string(&report).unwrap();
-    assert!(!report_json.contains("user@example.com"), "report must never contain PII text");
-    assert!(!report_json.contains("aggregated"), "P0-1: raw aggregated counters must never be serialized");
+    assert!(
+        !report_json.contains("user@example.com"),
+        "report must never contain PII text"
+    );
+    assert!(
+        !report_json.contains("aggregated"),
+        "P0-1: raw aggregated counters must never be serialized"
+    );
     // P0-3 : le rapport servi est signé par la clé de l'agent au bord.
     assert!(
         report.verify_signature(&vk),
@@ -391,7 +462,14 @@ async fn audit_mode_passes_text_unmasked_and_signs_receipts() {
     );
 
     // Période invalide → 400.
-    let (status, _, _) = send_json(&app, "GET", "/v1/audit/report?period=monthly", Some(&good_auth()), None).await;
+    let (status, _, _) = send_json(
+        &app,
+        "GET",
+        "/v1/audit/report?period=monthly",
+        Some(&good_auth()),
+        None,
+    )
+    .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
 }
 
@@ -412,19 +490,41 @@ async fn audit_report_redacts_cells_below_k() {
         "model": "mock-echo",
         "messages": [{"role": "user", "content": "email user@example.com et CNI: 1234567890128"}]
     });
-    let (status, headers, _) = send_json(&app, "POST", "/v1/chat/completions", Some(&good_auth()), Some(body)).await;
+    let (status, headers, _) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
-    let receipt = assert_receipt_verified(&headers, &SigningKey::from_bytes(&AGENT_SEED).verifying_key());
+    let receipt = assert_receipt_verified(
+        &headers,
+        &SigningKey::from_bytes(&AGENT_SEED).verifying_key(),
+    );
     assert_eq!(receipt.counters.masked_by_type.get("CniSn"), Some(&1));
     assert_eq!(receipt.counters.masked_by_type.get("Email"), Some(&1));
 
-    let (status, _, resp_body) = send_json(&app, "GET", "/v1/audit/report", Some(&good_auth()), None).await;
+    let (status, _, resp_body) =
+        send_json(&app, "GET", "/v1/audit/report", Some(&good_auth()), None).await;
     assert_eq!(status, StatusCode::OK);
     let report: ConformanceReport = serde_json::from_str(&resp_body).unwrap();
     assert_eq!(report.total_requests, 1);
-    assert!(!report.publishable, "cells < k must block global publication");
-    assert_eq!(report.redacted.get("CniSn"), Some(&0), "CniSn=1 < k=5 must be redacted");
-    assert_eq!(report.redacted.get("Email"), Some(&0), "Email=1 < k=5 must be redacted");
+    assert!(
+        !report.publishable,
+        "cells < k must block global publication"
+    );
+    assert_eq!(
+        report.redacted.get("CniSn"),
+        Some(&0),
+        "CniSn=1 < k=5 must be redacted"
+    );
+    assert_eq!(
+        report.redacted.get("Email"),
+        Some(&0),
+        "Email=1 < k=5 must be redacted"
+    );
 }
 
 /// I-A1 stream : le flux SSE est transmis **à l'identique** (contenu non
@@ -442,13 +542,27 @@ async fn audit_stream_forward_is_identical_and_records_receipt() {
         "stream": true,
         "messages": [{"role": "user", "content": PII_TEXT}]
     });
-    let (status, _headers, resp_body) = send_json(&app, "POST", "/v1/chat/completions", Some(&good_auth()), Some(body)).await;
-    assert_eq!(status, StatusCode::OK, "stream request should succeed, got body: {resp_body}");
+    let (status, _headers, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "stream request should succeed, got body: {resp_body}"
+    );
     assert!(resp_body.contains("data: "), "SSE body expected");
 
     let (content, done) = sse_content_deltas(&resp_body);
     assert!(done, "stream must end with data: [DONE]");
-    assert_eq!(content, PII_TEXT, "streamed content must be byte-identical (unmasked)");
+    assert_eq!(
+        content, PII_TEXT,
+        "streamed content must be byte-identical (unmasked)"
+    );
     assert!(!content.contains('\u{27E6}'));
     assert!(!content.contains('\u{27E7}'));
 
@@ -457,7 +571,15 @@ async fn audit_stream_forward_is_identical_and_records_receipt() {
     assert_eq!(receipts.len(), 1, "one receipt per audited request");
     let receipt = &receipts[0];
     assert!(receipt.verify(&SigningKey::from_bytes(&AGENT_SEED).verifying_key()));
-    assert!(receipt.counters.masked_by_type.get("Email").copied().unwrap_or(0) >= 1);
+    assert!(
+        receipt
+            .counters
+            .masked_by_type
+            .get("Email")
+            .copied()
+            .unwrap_or(0)
+            >= 1
+    );
 }
 
 /// Legacy `/v1/completions` en mode audit : prompt non masqué, reçu signé.
@@ -470,15 +592,36 @@ async fn audit_legacy_completions_counts_and_signs() {
     let (_state, app) = proxy_app(&mock.url(), Some(&seed_path)).await;
 
     let body = json!({"model": "mock-echo", "prompt": "Contact: user@example.com"});
-    let (status, headers, resp_body) = send_json(&app, "POST", "/v1/completions", Some(&good_auth()), Some(body)).await;
+    let (status, headers, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
     let resp: Value = serde_json::from_str(&resp_body).unwrap();
     let text = resp["choices"][0]["text"].as_str().unwrap();
-    assert!(text.contains("user@example.com"), "observe-only: prompt echoed unmasked: {text}");
+    assert!(
+        text.contains("user@example.com"),
+        "observe-only: prompt echoed unmasked: {text}"
+    );
     assert!(!text.contains('\u{27E6}'));
 
-    let receipt = assert_receipt_verified(&headers, &SigningKey::from_bytes(&AGENT_SEED).verifying_key());
-    assert!(receipt.counters.masked_by_type.get("Email").copied().unwrap_or(0) >= 1);
+    let receipt = assert_receipt_verified(
+        &headers,
+        &SigningKey::from_bytes(&AGENT_SEED).verifying_key(),
+    );
+    assert!(
+        receipt
+            .counters
+            .masked_by_type
+            .get("Email")
+            .copied()
+            .unwrap_or(0)
+            >= 1
+    );
 }
 
 /// Mode audit désactivé : la route `/v1/audit/report` répond 404 et le
@@ -494,8 +637,13 @@ async fn audit_disabled_report_route_returns_404() {
     assert!(state.audit.is_none());
     let app = router(state);
 
-    let (status, _headers, _body) = send_json(&app, "GET", "/v1/audit/report", Some(&good_auth()), None).await;
-    assert_eq!(status, StatusCode::NOT_FOUND, "report route must be unavailable without audit mode");
+    let (status, _headers, _body) =
+        send_json(&app, "GET", "/v1/audit/report", Some(&good_auth()), None).await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "report route must be unavailable without audit mode"
+    );
 
     // Et le masquage STACK-3 fonctionne toujours : le texte clair n'atteint
     // ni l'amont ni le client (sentinelle restaurée en bout de chaîne).
@@ -503,15 +651,31 @@ async fn audit_disabled_report_route_returns_404() {
         "model": "mock-echo",
         "messages": [{"role": "user", "content": "Contact: user@example.com"}]
     });
-    let (status, _headers, resp_body) = send_json(&app, "POST", "/v1/chat/completions", Some(&good_auth()), Some(body)).await;
+    let (status, _headers, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
     let resp: Value = serde_json::from_str(&resp_body).unwrap();
     let content = resp["choices"][0]["message"]["content"].as_str().unwrap();
-    assert!(content.contains("user@example.com"), "STACK-3 restores the original value");
+    assert!(
+        content.contains("user@example.com"),
+        "STACK-3 restores the original value"
+    );
     assert!(!content.contains('\u{27E6}'));
     // L'amont, lui, n'a jamais vu le clair.
-    assert!(!mock.last_body().to_string().contains("user@example.com"), "masking still active upstream");
-    assert!(mock.last_body().to_string().contains('\u{27E6}'), "sentinel still sent upstream");
+    assert!(
+        !mock.last_body().to_string().contains("user@example.com"),
+        "masking still active upstream"
+    );
+    assert!(
+        mock.last_body().to_string().contains('\u{27E6}'),
+        "sentinel still sent upstream"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -552,7 +716,11 @@ async fn audit_ledger_persists_across_restart() {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mode = std::fs::metadata(&ledger_path).unwrap().permissions().mode() & 0o777;
+        let mode = std::fs::metadata(&ledger_path)
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777;
         assert_eq!(mode, 0o600, "audit ledger file must be 0600");
     }
 
@@ -566,7 +734,12 @@ async fn audit_ledger_persists_across_restart() {
     // L'append continue après rechargement.
     let mut c = Counters::default();
     *c.masked_by_type.entry("TEL".to_string()).or_insert(0) += 2;
-    let unsigned = engine2.build_receipt(policy.tenant_id.clone(), "session-2".to_string(), 1_700_000_010, c);
+    let unsigned = engine2.build_receipt(
+        policy.tenant_id.clone(),
+        "session-2".to_string(),
+        1_700_000_010,
+        c,
+    );
     engine2.record(engine2.sign(&unsigned)).unwrap();
     assert_eq!(engine2.receipts_len(), 3);
 
@@ -579,7 +752,11 @@ async fn audit_ledger_persists_across_restart() {
         .write_all(b"{corrompu}\n")
         .unwrap();
     let engine3 = AuditEngine::new(&policy, None, 5, Some(&ledger_path)).unwrap();
-    assert_eq!(engine3.receipts_len(), 3, "corrupt line skipped, valid receipts kept");
+    assert_eq!(
+        engine3.receipts_len(),
+        3,
+        "corrupt line skipped, valid receipts kept"
+    );
 }
 
 /// `period` est désormais filtrant : hourly/daily/weekly/all bornent la
@@ -613,7 +790,10 @@ async fn audit_report_period_filters_receipts() {
     engine.record(fresh).unwrap();
 
     let hourly = engine.report_for("hourly").unwrap();
-    assert_eq!(hourly.total_requests, 1, "hourly keeps only receipts of the last hour");
+    assert_eq!(
+        hourly.total_requests, 1,
+        "hourly keeps only receipts of the last hour"
+    );
     assert!(hourly.sig_report.is_some(), "report stays signed");
     assert!(hourly.period_start <= now.saturating_sub(3600));
 
