@@ -206,9 +206,18 @@ async fn stats(client: &ControlClient, a: StatsArgs) -> Result<(), CliError> {
         .await?;
     let root: serde_json::Value = client.get("/v1/control/root").await?;
     println!("Tenant : {}", a.tenant_id);
-    println!("  version jeton : {}", version.get("version").and_then(|v| v.as_u64()).unwrap_or(0));
-    println!("  seq journal   : {}", root.get("seq").and_then(|v| v.as_u64()).unwrap_or(0));
-    println!("  root hash     : {}", root.get("root_hash").and_then(|v| v.as_str()).unwrap_or(""));
+    println!(
+        "  version jeton : {}",
+        version.get("version").and_then(|v| v.as_u64()).unwrap_or(0)
+    );
+    println!(
+        "  seq journal   : {}",
+        root.get("seq").and_then(|v| v.as_u64()).unwrap_or(0)
+    );
+    println!(
+        "  root hash     : {}",
+        root.get("root_hash").and_then(|v| v.as_str()).unwrap_or("")
+    );
     Ok(())
 }
 
