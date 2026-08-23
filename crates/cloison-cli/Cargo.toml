@@ -3,6 +3,16 @@ name = "cloison-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+description = "CLOISON outillage ops N3 : provisioning tenant + jeton mn_, rotation, revocation, requetes ledger, stats."
 repository.workspace = true
 
 [dependencies]
+clap = { version = "4", features = ["derive"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "1"
+cloison-verify = { path = "../cloison-verify" }
+cloison-ledger = { path = "../cloison-ledger" }
