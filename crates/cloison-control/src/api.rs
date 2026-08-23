@@ -225,6 +225,27 @@ fn default_k() -> usize {
     5
 }
 
+/// Requête de vérification d'un jeton **par son hash** (wiring C — rotation).
+///
+/// Le proxy n'envoie jamais le clair `mn_` : il calcule
+/// `hex(SHA-256("cloison-mn-token-v1:" ‖ clair))` (même domaine que le
+/// stockage) et ne transmet que le digest. Aucun secret ne traverse le réseau.
+#[derive(Debug, Clone, Deserialize)]
+pub struct VerifyRequest {
+    pub tenant_id: String,
+    /// hex(SHA-256(domaine ‖ clair)) — jamais le clair.
+    pub token_hash: String,
+}
+
+/// Réponse de vérification : validité + version de propagation du tenant
+/// (le proxy purge son cache local quand la version monte — rotation/révocation).
+#[derive(Debug, Clone, Serialize)]
+pub struct VerifyResponse {
+    pub tenant_id: String,
+    pub valid: bool,
+    pub version: u64,
+}
+
 /// Réponse d'ingest : l'entrée créée (`seq`) et la racine du journal après append.
 #[derive(Debug, Clone, Serialize)]
 pub struct IngestResponse {
@@ -528,6 +549,45 @@ pub async fn tokens_version(
     ))
 }
 
+/// `POST /v1/control/verify` — vérifie un jeton **par son hash** (wiring C).
+///
+/// Consommé par le proxy (TokenVerifier) : le bord ne transmet que
+/// `hex(SHA-256(domaine ‖ clair))` — le clair `mn_` ne quitte jamais le bord
+/// (cohérent avec « le stockage ne contient QUE le hash », invariant I2).
+/// Tenant inconnu → `valid: false` (le proxy fail-closed en 401, jamais d'erreur
+/// qui exposerait l'existence du tenant).
+pub async fn verify_token(
+    State(state): State<AppState>,
+    Json(req): Json<VerifyRequest>,
+) -> Result<Json<VerifyResponse>, ApiError> {
+    let version = match state.store.tokens_version(&req.tenant_id) {
+        Ok(v) => v,
+        Err(ControlError::TenantNotFound(_)) => {
+            return Ok(Json(VerifyResponse {
+                tenant_id: req.tenant_id,
+                valid: false,
+                version: 0,
+            }));
+        }
+        Err(e) => return Err(e.into()),
+    };
+    let valid = state
+        .store
+        .validate_token_hash(&req.tenant_id, &req.token_hash)?
+        .is_some();
+    tracing::debug!(
+        tenant_id = %req.tenant_id,
+        valid,
+        version,
+        "token verification (hash only)"
+    );
+    Ok(Json(VerifyResponse {
+        tenant_id: req.tenant_id,
+        valid,
+        version,
+    }))
+}
+
 /// `GET /healthz` — liveness du plan de contrôle.
 pub async fn healthz() -> Json<serde_json::Value> {
     Json(serde_json::json!({
@@ -557,6 +617,7 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/control/ingest", post(ingest))
         .route("/v1/control/root", get(root))
         .route("/v1/control/version", get(tokens_version))
+        .route("/v1/control/verify", post(verify_token))
         .route("/healthz", get(healthz))
         .with_state(state)
 }

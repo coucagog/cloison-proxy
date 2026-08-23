@@ -74,7 +74,7 @@ construction). Le binaire control (STACK-7) le persiste en **JSONL** dans
 | Champ | Type | Contenu |
 |---|---|---|
 | `tenant_id` | string | identifiant opérateur non sensible |
-| `session_ref_hashed` | string | `hex(SHA-256(tenant_id ‖ ":" ‖ session_ref))` — ne révèle ni la session ni sa clé |
+| `session_ref_hashed` | string | `hex(SHA-256(tenant_id ‖ ":" ‖ session_ref))` — ne révèle ni la session ni sa clé. Depuis DEPLOY-5, `session_ref` = **jeton d'accès `mn_…`** de la clé composite (session réelle, stable par client — dette STACK-4 réglée ; auparavant `request_id` éphémère) |
 | `ts_unix` | u64 | horodatage UTC |
 | `engine_version` | string | version du moteur |
 | `policy_hash` | string | `hex(SHA-256(JSON canonique de la Policy))` |

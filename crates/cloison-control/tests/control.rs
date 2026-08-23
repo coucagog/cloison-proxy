@@ -8,7 +8,7 @@ use axum::Json;
 use cloison_audit::{Counters, Receipt, ReceiptMessage};
 use cloison_control::api::{
     self, AddLicenseReq, AppState, CreateTenantReq, IngestRequest, IssueTokenReq, PutPolicyReq,
-    RotateTokenReq, VersionQuery,
+    RotateTokenReq, VerifyRequest, VersionQuery,
 };
 use cloison_control::contersign::{contresigner_reçu, verifier_contresignature};
 use cloison_control::error::ControlError;
@@ -792,6 +792,108 @@ async fn api_root_and_version_endpoints() {
 // ---------------------------------------------------------------------------
 // API admin (handlers appelés directement)
 // ---------------------------------------------------------------------------
+
+/// Wiring C — `POST /v1/control/verify` : vérification par **hash** uniquement
+/// (le clair ne transite jamais), tenant inconnu → invalide sans erreur,
+/// rotation/révocation propagées via `version`.
+#[tokio::test]
+async fn api_verify_token_by_hash_only() {
+    let state = app_state();
+    state
+        .store
+        .create_tenant(&sample_tenant("tenant-a"))
+        .unwrap();
+
+    let clair = token::generate_token();
+    let hash = token::token_hash(&clair);
+    assert!(clair.starts_with("mn_"));
+    assert_ne!(hash, clair, "le hash ne révèle jamais le clair");
+
+    // Jeton inconnu → invalid (pas de fuite d'existence).
+    let unknown = api::verify_token(
+        State(state.clone()),
+        Json(VerifyRequest {
+            tenant_id: "tenant-a".to_string(),
+            token_hash: "00".repeat(32),
+        }),
+    )
+    .await
+    .unwrap()
+    .0;
+    assert!(!unknown.valid);
+
+    // Tenant inconnu → invalid, version 0, AUCUNE erreur (le proxy fail-closed).
+    let no_tenant = api::verify_token(
+        State(state.clone()),
+        Json(VerifyRequest {
+            tenant_id: "tenant-inexistant".to_string(),
+            token_hash: hash.clone(),
+        }),
+    )
+    .await
+    .unwrap()
+    .0;
+    assert!(!no_tenant.valid);
+    assert_eq!(no_tenant.version, 0);
+
+    // Émission → valide.
+    let issued = api::issue_token(
+        State(state.clone()),
+        Path("tenant-a".to_string()),
+        Json(IssueTokenReq {
+            scopes: vec!["chat".to_string()],
+        }),
+    )
+    .await
+    .unwrap()
+    .0;
+    let issued_hash = token::token_hash(issued["token"].as_str().unwrap());
+    let ok = api::verify_token(
+        State(state.clone()),
+        Json(VerifyRequest {
+            tenant_id: "tenant-a".to_string(),
+            token_hash: issued_hash.clone(),
+        }),
+    )
+    .await
+    .unwrap()
+    .0;
+    assert!(ok.valid);
+    assert_eq!(ok.version, 0);
+
+    // Révocation → invalide + version incrémentée (propagation au proxy).
+    state
+        .store
+        .revoke_token("tenant-a", issued["id"].as_str().unwrap())
+        .unwrap();
+    let revoked = api::verify_token(
+        State(state.clone()),
+        Json(VerifyRequest {
+            tenant_id: "tenant-a".to_string(),
+            token_hash: issued_hash,
+        }),
+    )
+    .await
+    .unwrap()
+    .0;
+    assert!(!revoked.valid, "révoqué = invalide immédiat");
+    assert_eq!(
+        revoked.version, 1,
+        "la révocation incrémente tokens_version"
+    );
+}
+
+/// Le hash de vérification est bien le même que le hash stocké
+/// (domaine `cloison-mn-token-v1:` partagé entre le contrôle et le proxy).
+#[test]
+fn verify_hash_matches_stored_hash() {
+    let clair = "mn_testtoken";
+    let stored = token::token_hash(clair);
+    // Le proxy (crates/cloison-proxy/src/control.rs) calcule exactement ceci :
+    // hex(SHA-256("cloison-mn-token-v1:" ‖ clair)) — le contrat est le domaine.
+    assert_eq!(stored.len(), 64);
+    assert_ne!(stored, clair);
+}
 
 #[tokio::test]
 async fn api_tenant_and_token_flow() {

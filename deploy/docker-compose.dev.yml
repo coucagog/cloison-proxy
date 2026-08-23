@@ -25,15 +25,19 @@
 #     les images Rust distroless n'ont ni shell ni curl : leur liveness passe
 #     par les sondes K8s httpGet (docs/DEPLOY.md §Healthchecks).
 #
-# ÉTAT STACK-8 :
+# ÉTAT STACK-8 + DEPLOY-5 :
 #   - `edge` + `control` + `detect` construits et fonctionnels (binaire control
 #     committé, PostgresStore feature `pg` dans l'image control).
 #   - `detect` : image COMPLÈTE par défaut (GLiNER + afroxlmr, cf. verdict GO) ;
 #     `CLOISON_LITE=1` pour l'image légère.
 #   - `postgres` (profil `db`) : persistance du plan de contrôle ; activer avec
 #     `docker compose --profile db up -d --build` + `CLOISON_DATABASE_URL`.
-#   - `CLOISON_ROLE` / `CLOISON_DETECT_URL` ne sont pas encore lus par le
-#     binaire (cible config.rs) : valeurs documentées ci-dessous, sans effet.
+#   - Wiring B.1 (`CLOISON_DETECT_URL`) : LU par le binaire (edge → sidecar NER).
+#   - Wiring C (`CLOISON_CONTROL_URL`) : LU par le binaire (auth par hash,
+#     long-poll des versions, ingest automatique des reçus d'audit) — vide par
+#     défaut (mode N0) ; activer après provisionnement (deploy/provision_control.sh).
+#   - `CLOISON_ROLE` : non lu (deux binaires distincts edge/control aujourd'hui —
+#     le compose utilise le bon binaire par service, sans dispatch de rôle).
 # =============================================================================
 
 name: cloison-dev
@@ -85,6 +89,16 @@ services:
       # (détection embarquée seule — jamais d'erreur).
       CLOISON_DETECT_URL: ${CLOISON_DETECT_URL:-http://detect:8080/detect}
       CLOISON_DETECT_TIMEOUT_MS: ${CLOISON_DETECT_TIMEOUT_MS:-2000}
+      # Wiring edge -> contrôle (C) : auth par hash (POST /v1/control/verify),
+      # long-poll des versions (rotation des jetons) et ingest automatique des
+      # reçus d'audit (POST /v1/control/ingest — transparence). VIDE = N0
+      # (auth locale statique, pas d'ingest). Provisionner le tenant + le hash
+      # du jeton dans le contrôle AVANT d'activer (deploy/provision_control.sh).
+      CLOISON_TENANT_ID: ${CLOISON_TENANT_ID:-default}
+      CLOISON_CONTROL_URL: ${CLOISON_CONTROL_URL:-}
+      CLOISON_CONTROL_INGEST_INTERVAL_SECS: ${CLOISON_CONTROL_INGEST_INTERVAL_SECS:-60}
+      CLOISON_CONTROL_POLL_INTERVAL_SECS: ${CLOISON_CONTROL_POLL_INTERVAL_SECS:-30}
+      CLOISON_CONTROL_VERIFY_CACHE_TTL_SECS: ${CLOISON_CONTROL_VERIFY_CACHE_TTL_SECS:-300}
       RUST_LOG: ${RUST_LOG:-cloison_proxy=info}
     ports:
       - "8787:8787"          # publié sur wonkom.ai (dev)

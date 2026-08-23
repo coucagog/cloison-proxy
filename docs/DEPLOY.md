@@ -238,5 +238,86 @@ En CI : job `e2e-llm` (push sur main, `environment: e2e`, secrets
 docker build -f deploy/Dockerfile.proxy  -t ghcr.io/coucagog/cloison-proxy:edge    .
 docker build -f deploy/Dockerfile.control -t ghcr.io/coucagog/cloison-control:latest .
 docker build -f deploy/Dockerfile.detect -t ghcr.io/coucagog/cloison-detect:latest .
+docker build -f deploy/Dockerfile.journal -t ghcr.io/coucagog/cloison-journal:latest .
 deploy/sbom.sh     # syft (SPDX) + grype + trivy ; échec >= medium/HIGH
 ```
+
+## 11. Wiring edge → contrôle (C) — activation & provisionnement
+
+Le wiring C branche le chaînon manquant **audit → transparence** : l'edge
+résout les jetons par hash (`POST /v1/control/verify`), long-polle les versions
+(`GET /v1/control/version` — purge du cache à chaque rotation) et **ingère
+automatiquement** ses reçus d'audit (`POST /v1/control/ingest` → journal de
+transparence public). Il est **optionnel** (absent = mode N0 : auth locale
+statique, pas d'ingest).
+
+> ⚠️ **Ordre impératif** : provisionner le contrôle AVANT d'activer
+> `CLOISON_CONTROL_URL` sur edge — sinon l'auth fail-closed renvoie 401
+> (invariant I8 : échouer bruyamment).
+
+```bash
+# 1. Stack de base (edge + control + detect + postgres)
+docker compose --profile db --env-file .env \
+  -f deploy/docker-compose.dev.yml up -d --build
+
+# 2. Provisionner le tenant + le HASH du jeton edge dans le contrôle.
+#    Le clair est lu sur STDIN, haché en mémoire, jamais persisté ni affiché
+#    (le stockage du contrôle ne contient que des hash — charte §9.2).
+#    Le tenant_id DOIT correspondre à CLOISON_TENANT_ID du .env.
+printf '%s' "$CLOISON_EXPECTED_ACCESS_TOKEN" \
+  | ./deploy/provision_control.sh default
+
+# 3. Activer le wiring dans le .env :
+#    CLOISON_CONTROL_URL=http://control:8788
+#    CLOISON_TENANT_ID=default          # identique au tenant provisionné
+#    CLOISON_CONTROL_INGEST_INTERVAL_SECS=60
+#    CLOISON_CONTROL_POLL_INTERVAL_SECS=30
+#    CLOISON_CONTROL_VERIFY_CACHE_TTL_SECS=300
+
+# 4. Redémarrer edge (seul) — control/detect/postgres inchangés.
+docker compose --profile db --env-file .env \
+  -f deploy/docker-compose.dev.yml up -d edge
+
+# 5. Vérifications
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -H "Authorization: Bearer mn_${CLOISON_EXPECTED_ACCESS_TOKEN}.${OPENROUTER_API_KEY}" \
+  https://api.wonkom.ai/v1/models                      # 200 (auth via contrôle)
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -H "Authorization: Bearer mn_jeton-inconnu.sk-x" \
+  https://api.wonkom.ai/v1/models                      # 401 (fail-closed)
+# Ingest visible sur la transparence (compteurs k-anonymes, jamais de texte) :
+curl -s https://journal.wonkom.ai/ledger.jsonl | tail -2
+```
+
+Rotation d'un jeton (le client garde l'ancien pendant la grâce) :
+`POST /admin/tenants/{id}/rotate` — la montée de `tokens_version` purge le
+cache edge en ≤ `CLOISON_CONTROL_POLL_INTERVAL_SECS` ; après la grâce, le
+nouveau jeton doit être propagé aux clients (ré-émission).
+
+## 12. Tests d'intégration PostgresStore (base réelle)
+
+Les tests `#[ignore]` de `crates/cloison-control/tests/postgres_store.rs`
+(2/2) nécessitent une base réelle. Depuis l'hôte du VPS (postgres sur le
+réseau interne `internal: true` — injoignable depuis l'hôte), passer par un
+conteneur Rust rattaché aux réseaux du compose :
+
+```bash
+# Conteneur Rust persistant (réseau par défaut = egress OK pour crates.io)
+docker run -d --name rustdev \
+  -v /home/debian/Cloison/cloison:/src \
+  rust:1.97-bookworm sleep infinity
+docker network connect cloison-dev_cloison-internal rustdev   # DNS `postgres`
+
+docker exec rustdev bash -lc 'cd /src && \
+  CLOISON_DATABASE_URL="postgres://cloison:$CLOISON_PG_PASSWORD@postgres:5432/cloison" \
+  cargo test -p cloison-control --features pg --test postgres_store -- --ignored'
+
+# Nettoyage
+docker rm -f rustdev
+```
+
+La migration `001_init.sql` est appliquée par `PostgresStore::connect` au boot
+(et re-vérifiée ici) : les 4 tables (`tenants`, `api_tokens`, `policies`,
+`licenses`) doivent exister — `docker exec cloison-dev-postgres-1 psql -U
+cloison -d cloison -c '\dt'`. La CI vérifie que la feature `pg` **compile**
+(job `test-rust`).

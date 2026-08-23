@@ -54,6 +54,15 @@ pub trait Store: Send + Sync {
     /// **jamais** le clair.
     fn validate_token(&self, token_clair: &str) -> ControlResult<Option<ApiToken>>;
 
+    /// Valide un jeton **par son hash** (wiring C — `POST /v1/control/verify`) :
+    /// lookup par hash + appartenance au tenant + état actif (grâce incluse).
+    /// Le proxy n'envoie que le digest SHA-256 — le clair ne quitte jamais le bord.
+    fn validate_token_hash(
+        &self,
+        tenant_id: &str,
+        token_hash: &str,
+    ) -> ControlResult<Option<ApiToken>>;
+
     /// Rotation avec **grâce** : l'ancien jeton passe `rotated_at = now` et
     /// `grace_until = now + grace_secs` (il reste valide pendant la grâce), le nouveau
     /// (même tenant, mêmes scopes, nouveau secret haché) prend le relais.
@@ -165,6 +174,33 @@ impl Store for InMemoryStore {
         } else {
             None
         })
+    }
+
+    fn validate_token_hash(
+        &self,
+        tenant_id: &str,
+        token_hash: &str,
+    ) -> ControlResult<Option<ApiToken>> {
+        // Ordre global : tokens puis tokens_by_hash (identique à validate_token).
+        let tokens = self.tokens.read().expect("tokens lock poisoned");
+        let by_hash = self
+            .tokens_by_hash
+            .read()
+            .expect("hash index lock poisoned");
+        let Some(id) = by_hash.get(token_hash) else {
+            return Ok(None);
+        };
+        let Some(token) = tokens.get(id) else {
+            return Ok(None);
+        };
+        // Appartenance au tenant + état actif (grâce incluse).
+        Ok(
+            if token.tenant_id == tenant_id && token.is_active_at(crate::now_unix()) {
+                Some(token.clone())
+            } else {
+                None
+            },
+        )
     }
 
     fn rotate_token(

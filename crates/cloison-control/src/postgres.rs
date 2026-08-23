@@ -139,6 +139,33 @@ impl Store for PostgresStore {
         })
     }
 
+    fn validate_token_hash(
+        &self,
+        tenant_id: &str,
+        token_hash: &str,
+    ) -> ControlResult<Option<ApiToken>> {
+        let now = crate::now_unix();
+        block_on(async {
+            let row = sqlx::query_as::<_, ApiTokenRow>(
+                "SELECT id, tenant_id, token_hash, scopes, created_at, rotated_at, grace_until, revoked_at
+                 FROM api_tokens WHERE token_hash = $1 AND tenant_id = $2",
+            )
+            .bind(token_hash)
+            .bind(tenant_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(pg_err)?;
+            let Some(token) = row.map(ApiTokenRow::into_model) else {
+                return Ok(None);
+            };
+            Ok(if token.is_active_at(now) {
+                Some(token)
+            } else {
+                None
+            })
+        })
+    }
+
     fn rotate_token(
         &self,
         tenant_id: &str,

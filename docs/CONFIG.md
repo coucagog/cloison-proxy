@@ -32,6 +32,11 @@
 | `CLOISON_AUDIT_KEYS` | edge | **oui** | absent (clé générée 0600) | chemin clé Ed25519 de l'agent (32 o bruts ou 64 hex) |
 | `CLOISON_AUDIT_K` | edge | non | `5` | seuil k-anonyme (plancher 2) |
 | `CLOISON_AUDIT_LEDGER_FILE` | edge | non | absent (mémoire seule) | persistance des reçus d'audit en JSONL append-only **0600**, rechargé au boot (survit au restart) |
+| `CLOISON_TENANT_ID` *(C)* | edge | non | `default` | locataire porté par les reçus d'audit et les vérifications de jeton (doit correspondre au tenant provisionné dans le contrôle) |
+| `CLOISON_CONTROL_URL` *(C)* | edge | non | absent (N0) | URL de base du plan de contrôle — posée → **auth par hash** (`POST /v1/control/verify`), **ingest automatique** des reçus d'audit (`POST /v1/control/ingest`) et **long-poll** `GET /v1/control/version` (rotation). Absente → auth locale statique (`CLOISON_EXPECTED_ACCESS_TOKEN`), pas d'ingest |
+| `CLOISON_CONTROL_INGEST_INTERVAL_SECS` *(C)* | edge | non | `60` | intervalle de flush des reçus d'audit vers le contrôle |
+| `CLOISON_CONTROL_POLL_INTERVAL_SECS` *(C)* | edge | non | `30` | intervalle de long-poll des versions (rotation/révocation → purge du cache de jetons) |
+| `CLOISON_CONTROL_VERIFY_CACHE_TTL_SECS` *(C)* | edge | non | `300` | TTL des décisions de vérification mises en cache (tolérance de panne du contrôle) |
 | `RUST_LOG` | edge/control | non | `cloison_proxy=info` | filtre tracing (crate = `cloison_proxy`) |
 
 ## 2. Control — plan de contrôle (`cloison-control`)
@@ -82,6 +87,7 @@ formes, score ≤ 0.85 du canonique).
 | `CLOISON_PG_PASSWORD` | ops | **oui** | `cloison-dev-only` | mot de passe du miroir postgres (profil `db`, dev) |
 | `CLOISON_DETECT_URL` *(B.1)* | ops | non | — | URL REST `POST /detect` du sidecar NER — **lu par le binaire** : les spans PERSON/LOC du sidecar sont fusionnés à la détection embarquée (validation core). Absent = détection embarquée seule. Dégradation gracieuse : sidecar indisponible → warn, jamais d'erreur |
 | `CLOISON_DETECT_TIMEOUT_MS` *(B.1)* | ops | non | `2000` | timeout de la requête detect — au-delà, dégradation gracieuse (détection embarquée seule) |
+| `CLOISON_CONTROL_URL` *(C)* | ops | non | absent | **voir §1** — activer après provisionnement du tenant + hash du jeton (`deploy/provision_control.sh`), sinon l'auth fail-closed renvoie 401 |
 
 ## 5. Compatibilité fournisseurs (chemins amont)
 

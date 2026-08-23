@@ -90,6 +90,27 @@ spec:
                 secretKeyRef:
                   name: {{ $.Values.global.existingSecret | default (printf "%s-secrets" $.Release.Name) }}
                   key: tenant-key-hex
+            - name: CLOISON_SESSION_SALT_HEX
+              value: {{ $v.sessionSaltHex | default "" | quote }}
+            - name: CLOISON_TENANT_ID
+              value: {{ $v.tenantId | default "default" | quote }}
+            - name: CLOISON_AUDIT_LEDGER_FILE
+              value: {{ $v.audit.ledgerFile | default "/data/audit_ledger.jsonl" | quote }}
+            - name: CLOISON_DETECT_URL
+              value: {{ $v.detectUrl | default "" | quote }}
+            - name: CLOISON_DETECT_TIMEOUT_MS
+              value: {{ $v.detectTimeoutMs | default "2000" | quote }}
+            # Wiring C (contrôle) : vide par défaut = mode N0 (auth locale,
+            # pas d'ingest). Activer seulement après provisionnement du tenant
+            # + hash du jeton (deploy/provision_control.sh).
+            - name: CLOISON_CONTROL_URL
+              value: {{ $v.controlUrl | default "" | quote }}
+            - name: CLOISON_CONTROL_INGEST_INTERVAL_SECS
+              value: {{ $v.control.ingestIntervalSecs | default "60" | quote }}
+            - name: CLOISON_CONTROL_POLL_INTERVAL_SECS
+              value: {{ $v.control.pollIntervalSecs | default "30" | quote }}
+            - name: CLOISON_CONTROL_VERIFY_CACHE_TTL_SECS
+              value: {{ $v.control.verifyCacheTtlSecs | default "300" | quote }}
           {{- else if eq $role "control" }}
           env:
             - name: CLOISON_ROLE

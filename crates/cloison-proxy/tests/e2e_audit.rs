@@ -250,6 +250,8 @@ fn audit_config(mock_url: &str, seed_path: Option<&std::path::Path>) -> Config {
         audit_ledger_file: None,
         // B.1 : pas de sidecar detect dans ces tests — détection embarquée seule.
         detect: DetectConfig::default(),
+        // C : pas de wiring contrôle dans ces tests — auth locale + audit local.
+        control: cloison_proxy::config::ControlConfig::default(),
     }
 }
 

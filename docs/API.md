@@ -89,6 +89,10 @@ n'apparaît qu'une fois dans la réponse d'émission. Erreurs :
 | DELETE | `/admin/tenants/{id}/tokens/{token_id}` | — | 204 (révocation immédiate) |
 | PUT | `/admin/tenants/{id}/policy` | `{json_policy}` | `Policy {tenant_id, json_policy, version (incrémentée), updated_at}` |
 | POST | `/admin/tenants/{id}/licenses` | `{plan, expires_at?}` | `License` (upsert, une par tenant) |
+| POST | `/v1/control/ingest` | `{tenant_id, period_start, period_end, k?, receipts[]}` | `{seq, root_hash}` — reçus STACK-4 vérifiés (sig_agent), k-anonymat appliqué, entrée contresignée appendée au journal |
+| GET | `/v1/control/root` | — | `{seq, root_hash}` (racine courante du journal) |
+| GET | `/v1/control/version?tenant_id=…` | — | `{tenant_id, version}` — version de propagation (rotation/révocation) pour les caches proxy |
+| POST | `/v1/control/verify` | `{tenant_id, token_hash}` | `{tenant_id, valid, version}` — vérifie un jeton **par son hash** (le clair `mn_` ne transite jamais) ; tenant inconnu → `valid:false` sans erreur |
 | GET | `/healthz` | — | `{"status":"ok","service":"cloison-control"}` |
 
 Plans (`Plan`) et statuts : `Plan` (ex. `standard`/`pro` — défini dans

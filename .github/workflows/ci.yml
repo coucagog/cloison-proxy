@@ -2,13 +2,14 @@
 # CLOISON STACK-7 — CI complète.
 #
 # Jobs :
-#   fmt          cargo fmt --check
+#   fmt          cargo fmt --check (rustfmt épinglé 1.97 — version de
+#                normalisation du dépôt, voir DEPLOY-4)
 #   clippy       cargo clippy --workspace --all-targets -- -D warnings
-#   test-rust    cargo test --workspace
+#   test-rust    cargo test --workspace + cargo check feature `pg` du contrôle
 #   test-detect  pytest du sidecar Python (hors-ligne, CLOISON_OFFLINE=1)
 #   bench        benchmark STACK-1 (seed 42, grille de scoring GO/NO-GO)
-#   images       build des 3 images (proxy edge, control, detect) + SBOM
-#                (syft, SPDX) + scan (grype, échec >= medium ; trivy,
+#   images       build des 4 images (proxy edge, control, detect, journal) +
+#                SBOM (syft, SPDX) + scan (grype, échec >= medium ; trivy,
 #                échec >= HIGH) + push GHCR sur main/tags + cosign (OIDC)
 #   e2e-llm      e2e contre un LLM réel (OpenRouter) — secrets d'environnement
 #
@@ -37,7 +38,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # rustfmt épinglé sur la version de normalisation du dépôt (1.97) : le
+      # formateur stable courant peut diverger et casser le job sur des
+      # fichiers NON touchés (dérive constatée DEPLOY-4 — dtolnay avec version).
+      - uses: dtolnay/rust-toolchain@1.97.0
         with:
           components: rustfmt
       - run: cargo fmt --all -- --check
@@ -61,6 +65,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace --locked
+      # PostgresStore (feature `pg`) doit compiler en CI (dette STACK-8 :
+      # « compile toujours sans la feature » — désormais vérifié AUSSI avec).
+      # Les tests d'intégration réels restent `#[ignore]` (base requise).
+      - name: Vérifier la feature pg du contrôle (compile)
+        run: cargo check -p cloison-control --features pg --locked
 
   # ---------------------------------------------------------------------------
   test-detect:
@@ -109,7 +118,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [proxy, control, detect]
+        # journal inclus (DEPLOY-3/C) : l'image sert la surface publique du
+        # ledger (nginx + WASM cloison-verify) — doit être poussée au GHCR
+        # comme les trois autres (dette REPRISE-DEPLOIEMENT §5.3).
+        target: [proxy, control, detect, journal]
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3

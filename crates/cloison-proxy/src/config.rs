@@ -14,7 +14,15 @@
 //!   (32 hex — aléatoire par boot si absent) ;
 //! - `CLOISON_MOCK_MODE` (`1`/`true` : assouplit les prérequis, clé locataire de dev) ;
 //! - `CLOISON_DETECT_URL` (optionnel — URL REST `POST /detect` du sidecar NER,
-//!   wiring B.1), `CLOISON_DETECT_TIMEOUT_MS` (défaut 2000).
+//!   wiring B.1), `CLOISON_DETECT_TIMEOUT_MS` (défaut 2000) ;
+//! - `CLOISON_TENANT_ID` (défaut `default`) — locataire porté par les reçus
+//!   d'audit et les vérifications de jeton ;
+//! - `CLOISON_CONTROL_URL` (optionnel — URL de base du plan de contrôle,
+//!   wiring C : auth par jeton via `POST /v1/control/verify`, long-poll
+//!   `GET /v1/control/version`, ingest automatique des reçus d'audit via
+//!   `POST /v1/control/ingest`), `CLOISON_CONTROL_INGEST_INTERVAL_SECS`
+//!   (défaut 60), `CLOISON_CONTROL_POLL_INTERVAL_SECS` (défaut 30),
+//!   `CLOISON_CONTROL_VERIFY_CACHE_TTL_SECS` (défaut 300).
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -48,6 +56,14 @@ pub const DEFAULT_KEEP_ALIVE_MS: u64 = 15_000;
 pub const DEFAULT_AUDIT_K: usize = 5;
 /// Timeout de la requête detect par défaut (ms) — B.1.
 pub const DEFAULT_DETECT_TIMEOUT_MS: u64 = 2_000;
+/// Intervalle de flush des reçus d'audit vers le contrôle (s) — wiring C.
+pub const DEFAULT_CONTROL_INGEST_INTERVAL_SECS: u64 = 60;
+/// Intervalle de long-poll de `GET /v1/control/version` (s) — rotation des jetons.
+pub const DEFAULT_CONTROL_POLL_INTERVAL_SECS: u64 = 30;
+/// TTL du cache local de vérification de jeton (s) — wiring C.
+pub const DEFAULT_CONTROL_VERIFY_CACHE_TTL_SECS: u64 = 300;
+/// Locataire par défaut (reçus d'audit, vérification de jeton).
+pub const DEFAULT_TENANT_ID: &str = "default";
 
 /// Configuration complète du proxy.
 #[derive(Clone)]
@@ -85,6 +101,40 @@ pub struct Config {
     /// (`CLOISON_DETECT_URL`, ex. `http://detect:8080/detect`). `None` =
     /// détection embarquée seule (comportement historique).
     pub detect: DetectConfig,
+    /// Wiring edge → plan de contrôle (C) : vérification des jetons par hash,
+    /// long-poll des versions, ingest automatique des reçus d'audit.
+    pub control: ControlConfig,
+}
+
+/// Configuration du wiring edge → plan de contrôle (`cloison-control`).
+#[derive(Clone)]
+pub struct ControlConfig {
+    /// URL de base du contrôle (`CLOISON_CONTROL_URL`, ex. `http://control:8788`).
+    /// `None` = aucun wiring (auth locale statique via `CLOISON_EXPECTED_ACCESS_TOKEN`,
+    /// pas d'ingest automatique) — comportement N0/historique.
+    pub url: Option<Url>,
+    /// Intervalle de flush des reçus d'audit vers `POST /v1/control/ingest`.
+    pub ingest_interval: Duration,
+    /// Intervalle de long-poll de `GET /v1/control/version` (purge du cache de
+    /// jetons sur rotation/révocation).
+    pub poll_interval: Duration,
+    /// TTL des décisions de vérification mises en cache localement.
+    pub verify_cache_ttl: Duration,
+    /// Identifiant locataire porté par les reçus et les vérifications
+    /// (`CLOISON_TENANT_ID`, défaut `default`). Non sensible.
+    pub tenant_id: String,
+}
+
+impl Default for ControlConfig {
+    fn default() -> Self {
+        Self {
+            url: None,
+            ingest_interval: Duration::from_secs(DEFAULT_CONTROL_INGEST_INTERVAL_SECS),
+            poll_interval: Duration::from_secs(DEFAULT_CONTROL_POLL_INTERVAL_SECS),
+            verify_cache_ttl: Duration::from_secs(DEFAULT_CONTROL_VERIFY_CACHE_TTL_SECS),
+            tenant_id: DEFAULT_TENANT_ID.to_string(),
+        }
+    }
 }
 
 /// Configuration du sidecar `cloison-detect` (wiring edge→detect, B.1).
@@ -129,6 +179,10 @@ impl std::fmt::Debug for Config {
             .field("audit_ledger_file", &self.audit_ledger_file)
             .field("detect_url", &self.detect.url)
             .field("detect_timeout", &self.detect.timeout)
+            .field("control_url", &self.control.url)
+            .field("control_tenant_id", &self.control.tenant_id)
+            .field("control_ingest_interval", &self.control.ingest_interval)
+            .field("control_poll_interval", &self.control.poll_interval)
             .finish_non_exhaustive()
     }
 }
@@ -302,6 +356,31 @@ pub fn load() -> Result<Config, ProxyError> {
         )?),
     };
 
+    // C — wiring edge → contrôle : vérification des jetons, long-poll des
+    // versions, ingest automatique des reçus d'audit (optionnel — N0 inchangé).
+    let control = ControlConfig {
+        url: match env("CLOISON_CONTROL_URL", "") {
+            s if s.is_empty() => None,
+            s => Some(Url::parse(&s).map_err(|e| {
+                ProxyError::new(ErrorKind::Internal, "invalid CLOISON_CONTROL_URL")
+                    .with_field("detail", e.to_string())
+            })?),
+        },
+        ingest_interval: Duration::from_secs(env_u64(
+            "CLOISON_CONTROL_INGEST_INTERVAL_SECS",
+            DEFAULT_CONTROL_INGEST_INTERVAL_SECS,
+        )?),
+        poll_interval: Duration::from_secs(env_u64(
+            "CLOISON_CONTROL_POLL_INTERVAL_SECS",
+            DEFAULT_CONTROL_POLL_INTERVAL_SECS,
+        )?),
+        verify_cache_ttl: Duration::from_secs(env_u64(
+            "CLOISON_CONTROL_VERIFY_CACHE_TTL_SECS",
+            DEFAULT_CONTROL_VERIFY_CACHE_TTL_SECS,
+        )?),
+        tenant_id: env("CLOISON_TENANT_ID", DEFAULT_TENANT_ID),
+    };
+
     Ok(Config {
         listen_addr,
         upstream,
@@ -315,6 +394,7 @@ pub fn load() -> Result<Config, ProxyError> {
         audit_k,
         audit_ledger_file,
         detect,
+        control,
     })
 }
 

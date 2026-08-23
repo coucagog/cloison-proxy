@@ -64,9 +64,11 @@ réponse amont sont transmis à l'identique ; chaque requête produit un
 **reçu signé** (`Receipt`, compteurs entiers uniquement) posé en header
 `X-Cloison-Audit-Receipt` (non-stream) et accumulé dans le journal du
 processus. `GET /v1/audit/report?period=hourly|daily|weekly|all` sert un
-rapport de conformité **k-anonyme** (`cloison-audit::report`).
+rapport de conformité **k-anonyme** (`cloison-audit::report`). La référence de
+session du reçu est le **hash du jeton d'accès** (stable par client, jamais le
+clair — invariant I2).
 
-## 5. Plan de contrôle (STACK-5)
+## 5. Plan de contrôle (STACK-5) + wiring edge → contrôle (C)
 
 `cloison-control` sert l'API admin `/admin/*` (tenants, jetons, rotation,
 révocation, politiques, licences) et `/healthz`. Aucun texte client ne
@@ -75,6 +77,25 @@ Le journal `cloison-ledger` est append-only et vérifiable par
 `cloison-verify` (chaîne + signatures). Le binaire serveur (`src/main.rs`,
 posant le routeur sur :8788 et persistant `CLOISON_LEDGER_FILE`) est committé
 (STACK-7) — cf. `docs/DEPLOY.md` §1.2.
+
+**Wiring edge → contrôle (C, implémenté)** : quand `CLOISON_CONTROL_URL` est
+posé, l'edge
+1. **vérifie les jetons par hash** — `POST /v1/control/verify` (le clair ne
+   quitte jamais le bord, le contrôle ne connaît que des digests SHA-256) avec
+   cache local TTL et **fail-closed** (contrôle injoignable + cache froid →
+   401, jamais d'acceptation par défaut) ;
+2. **long-polle les versions** — `GET /v1/control/version` : toute rotation/
+   révocation incrémente `tokens_version` → purge du cache (propagation
+   quasi-instantanée, design STACK-5 P1-4) ;
+3. **ingère automatiquement ses reçus d'audit** — `POST /v1/control/ingest`
+   (lot périodique, curseur durable `<ledger>.ingested`) : le contrôle vérifie
+   `sig_agent`, applique le k-anonymat et append l'entrée contresignée au
+   journal de transparence public. **C'est le chaînon manquant
+   audit → transparence** (REPRISE-DEPLOIEMENT §5.1).
+
+Sans `CLOISON_CONTROL_URL` (N0), l'auth reste locale statique
+(`CLOISON_EXPECTED_ACCESS_TOKEN`) et l'ingest est manuel (comportement
+historique inchangé).
 
 ## 6. Sidecar detect (STACK-6)
 
