@@ -19,7 +19,8 @@ use serde_json::Value;
 use zeroize::Zeroizing;
 
 use crate::auth::CompositeKey;
-use crate::config::{Config, StreamConfig};
+use crate::config::{Config, ControlConfig, StreamConfig};
+use crate::control::{flush_pending_audit, ControlClient, TokenVerifier};
 use crate::detect::DetectClient;
 use crate::engine::{self, AuditEngine, RequestEngine};
 use crate::errors::{ErrorKind, ProxyError};
@@ -57,6 +58,18 @@ pub struct AppState {
     /// Client du sidecar detect (wiring B.1) ; `None` = détection embarquée
     /// seule. Une panne du sidecar dégrade gracieusement (jamais d'erreur).
     pub detect: Option<DetectClient>,
+    /// Vérificateur de jetons par hash auprès du contrôle (wiring C) ; `Some`
+    /// uniquement si `CLOISON_CONTROL_URL` est configuré. Quand il est présent,
+    /// l'auth passe par le contrôle (fail-closed) ; sinon le jeton local
+    /// statique `expected_access_token` s'applique (mode N0).
+    pub token_verifier: Option<Arc<TokenVerifier>>,
+    /// Client du contrôle (ingest des reçus d'audit, wiring C).
+    pub control: Option<ControlClient>,
+    /// Configuration du wiring contrôle (tenant, intervalles — pour les tâches
+    /// de fond et la construction des reçus).
+    pub control_cfg: ControlConfig,
+    /// Seuil k-anonyme du rapport (porté aussi par l'ingest).
+    pub audit_k: usize,
 }
 
 impl AppState {
@@ -67,7 +80,9 @@ impl AppState {
                 .with_field("detail", e.to_string())
         })?;
         let upstream = UpstreamClient::new(&config.upstream)?;
-        let policy = Policy::default();
+        // Locataire : la politique porte l'identifiant (`CLOISON_TENANT_ID`) —
+        // il alimente les reçus d'audit et le hash de session.
+        let policy = Policy::default_for(&config.control.tenant_id);
         let audit = if config.audit_mode {
             Some(Arc::new(AuditEngine::new(
                 &policy,
@@ -90,6 +105,26 @@ impl AppState {
             }
             None => None,
         };
+        // C — wiring edge → contrôle : vérification des jetons + ingest d'audit.
+        let (control, token_verifier) = match &config.control.url {
+            Some(_) => {
+                let client = ControlClient::new(&config.control)?;
+                let verifier = TokenVerifier::new(
+                    client.clone(),
+                    config.control.tenant_id.clone(),
+                    config.control.verify_cache_ttl,
+                );
+                tracing::info!(
+                    url = %config.control.url.as_ref().map(|u| u.as_str()).unwrap_or(""),
+                    tenant_id = %config.control.tenant_id,
+                    ingest_interval_s = config.control.ingest_interval.as_secs(),
+                    poll_interval_s = config.control.poll_interval.as_secs(),
+                    "wiring edge→contrôle actif (C) — auth par hash, ingest audit, long-poll rotation"
+                );
+                (Some(client), Some(Arc::new(verifier)))
+            }
+            None => (None, None),
+        };
         Ok(Self {
             keys,
             policy,
@@ -99,7 +134,68 @@ impl AppState {
             expected_access_token: config.expected_access_token.clone(),
             audit,
             detect,
+            token_verifier,
+            control,
+            control_cfg: config.control.clone(),
+            audit_k: config.audit_k,
         })
+    }
+
+    /// Démarre les tâches de fond du wiring contrôle (C) :
+    /// - flush périodique des reçus d'audit vers `POST /v1/control/ingest` ;
+    /// - long-poll de `GET /v1/control/version` (purge du cache de jetons).
+    ///
+    /// Appelé par `main.rs` uniquement — les tests exercent la logique
+    /// synchroniquement (pas de tâches fuyantes).
+    pub fn start_background_tasks(&self) {
+        // Ingest automatique des reçus d'audit (chaînon manquant audit → transparence).
+        if let (Some(audit), Some(control)) = (&self.audit, &self.control) {
+            let audit = audit.clone();
+            let control = control.clone();
+            let tenant_id = self.control_cfg.tenant_id.clone();
+            let k = self.audit_k;
+            let interval = self.control_cfg.ingest_interval;
+            tracing::info!(
+                tenant_id = %tenant_id,
+                interval_s = interval.as_secs(),
+                "tâche de fond : ingest automatique des reçus d'audit"
+            );
+            tokio::spawn(async move {
+                let mut ticker = tokio::time::interval(interval);
+                loop {
+                    ticker.tick().await;
+                    match flush_pending_audit(&audit, &control, &tenant_id, k).await {
+                        Ok(0) => {}
+                        Ok(n) => tracing::info!(receipts = n, "lot d'audit ingéré"),
+                        Err(e) => tracing::warn!(
+                            error = %e,
+                            "ingest audit échoué (retry au prochain tick — reçu persisté, aucune perte)"
+                        ),
+                    }
+                }
+            });
+        }
+        // Long-poll de la version des jetons (rotation/révocation → purge du cache).
+        if let Some(verifier) = &self.token_verifier {
+            let verifier = verifier.clone();
+            let interval = self.control_cfg.poll_interval;
+            tracing::info!(
+                interval_s = interval.as_secs(),
+                "tâche de fond : long-poll /v1/control/version (rotation des jetons)"
+            );
+            tokio::spawn(async move {
+                let mut ticker = tokio::time::interval(interval);
+                loop {
+                    ticker.tick().await;
+                    if let Err(e) = verifier.poll_version().await {
+                        tracing::warn!(
+                            error = %e,
+                            "long-poll version contrôle échoué (cache intact — fail-closed inchangé)"
+                        );
+                    }
+                }
+            });
+        }
     }
 }
 
@@ -366,14 +462,20 @@ fn audit_count_response(value: &Value, audit: &AuditEngine, counters: &mut Count
 }
 
 /// Construit, signe et accumule le reçu de la requête auditée.
+///
+/// `session_ref` = le jeton d'accès `mn_…` de la clé composite (dette réglée :
+/// le reçu référence la **session réelle** — stable entre les requêtes du même
+/// client — et non plus le `request_id` éphémère). Il est haché (SHA-256) :
+/// le reçu ne révèle ni la session ni sa clé (invariant I2).
 fn audit_build_and_record(
     audit: &AuditEngine,
     policy: &Policy,
     request_id: &str,
+    session_ref: &str,
     counters: Counters,
 ) -> Receipt {
     let tenant_id = policy.tenant_id.clone();
-    let session_ref_hashed = receipt::hash_session_ref(&tenant_id, request_id);
+    let session_ref_hashed = receipt::hash_session_ref(&tenant_id, session_ref);
     let ts_unix = receipt::now_unix();
     let unsigned = audit.build_receipt(tenant_id, session_ref_hashed, ts_unix, counters);
     let signed = audit.sign(&unsigned);
@@ -454,7 +556,13 @@ async fn audit_chat_completions(
     // Phase retour : scan sentinelles (aucune réécriture).
     audit_count_response(&upstream, &audit, &mut counters);
 
-    let receipt = audit_build_and_record(&audit, &state.policy, &request_id, counters);
+    let receipt = audit_build_and_record(
+        &audit,
+        &state.policy,
+        &request_id,
+        &key.access_token,
+        counters,
+    );
     let mut resp = Json(upstream).into_response();
     attach_receipt_header(&mut resp, &receipt);
     Ok(resp)
@@ -501,7 +609,13 @@ async fn audit_completions_legacy(
 
     audit_count_response(&upstream, &audit, &mut counters);
 
-    let receipt = audit_build_and_record(&audit, &state.policy, &request_id, counters);
+    let receipt = audit_build_and_record(
+        &audit,
+        &state.policy,
+        &request_id,
+        &key.access_token,
+        counters,
+    );
     let mut resp = Json(upstream).into_response();
     attach_receipt_header(&mut resp, &receipt);
     Ok(resp)
@@ -560,7 +674,12 @@ async fn audit_chat_stream(
     }
 
     Ok(audit_count_only_sse(
-        upstream, state, audit, counters, request_id,
+        upstream,
+        state,
+        audit,
+        counters,
+        request_id,
+        key.access_token.as_str().to_string(),
     ))
 }
 
@@ -576,6 +695,7 @@ fn audit_count_only_sse(
     audit: Arc<AuditEngine>,
     mut counters: Counters,
     request_id: String,
+    session_ref: String,
 ) -> Response {
     let mut bytes = upstream.bytes_stream();
     let body = Body::from_stream(async_stream::stream! {
@@ -615,7 +735,8 @@ fn audit_count_only_sse(
             yield Ok::<Bytes, std::convert::Infallible>(Bytes::from(frame));
         }
         // Clôture : reçu signé et accumulé (compteurs uniquement).
-        let _receipt = audit_build_and_record(&audit, &state.policy, &request_id, counters);
+        let _receipt =
+            audit_build_and_record(&audit, &state.policy, &request_id, &session_ref, counters);
     });
     Response::builder()
         .header("content-type", "text/event-stream")

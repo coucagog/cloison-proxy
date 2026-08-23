@@ -113,8 +113,21 @@ pub async fn auth_middleware(
         Err(_) => return Err(fail()),
     };
 
-    // Comparaison à temps constant si un jeton attendu est configuré.
-    if let Some(expected) = &state.expected_access_token {
+    // Deux modes d'auth (jamais les deux à la fois — le contrôle prime s'il est
+    // configuré) :
+    //   - wiring C (`CLOISON_CONTROL_URL` posé) : vérification par hash auprès du
+    //     contrôle (TokenVerifier, cache local + purge sur rotation). Panne du
+    //     contrôle et cache froid → fail-closed 401 (jamais d'acceptation par
+    //     défaut, invariant I8).
+    //   - N0/historique : comparaison à temps constant contre
+    //     `CLOISON_EXPECTED_ACCESS_TOKEN` si configuré.
+    if let Some(verifier) = &state.token_verifier {
+        match verifier.verify(key.access_token.as_str()).await {
+            Ok(true) => {}
+            Ok(false) => return Err(fail()),
+            Err(_) => return Err(fail()),
+        }
+    } else if let Some(expected) = &state.expected_access_token {
         let matches = key.access_token.len() == expected.len()
             && bool::from(key.access_token.as_bytes().ct_eq(expected.as_bytes()));
         if !matches {

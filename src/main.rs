@@ -32,6 +32,10 @@ async fn main() -> ExitCode {
         }
     };
 
+    // Wiring C — tâches de fond (ingest des reçus d'audit, long-poll des
+    // versions) : lancées uniquement quand le contrôle est configuré.
+    state.start_background_tasks();
+
     let listener = match tokio::net::TcpListener::bind(config.listen_addr).await {
         Ok(l) => l,
         Err(e) => {

@@ -16,6 +16,7 @@
 
 pub mod auth;
 pub mod config;
+pub mod control;
 pub mod detect;
 pub mod engine;
 pub mod errors;

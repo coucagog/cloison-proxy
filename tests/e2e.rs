@@ -407,6 +407,8 @@ fn test_config(mock_url: &str) -> Config {
         audit_ledger_file: None,
         // B.1 : pas de sidecar detect dans ces tests — détection embarquée seule.
         detect: DetectConfig::default(),
+        // C : pas de wiring contrôle dans ces tests — auth locale (statique).
+        control: cloison_proxy::config::ControlConfig::default(),
     }
 }
 

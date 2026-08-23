@@ -334,6 +334,13 @@ pub struct AuditEngine {
     /// Persistance append-only des reçus (JSONL 0600, `CLOISON_AUDIT_LEDGER_FILE`).
     /// `None` = journal en mémoire seule (perte au restart, dégradé).
     ledger_path: Option<PathBuf>,
+    /// Curseur d'ingest vers le contrôle : reçus `[0..cursor]` déjà livrés
+    /// (wiring C). `pending_receipts()` = `[cursor..]`.
+    ingested_cursor: Mutex<usize>,
+    /// Persistance du curseur (fichier `audit_ledger.jsonl.ingested`, 0600) :
+    /// après un restart, seuls les reçus jamais ingérés sont re-soumis —
+    /// aucune entrée dupliquée dans le journal de transparence.
+    ingest_offset_file: Option<PathBuf>,
 }
 
 impl AuditEngine {
@@ -367,12 +374,39 @@ impl AuditEngine {
                 .with_field("detail", e.to_string())
         })?;
         let mut ledger = Vec::new();
+        let mut ingest_offset = 0usize;
         if let Some(path) = ledger_path {
             ensure_ledger_file(path)?;
             ledger = load_ledger_file(path)?;
+            // Curseur d'ingest durable (wiring C) : fichier `<ledger>.ingested`
+            // contenant le nombre de reçus déjà livrés au contrôle.
+            let offset_path = ingest_offset_path(path);
+            match std::fs::read_to_string(&offset_path) {
+                Ok(s) => {
+                    ingest_offset = s.trim().parse::<usize>().unwrap_or(0);
+                    if ingest_offset > ledger.len() {
+                        tracing::warn!(
+                            path = %offset_path.display(),
+                            cursor = ingest_offset,
+                            len = ledger.len(),
+                            "curseur d'ingest incohérent — ramené à la longueur du journal"
+                        );
+                        ingest_offset = ledger.len();
+                    }
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                Err(e) => {
+                    tracing::warn!(
+                        path = %offset_path.display(),
+                        detail = %e,
+                        "lecture du curseur d'ingest impossible — reprise à 0"
+                    );
+                }
+            }
             tracing::info!(
                 path = %path.display(),
                 reloaded = ledger.len(),
+                ingest_cursor = ingest_offset,
                 "audit ledger rechargé (JSONL 0600)"
             );
         }
@@ -385,6 +419,8 @@ impl AuditEngine {
             k,
             ledger: Mutex::new(ledger),
             ledger_path: ledger_path.map(Path::to_path_buf),
+            ingested_cursor: Mutex::new(ingest_offset),
+            ingest_offset_file: ledger_path.map(ingest_offset_path),
         })
     }
 
@@ -493,6 +529,81 @@ impl AuditEngine {
             .lock()
             .expect("audit ledger mutex poisoned")
             .clone()
+    }
+
+    /// Reçus **pendants** — jamais encore livrés au contrôle (wiring C).
+    ///
+    /// `[ingested_cursor..]` du journal ; vide si tout a été ingéré. Les reçus
+    /// restent dans le journal (rapport de conformité + traçabilité) : le
+    /// curseur avance seul, rien n'est supprimé (append-only).
+    pub fn pending_receipts(&self) -> Vec<Receipt> {
+        let ledger = self.ledger.lock().expect("audit ledger mutex poisoned");
+        let cursor = self
+            .ingested_cursor
+            .lock()
+            .expect("ingest cursor mutex poisoned")
+            .min(ledger.len());
+        ledger[cursor..].to_vec()
+    }
+
+    /// Marque `n` reçus (les plus anciens pendants) comme ingérés au contrôle.
+    ///
+    /// Le curseur est **persisté** (fichier `<ledger>.ingested`, 0600, écriture
+    /// atomique tmp+rename) quand une persistance est configurée — un restart
+    /// ne re-soumet pas les reçus déjà livrés. Une erreur d'écriture est
+    /// remontée (fail-loud) : le reçu serait re-soumis au prochain boot (entrée
+    /// dupliquée possible, jamais de perte).
+    pub fn mark_ingested(&self, n: usize) -> Result<(), ProxyError> {
+        if n == 0 {
+            return Ok(());
+        }
+        {
+            let ledger = self.ledger.lock().expect("audit ledger mutex poisoned");
+            let mut cursor = self
+                .ingested_cursor
+                .lock()
+                .expect("ingest cursor mutex poisoned");
+            *cursor = (*cursor + n).min(ledger.len());
+        }
+        self.persist_ingest_offset()
+    }
+
+    /// Persiste le curseur d'ingest (0600, écriture atomique tmp+rename —
+    /// jamais de fichier partiellement écrit, invariant I-A10).
+    fn persist_ingest_offset(&self) -> Result<(), ProxyError> {
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        let Some(offset_path) = &self.ingest_offset_file else {
+            return Ok(());
+        };
+        let cursor = *self
+            .ingested_cursor
+            .lock()
+            .expect("ingest cursor mutex poisoned");
+        let tmp = offset_path.with_extension("tmp");
+        {
+            let mut file = std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .mode(0o600)
+                .open(&tmp)
+                .map_err(|e| {
+                    ProxyError::new(ErrorKind::Internal, "failed to open ingest offset tmp")
+                        .with_field("path", tmp.display().to_string())
+                        .with_field("detail", e.to_string())
+                })?;
+            file.write_all(cursor.to_string().as_bytes())
+                .and_then(|_| file.flush())
+                .map_err(|e| {
+                    ProxyError::new(ErrorKind::Internal, "failed to write ingest offset")
+                        .with_field("detail", e.to_string())
+                })?;
+        }
+        std::fs::rename(&tmp, offset_path).map_err(|e| {
+            ProxyError::new(ErrorKind::Internal, "failed to rename ingest offset file")
+                .with_field("detail", e.to_string())
+        })
     }
 
     /// Rapport de conformité k-anonyme sur le journal accumulé.
@@ -739,6 +850,13 @@ fn hex_val(b: u8) -> Option<u8> {
         b'A'..=b'F' => Some(b - b'A' + 10),
         _ => None,
     }
+}
+
+/// Chemin du fichier de curseur d'ingest (`<ledger>.ingested`).
+fn ingest_offset_path(ledger_path: &Path) -> PathBuf {
+    let mut os = ledger_path.as_os_str().to_os_string();
+    os.push(".ingested");
+    PathBuf::from(os)
 }
 
 /// hex des 8 premiers octets.
