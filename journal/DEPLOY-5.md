@@ -167,12 +167,16 @@ printf '%s' "$CLOISON_EXPECTED_ACCESS_TOKEN" | ./deploy/provision_control.sh def
 - Provisionnement `default` + hash du jeton edge : fait (le clair jamais
   affiché ni persisté) ; fixtures de test PG supprimées.
 
-### CI GitHub (push `05fcb15` — après correctifs)
-- `fmt` : ✅ (rustfmt 1.97 épinglé).
-- `clippy` : ✅ (toolchain 1.97 épinglée + lint `hexutil` corrigé).
-- `test-rust` : ✅ (+ check feature `pg`).
-- `test-detect` : ✅ (index CPU PyTorch pour `torch==2.5.1+cpu`).
-- `images` / `bench` / `e2e-llm` : à confirmer sur le run suivant.
+### CI GitHub (push `a9ac0b1` — run complet vert)
+- `fmt` ✅ · `clippy` ✅ · `test-rust` ✅ (dont check feature `pg`) ·
+  `test-detect` ✅ (index CPU PyTorch + httpx) · `bench` ✅.
+- `images` ✅ ×4 (proxy/control **porte bloquante trivy** : 0 CVE corrigeable ;
+  detect/journal **advisory** + `apk upgrade` journal) — **publiées sur GHCR**
+  (`ghcr.io/coucagog/cloison-{proxy:edge,control:latest,detect:latest,journal:latest}`),
+  SBOM (syft) + cosign OIDC.
+- `e2e-llm` ✅ (mock **et** LLM réel OpenRouter — secrets GitHub posés).
+- **Premier run CI entièrement vert** (avant la campagne : clippy et
+  test-detect échouaient, images/e2e jamais exécutés).
 
 ## Invariants de sécurité vérifiés
 
