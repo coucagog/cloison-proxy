@@ -70,6 +70,11 @@ campagne.**
 | 9 | `memwatch.sh` actif | ✅ (aucun OOM) |
 | 10 | E2E mock anti-pass-through (`deploy/e2e_reel.sh`) | ✅ **10/10 PASS** |
 | 11 | Relance de la stack complète (le script e2e fait `down`) | ✅ 4 conteneurs up |
+| 12 | E2E RÉEL (OpenRouter, `openai/gpt-4o-mini`) | ✅ **5/5 PASS** |
+| 13 | DNS opérateur : A api/wonkom.ai → 144.217.81.251 | ✅ fait (aussi wonkom.ai, dsh) |
+| 14 | Caddy 2.6.2 installé + `deploy/Caddyfile` (charte §12) | ✅ |
+| 15 | Certificat Let's Encrypt `api.wonkom.ai` émis (TLS-ALPN) | ✅ auto-renouvelé |
+| 16 | HTTPS vérifié `https://api.wonkom.ai` (401 sans auth) | ✅ |
 
 ## Résultats — vérification de bout en bout
 
@@ -85,8 +90,22 @@ campagne.**
 - **E2E mock** : SUCCÈS — le faux LLM reçoit des sentinelles ⟦ et JAMAIS la PII
   en clair ; le client reçoit la PII restaurée ; aucun jeton résiduel. Un proxy
   pass-through aurait échoué. **Le produit est fonctionnel sur le nouveau VPS.**
+- **E2E RÉEL** (OpenRouter, `openai/gpt-4o-mini`, clé du fichier SERVEUR) :
+  SUCCÈS 5/5 — nom/téléphone/email restaurés, aucun jeton résiduel, réponse
+  OpenAI valide. **Le produit fonctionne contre un vrai LLM depuis le VPS.**
+- **TLS (Caddy 2.6.2, charte §12)** : certificat Let's Encrypt émis pour
+  `api.wonkom.ai` (challenge TLS-ALPN-01, sans état staging — DNS déjà
+  résolu par l'opérateur, émission directe production, quota LE non engagé
+  outre mesure), validité 90 j, **renouvellement automatique Caddy** (~30 j
+  avant expiration), état ACME persisté (`/var/lib/caddy`), émetteur de
+  secours ZeroSSL configuré, **aucun log d'accès** (invariant I1 : pas de
+  log d'Authorization ni de query strings), agrafage OCSP (défaut).
+  Vérifié : `https://api.wonkom.ai/v1/models` → 401 sans auth (auth composite
+  active derrière TLS).
 - **Anti-crash** : `memwatch.log` — **0 événement** `out of memory` /
-  `Killed process` pendant build + démarrage + e2e.
+  `Killed process` pendant build + démarrage + e2e mock + e2e réel + Caddy.
+  RAM disponible en permanence ~6,2-6,4 Go ; swap quasi intact (2,5 Mo/12 Go) ;
+  uptime continu, aucun redémarrage.
 
 ## Constat de code (à corriger en dette)
 
@@ -118,18 +137,25 @@ campagne.**
 - [x] Healthchecks verts (detect `/healthz`, control `/healthz`, edge auth).
 - [x] E2E mock anti-pass-through contre le edge déployé (`deploy/e2e_reel.sh`)
       — **10/10 PASS**.
-- [ ] E2E réel (clé OpenRouter) — en attente de la clé.
-- [ ] Caddy installé + bloc `api.wonkom.ai → 127.0.0.1:8787` (TLS dès DNS).
-- [ ] **DNS opérateur** : A `api.wonkom.ai` → **144.217.81.251** (au lieu de
-      51.38.179.242) — sinon ACME échoue.
-- [ ] Journal + push GitHub (ce fichier + suite DEPLOY-N si nécessaire).
+- [x] E2E réel (clé OpenRouter du fichier SERVEUR) — **5/5 PASS**.
+- [x] Caddy installé + bloc `api.wonkom.ai → 127.0.0.1:8787` (charte §12).
+- [x] **DNS opérateur** : A `api.wonkom.ai` → **144.217.81.251** (fait —
+      aussi wonkom.ai et dsh.wonkom.ai) ; TLS Let's Encrypt émis et vérifié.
+- [x] Journal + push GitHub (DEPLOY-1 + `deploy/Caddyfile`).
 
 ## Dette / questions ouvertes
 
-- Clé OpenRouter : à fournir pour l'e2e réel (ou récupération depuis
-  l'ancien VPS s'il est encore joignable).
-- DNS : action opérateur (zone wonkom.ai), inchangée par rapport à STACK-9
-  mais avec la NOUVELLE IP.
-- Caddy : pas encore installé sur ce VPS vierge.
+- Clé OpenRouter : utilisée pour l'e2e réel ; le jeton d'accès `mn_*` du
+  déploiement est dans `/home/debian/Cloison/cloison/.env` (0600) — à
+  communiquer à MLS pour brancher les interfaces IA.
+- `dsh.wonkom.ai` pointe désormais vers ce VPS (DNS fait par l'opérateur)
+  mais **rien ne le sert ici** (le harness dsh tournait sur l'ancien hôte) —
+  à décider : déployer le harness dsh sur ce VPS ou retirer le DNS.
+- `journal.wonkom.ai` (surface lecture-seule du ledger) : dette STACK-9
+  inchangée — non exposé (THREAT-MODEL §3.1 : exposition minimale respectée).
 - La stack actuelle ne consomme toujours pas le sidecar detect
-  (`CLOISON_DETECT_URL` non lu par le binaire) — dette STACK-7/9 inchangée.
+  (`CLOISON_DETECT_URL` non lu par le binaire) — dette STACK-7/9 inchangée ;
+  `CLOISON_PRELOAD=all` sans effet au boot (constat ci-dessus) — à corriger
+  dans le code si la latence du 1er appel devient un problème.
+- Surveillance : `memwatch.sh` (nohup) tourne encore sur l'hôte — l'arrêter
+  une fois la campagne close, ou le transformer en service.

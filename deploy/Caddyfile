@@ -1,0 +1,42 @@
+# =============================================================================
+# CLOISON — Caddy (charte fondatrice §12 + THREAT-MODEL §3.1).
+#
+# Règles respectées :
+#   - HTTPS automatique (ACME) : obtention ET renouvellement sans intervention
+#     (~30 j avant expiration), état ACME persisté dans /var/lib/caddy
+#     (défaut Caddy Debian — un redéploiement ne redemande pas les certs).
+#   - Émetteur de secours : ZeroSSL en plus de Let's Encrypt (redondance
+#     ACME — une panne d'une autorité ne bloque pas le renouvellement).
+#   - AUCUN log d'accès configuré : par défaut Caddy ne journalise ni
+#     l'en-tête Authorization ni les query strings (invariant I1 / §12).
+#   - Agrafage OCSP activé (défaut Caddy). HSTS réservé au vrai domaine de
+#     prod (dev ici) — volontairement absent.
+#   - Exposition minimale (THREAT-MODEL §3.1) : SEUL api.wonkom.ai (edge)
+#     sort. cp/detect/postgres restent sur le réseau interne docker.
+#     dsh.wonkom.ai : à décider (ancien hôte servait le harness dsh).
+#
+# Usage (hôte wonkom.ai) :
+#   sudo apt install -y caddy
+#   sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
+#   sudo systemctl enable --now caddy        # TLS automatique via le domaine
+# =============================================================================
+
+{
+    email ops@wonkom.ai
+}
+
+api.wonkom.ai {
+    reverse_proxy 127.0.0.1:8787
+    encode gzip
+    tls {
+        # Issuers essayés dans l'ordre (Caddy tente le suivant si échec) :
+        # 1) Let's Encrypt (production)
+        issuer acme {
+            dir https://acme-v02.api.letsencrypt.org/directory
+        }
+        # 2) ZeroSSL (émetteur de secours — redondance ACME, charte §12)
+        issuer acme {
+            dir https://acme.zerossl.com/v2/DV90
+        }
+    }
+}
