@@ -120,6 +120,7 @@ impl Engine {
     ///   3. valeur **re-tranchée du texte** (`text[start..end]`) — la valeur
     ///      fournie par le sidecar est ignorée ;
     ///   4. aucun chevauchement avec les spans embarqués (ni entre externes).
+    ///
     /// Un span externe invalide est ignoré (jamais une erreur — le sidecar
     /// est optionnel et dégradable).
     pub fn tokenize_with_extra(
