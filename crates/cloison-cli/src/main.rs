@@ -96,7 +96,9 @@ fn print_issued(issued: &serde_json::Value) {
     let token = issued.get("token").and_then(|t| t.as_str()).unwrap_or("");
     let id = issued.get("id").and_then(|t| t.as_str()).unwrap_or("");
     println!();
-    println!("Jeton émis (clair affiché UNE SEULE FOIS — à communiquer au client, jamais à logger) :");
+    println!(
+        "Jeton émis (clair affiché UNE SEULE FOIS — à communiquer au client, jamais à logger) :"
+    );
     println!("  id    : {id}");
     println!("  jeton : {token}");
     println!();
@@ -110,7 +112,9 @@ async fn token_rotate(client: &ControlClient, a: TokenRotateArgs) -> Result<(), 
     let issued: serde_json::Value = client
         .post(
             &format!("/admin/tenants/{}/rotate", a.tenant_id),
-            &RotateTokenReq { token_id: a.token_id },
+            &RotateTokenReq {
+                token_id: a.token_id,
+            },
         )
         .await?;
     print_issued(&issued);

@@ -48,7 +48,12 @@ fn hex_encode(bytes: &[u8]) -> String {
 #[command(name = "cloison-cli", version, about)]
 pub struct Cli {
     /// Base URL de l'API contrôle (défaut : $CLOISON_CONTROL_URL ou http://127.0.0.1:8788).
-    #[arg(long, global = true, env = "CLOISON_CONTROL_URL", default_value = "http://127.0.0.1:8788")]
+    #[arg(
+        long,
+        global = true,
+        env = "CLOISON_CONTROL_URL",
+        default_value = "http://127.0.0.1:8788"
+    )]
     pub control_url: String,
 
     #[command(subcommand)]
@@ -245,12 +250,7 @@ impl ControlClient {
         path: &str,
         body: &T,
     ) -> Result<R, CliError> {
-        let resp = self
-            .client
-            .post(self.url(path))
-            .json(body)
-            .send()
-            .await?;
+        let resp = self.client.post(self.url(path)).json(body).send().await?;
         let status = resp.status();
         if !status.is_success() {
             return Err(CliError::Status(status.as_u16()));
@@ -264,12 +264,7 @@ impl ControlClient {
         path: &str,
         body: &T,
     ) -> Result<R, CliError> {
-        let resp = self
-            .client
-            .put(self.url(path))
-            .json(body)
-            .send()
-            .await?;
+        let resp = self.client.put(self.url(path)).json(body).send().await?;
         let status = resp.status();
         if !status.is_success() {
             return Err(CliError::Status(status.as_u16()));
@@ -278,10 +273,7 @@ impl ControlClient {
     }
 
     /// GET JSON → sérialise la réponse.
-    pub async fn get<R: serde::de::DeserializeOwned>(
-        &self,
-        path: &str,
-    ) -> Result<R, CliError> {
+    pub async fn get<R: serde::de::DeserializeOwned>(&self, path: &str) -> Result<R, CliError> {
         let resp = self.client.get(self.url(path)).send().await?;
         let status = resp.status();
         if !status.is_success() {
@@ -314,9 +306,8 @@ pub fn load_ledger_entries(path: &PathBuf) -> Result<Vec<cloison_ledger::LedgerE
         if line.is_empty() {
             continue;
         }
-        let entry: cloison_ledger::LedgerEntry =
-            serde_json::from_str(line)
-                .map_err(|e| CliError::Message(format!("ligne {} : {}", i + 1, e)))?;
+        let entry: cloison_ledger::LedgerEntry = serde_json::from_str(line)
+            .map_err(|e| CliError::Message(format!("ligne {} : {}", i + 1, e)))?;
         entries.push(entry);
     }
     Ok(entries)
@@ -358,7 +349,10 @@ pub fn verify_ledger_file(path: &PathBuf, pubkey: Option<&PathBuf>) -> Result<()
             let mut checked: u64 = 0;
             for e in &entries {
                 let recomputed = cloison_ledger::LedgerEntry::compute_entry_hash(
-                    e.seq, &e.prev_hash, &e.payload_hash, e.ts_unix,
+                    e.seq,
+                    &e.prev_hash,
+                    &e.payload_hash,
+                    e.ts_unix,
                 );
                 if recomputed != e.entry_hash {
                     ok = false;
