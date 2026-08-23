@@ -234,7 +234,8 @@ impl ControlClient {
         Ok(Self { base, client })
     }
 
-    fn url(&self, path: &str) -> String {
+    /// Construit l'URL absolue d'un chemin d'API (les tests du binaire l'utilisent).
+    pub(crate) fn url(&self, path: &str) -> String {
         format!("{}{}", self.base.trim_end_matches('/'), path)
     }
 
