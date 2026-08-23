@@ -1,7 +1,7 @@
 # CLOISON — proxy de confidentialité PII compatible OpenAI
 
 > **Nom de travail :** CLOISON. **Dépôt :** `coucagog/cloison` (privé). **Serveur de dev :** VPS 144.217.81.251 (`wonkom.ai`).
-> **Statut :** STACK-0 → 8 livrés, **GO/NO-GO final = GO** (grille v1.1, modèles réels), déploiement DEPLOY-1 → 6 actif, **open-core publié** (DEPLOY-7). Projet autonome, indépendant de `mania.sn`.
+> **Statut :** STACK-0 → 8 livrés, **GO/NO-GO final = GO** (grille v1.1, modèles réels), déploiement DEPLOY-1 → 8 actif, **open-core publié** (DEPLOY-7, v0.1.0), **N3 (couche commerciale) en cours** (voie ONNX DEPLOY-8, préfixes 71/75 + CLI/onboarding). Projet autonome, indépendant de `mania.sn`.
 
 Un **proxy de confidentialité PII compatible OpenAI** qui s'intercale entre une interface/agent IA
 (Open WebUI, bolt.diy, LibreChat, agents type Hermes) et un fournisseur de LLM (OpenAI, Anthropic…).
@@ -20,6 +20,8 @@ Le moteur descend **chez le client** (edge) ; le cloud n'est qu'un **plan de con
 | [`docs/CONFIG.md`](docs/CONFIG.md) | Référence des variables `CLOISON_*` |
 | [`docs/API.md`](docs/API.md) | Surfaces API (edge, control, detect, verify) |
 | [`docs/OPEN-CORE.md`](docs/OPEN-CORE.md) | Composition open-core, licences, publication |
+| [`docs/ONBOARDING.md`](docs/ONBOARDING.md) | Onboarding locataire (ops, `cloison-cli`) |
+| [`docs/CLIENT-GUIDE.md`](docs/CLIENT-GUIDE.md) | Guide client (2 champs, FAQ confidentialité) |
 | [`journal/`](journal/) | Journal de développement STACK-N / DEPLOY-N |
 
 ## Structure
@@ -32,7 +34,7 @@ crates/
   cloison-ledger/    # Rust — journal de transparence vérifiable
   cloison-verify/    # Rust — vérificateur public d'attestation (WASM)
   cloison-audit/     # Rust — reçus signés, k-anonymat, rapports
-  cloison-cli/       # Rust — outillage admin/ops
+  cloison-cli/       # Rust — outillage admin/ops (provisioning, rotation, ledger, stats)
   cloison-wasm/      # Rust — wrapper wasm-bindgen de cloison-core
 services/
   cloison-detect/    # Python (FastAPI + gRPC) — NER lourd (Presidio + GLiNER + afroxlmr)
