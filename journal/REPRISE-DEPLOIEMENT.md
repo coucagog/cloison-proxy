@@ -120,6 +120,9 @@ Inventaire exact : §6ter. Étapes :
 4. `bench/cloison-bench/README.md` : table TEL à jour.
 5. **Re-validation GO obligatoire** (règle §5) : jeu avec 71/75, grille v1.1
    (5 conditions), puis e2e mock/réel. Tests unitaires core + bench.
+   **Environnement prêt** : conteneur `onnxdev` sur le VPS (deps
+   bench+detect+ONNX installées, volume `cloison-dev_detect-models` monté —
+   créé en DEPLOY-8 ; le harnais `run_detect_target.py` lit `CLOISON_ONNX`).
 6. **Prod** : rebuild de l'image edge (le core est embarqué dans le proxy) +
    redéploiement.
 7. **Open-core** : re-publier `cloison-core` + `cloison-bench` (tag `v0.2.0`,
