@@ -24,8 +24,14 @@ spacy==3.7.5                # moteur NLP de Presidio + NER léger français
 
 # --- NER zéro-shot (rappel du fossé PERSON/LOC) ------------------------------
 gliner==0.2.12             # GLiNER zéro-shot : labels custom PERSON/LOC/ORG
-# torch + transformers sont des dépendances transitives de gliner (non épinglées
-# ici, versionnées par gliner). Absents -> GLiNER indisponible, pipeline dégradé.
+# torch + transformers + huggingface_hub : TRANSITIVES de gliner mais ÉPINGLÉES
+# ici (constat DEPLOY-1/B : le rebuild non-pinné installait hf_hub 1.x +
+# transformers 5.x, incompatibles avec gliner 0.2.12 — `_from_pretrained`
+# sans `proxies`/`resume_download` → GLiNER inactif). Ce trio est la version
+# validée au verdict GO (STACK-8) ; le downgrader uniquement avec tests.
+transformers==4.46.3       # AutoModelForTokenClassification (afroxlmr, NER)
+huggingface-hub==0.26.3    # cache HF + HubMixin compatible gliner 0.2.12
+torch==2.5.1               # runtime de gliner + transformers (CPU suffit)
 
 # --- NER ouest-africain (SERENGETI / AfroXLMR / MasakhaNER 2.0, F-43) ---------
 # transformers est OPTIONNEL (import lazy dans src/african_models.py) : absent
