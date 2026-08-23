@@ -76,6 +76,24 @@ campagne.**
 | 15 | Certificat Let's Encrypt `api.wonkom.ai` émis (TLS-ALPN) | ✅ auto-renouvelé |
 | 16 | HTTPS vérifié `https://api.wonkom.ai` (401 sans auth) | ✅ |
 
+## Campagne A — finitions (charte §12 / surveillance)
+
+| # | Action | Résultat |
+|---|---|---|
+| A.1 | **Sonde d'expiration du certificat J-14** : `deploy/cert-expiry-check.sh` + timer systemd quotidien (`cert-expiry.timer`, `Persistent=true`) — alerte (sortie 1 + journald) si < 14 j | ✅ testé : 89 j restants, exit 0 |
+| A.2 | **memwatch pérennisé** : service systemd `memwatch.service` (Restart=always), script en `/usr/local/bin/memwatch.sh` | ✅ actif |
+| A.3 | Constat mémoire : le process detect (`python -m src.main`) occupe ~744 Mo RSS **au repos** (coût de l'import torch au démarrage) — **stable** (aucune fuite, 7 h), conteneur healthy, marge large | ✅ |
+
+## Décisions restantes (attente MLS)
+
+- **Vision** : lecture de `Doc_REF/SERVER-SPECS.png` impossible — aucun modèle
+  vision déclaré dans le harness (seul `deepseek-official` / `deepseek-v4-flash`) ;
+  attendre l'identifiant du modèle vision à câbler (sous-agent dédié).
+- **`dsh.wonkom.ai`** : DNS → ce VPS, rien ne le sert (harness dsh sur l'ancien
+  hôte) — déployer ici ou retirer le DNS ?
+- **Mode audit** : exposer le rapport de conformité (k-anonyme) publiquement
+  ou rester interne ?
+
 ## Résultats — vérification de bout en bout
 
 - **Build** : 3 images construites sans erreur (proxy 48 Mo distroless, control

@@ -1,0 +1,10 @@
+[Unit]
+Description=CLOISON — surveillance mémoire/swap/OOM (memwatch)
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/memwatch.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

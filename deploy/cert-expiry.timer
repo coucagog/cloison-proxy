@@ -1,0 +1,9 @@
+[Unit]
+Description=CLOISON — contrôle quotidien d'expiration du certificat TLS
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target

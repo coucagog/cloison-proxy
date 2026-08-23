@@ -1,0 +1,6 @@
+[Unit]
+Description=CLOISON — contrôle d'expiration du certificat TLS (charte §12)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/cert-expiry-check.sh api.wonkom.ai 14
