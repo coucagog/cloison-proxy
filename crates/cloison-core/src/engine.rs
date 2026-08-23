@@ -165,7 +165,7 @@ impl Engine {
         text: &str,
         policy: &Policy,
         spans: Vec<Span>,
-        request_id: &str,
+        _request_id: &str,
     ) -> CloisonResult<TokenizeResult> {
         // Sort by descending position so replacement doesn't break offsets
         let mut spans = spans;
