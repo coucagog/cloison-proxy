@@ -233,10 +233,11 @@ services:
       - "127.0.0.1:8789:80"
     tmpfs:
       - /tmp
-      # nginx (alpine) exige des répertoires inscriptibles pour ses temp/cache/pid
-      # (constat DEPLOY-2/C : read_only + seul /tmp suffisait → emerg mkdir).
-      - /var/cache/nginx
-      - /var/run
+      # nginx (alpine) exige des répertoires inscriptibles pour ses
+      # temp/cache/pid ; le conteneur tourne en uid 101 → tmpfs chownés
+      # (constat DEPLOY-2/C : read_only + tmpfs root → Permission denied).
+      - /var/cache/nginx:uid=101,gid=101
+      - /var/run:uid=101,gid=101
     read_only: true
     security_opt:
       - no-new-privileges:true
