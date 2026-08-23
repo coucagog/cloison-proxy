@@ -170,8 +170,13 @@ impl AppendOnlyFileLedger {
         #[cfg(unix)]
         {
             use std::os::unix::fs::OpenOptionsExt;
-            // 0600 : fichier de contrôle, lisible uniquement par le propriétaire.
-            opts.mode(0o600);
+            // 0644 : le ledger de TRANSPARENCE est PUBLIC par design (compteurs
+            // k-anonymisés, jamais de texte — invariant I9). Le conteneur
+            // journal (nginx uid 101) doit pouvoir le servir en lecture
+            // (étape C, journal.wonkom.ai) sans courir en uid du control.
+            // NB : le journal d'AUDIT (proxy, JSONL 0600) reste strictement
+            // privé — ce changement ne concerne que le ledger du contrôle.
+            opts.mode(0o644);
         }
         let file = opts.open(path)?;
 
@@ -341,7 +346,7 @@ mod tests {
             let path = dir.path().join("ledger.jsonl");
             let _store = AppendOnlyFileLedger::open(&path).unwrap();
             let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
-            assert_eq!(mode, 0o600, "ledger file must be created 0600");
+            assert_eq!(mode, 0o644, "ledger file must be created 0644 (public transparency)");
         }
         #[cfg(not(unix))]
         {
