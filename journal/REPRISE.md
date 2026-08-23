@@ -128,8 +128,12 @@ Runs historiques conservés : `go_nogo_final.offline-avant-fixes.json`,
 - **Open-core PUBLIÉ** (DEPLOY-7, 23/08/2026) : 10 dépôts publics
   `coucagog/cloison-*` (branche main + tag v0.1.0) — voir
   `journal/DEPLOY-7.md` et `docs/OPEN-CORE.md` §4.
-- Reste à décision MLS : GPU (latence ~0,5 s typique mesurée — acceptable CPU),
-  voie ONNX (piste documentée DEPLOY-6).
+- **Voie ONNX implémentée** (DEPLOY-8, 23/08/2026) : `CLOISON_ONNX` câblée
+  (ONNX Runtime CPU int8 pour afroxlmr, repli fp32/torch), GO re-validé
+  (macro 0.9546), latence doc moyen ~20-25 % ; `cloison-detect`/`cloison-bench`
+  re-publiés v0.2.0 — voir `journal/DEPLOY-8.md`.
+- Reste à décision MLS : GPU (dette ② — décision d'infrastructure ; la
+  baseline ONNX chiffrée de DEPLOY-8 sert de référence).
 
 ### PRIORITÉ 5 — signalé pilote (23/08/2026) : préfixes téléphoniques 71/75
 
