@@ -14,5 +14,6 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
 thiserror = "1"
+ed25519-dalek = "2"
 cloison-verify = { path = "../cloison-verify" }
 cloison-ledger = { path = "../cloison-ledger" }
