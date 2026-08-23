@@ -21,9 +21,10 @@ use cloison_audit::receipt::{self, Counters, Receipt, ReceiptMessage};
 use cloison_audit::report::ConformanceReport;
 use cloison_core::{
     CloisonError, CloisonResult, Detector, DetectorKind, Engine, Policy, RestoreResult,
-    SessionKeys, Sentinel, TokenizeResult,
+    SessionKeys, Sentinel, Span, TokenizeResult,
 };
 
+use crate::detect::DetectClient;
 use crate::errors::{ErrorKind, ProxyError};
 use crate::handlers::Metrics;
 use crate::openai::{
@@ -62,6 +63,18 @@ impl RequestEngine {
         self.engine.tokenize(text, policy, &self.request_id)
     }
 
+    /// Tokenise avec des spans NER externes (sidecar detect, B.1) : le cœur
+    /// les valide et les fusionne avec sa détection embarquée.
+    pub fn tokenize_with_extra(
+        &mut self,
+        text: &str,
+        policy: &Policy,
+        extra: &[Span],
+    ) -> CloisonResult<TokenizeResult> {
+        self.engine
+            .tokenize_with_extra(text, policy, &self.request_id, extra)
+    }
+
     /// Restaure les jetons émis par cette requête (retour).
     pub fn restore(&self, text: &str) -> CloisonResult<RestoreResult> {
         self.engine.restore(text, &self.request_id)
@@ -70,24 +83,28 @@ impl RequestEngine {
 
 /// Tokenise `messages[].content` (Text + Parts.text) et
 /// `tool_calls[].function.arguments` — aller.
-pub fn tokenize_chat_request(
+///
+/// B.1 : quand un client detect est configuré, chaque champ est d'abord
+/// soumis au sidecar NER (appel réseau) puis tokenisé avec les spans
+/// fusionnés. Une panne du sidecar dégrade en détection embarquée seule
+/// (warn, jamais d'erreur) — le proxy ne tombe jamais à cause de detect.
+pub async fn tokenize_chat_request(
     req: &mut ChatCompletionRequest,
     engine: &mut RequestEngine,
     policy: &Policy,
+    detect: Option<&DetectClient>,
 ) -> Result<(), ProxyError> {
     for msg in &mut req.messages {
         if let Some(content) = &mut msg.content {
             match content {
                 Content::Text(s) => {
-                    let r = engine.tokenize(s, policy).map_err(proxy_internal)?;
-                    *s = r.text_out;
+                    *s = tokenize_with_detect(engine, s, policy, detect).await?;
                 }
                 Content::Parts(parts) => {
                     for part in parts {
                         if part.type_ == "text" {
                             if let Some(text) = &mut part.text {
-                                let r = engine.tokenize(text, policy).map_err(proxy_internal)?;
-                                *text = r.text_out;
+                                *text = tokenize_with_detect(engine, text, policy, detect).await?;
                             }
                         }
                     }
@@ -96,8 +113,8 @@ pub fn tokenize_chat_request(
         }
         if let Some(calls) = &mut msg.tool_calls {
             for call in calls {
-                let r = engine.tokenize(&call.function.arguments, policy).map_err(proxy_internal)?;
-                call.function.arguments = r.text_out;
+                let r = tokenize_with_detect(engine, &call.function.arguments, policy, detect).await?;
+                call.function.arguments = r;
             }
         }
     }
@@ -105,24 +122,47 @@ pub fn tokenize_chat_request(
 }
 
 /// Tokenise `prompt` (String ou Vec<String>) — aller (legacy).
-pub fn tokenize_completion_request(
+pub async fn tokenize_completion_request(
     req: &mut CompletionRequest,
     engine: &mut RequestEngine,
     policy: &Policy,
+    detect: Option<&DetectClient>,
 ) -> Result<(), ProxyError> {
     match &mut req.prompt {
         Prompt::Single(s) => {
-            let r = engine.tokenize(s, policy).map_err(proxy_internal)?;
-            *s = r.text_out;
+            *s = tokenize_with_detect(engine, s, policy, detect).await?;
         }
         Prompt::Batch(v) => {
             for s in v {
-                let r = engine.tokenize(s, policy).map_err(proxy_internal)?;
-                *s = r.text_out;
+                *s = tokenize_with_detect(engine, s, policy, detect).await?;
             }
         }
     }
     Ok(())
+}
+
+/// Tokenise un champ texte avec spans sidecar (B.1) — dégradation gracieuse :
+/// une erreur du sidecar → warn + détection embarquée seule.
+async fn tokenize_with_detect(
+    engine: &mut RequestEngine,
+    text: &str,
+    policy: &Policy,
+    detect: Option<&DetectClient>,
+) -> Result<String, ProxyError> {
+    let extra = match detect {
+        Some(client) => match client.detect(text).await {
+            Ok(spans) => spans,
+            Err(e) => {
+                tracing::warn!(detail = %e, "detect sidecar indisponible — détection embarquée seule (dégradation gracieuse)");
+                Vec::new()
+            }
+        },
+        None => Vec::new(),
+    };
+    let r = engine
+        .tokenize_with_extra(text, policy, &extra)
+        .map_err(proxy_internal)?;
+    Ok(r.text_out)
 }
 
 /// Restaure `choices[].message.content` + `choices[].message.tool_calls[].function.arguments`

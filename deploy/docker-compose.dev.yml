@@ -80,8 +80,11 @@ services:
       # Persistance des reçus d'audit (STACK-8) : JSONL append-only 0600,
       # rechargé au boot — les reçus survivent aux redémarrages.
       CLOISON_AUDIT_LEDGER_FILE: ${CLOISON_AUDIT_LEDGER_FILE:-/data/audit_ledger.jsonl}
-      # Wiring edge -> detect (cible STACK-7, non lu par le binaire actuel) :
-      # CLOISON_DETECT_URL: http://detect:8080/detect
+      # Wiring edge -> detect (B.1) : le proxy consomme le sidecar NER via
+      # REST (POST /detect). Dégradation gracieuse si detect est indisponible
+      # (détection embarquée seule — jamais d'erreur).
+      CLOISON_DETECT_URL: ${CLOISON_DETECT_URL:-http://detect:8080/detect}
+      CLOISON_DETECT_TIMEOUT_MS: ${CLOISON_DETECT_TIMEOUT_MS:-2000}
       RUST_LOG: ${RUST_LOG:-cloison_proxy=info}
     ports:
       - "8787:8787"          # publié sur wonkom.ai (dev)
@@ -96,6 +99,9 @@ services:
       - ALL
     networks:
       - cloison-net
+      # B.1 : edge rejoint le réseau interne pour atteindre detect (aucun port
+      # publié n'en sort — la frontière THREAT-MODEL §3.1 est conservée).
+      - cloison-internal
 
   # ---------------------------------------------------------------------------
   # Control : plan de contrôle aveugle (binaire cloison-control, PRÉREQUIS).
@@ -162,9 +168,11 @@ services:
       CLOISON_REST_PORT: ${CLOISON_REST_PORT:-8080}
       CLOISON_GRPC_PORT: ${CLOISON_GRPC_PORT:-50051}
       CLOISON_OFFLINE: ${CLOISON_OFFLINE:-0}
-      # Préchargement des modèles au boot (défaut STACK-8) : presidio + GLiNER
-      # + NER africain (afroxlmr par défaut produit) — pas de latence au
-      # premier appel ; dégradation gracieuse si un modèle manque.
+      # Préchargement des modèles au boot (défaut STACK-8, effectif depuis
+      # B.2) : presidio + GLiNER + NER africain (afroxlmr par défaut produit)
+      # — pas de latence au premier appel ; dégradation gracieuse si un modèle
+      # manque. Le premier boot télécharge les modèles (volume /models) : le
+      # start_period du healthcheck couvre ce chargement (B.2).
       CLOISON_PRELOAD: ${CLOISON_PRELOAD:-all}
       CLOISON_SPACY_SIZE: ${CLOISON_SPACY_SIZE:-md}
       CLOISON_MODEL_DIR: /models
@@ -196,7 +204,9 @@ services:
              "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=2)"]
       interval: 30s
       timeout: 3s
-      start_period: 20s
+      # B.2 : le préchargement (téléchargements HF + chargement torch/GLiNER/
+      # afroxlmr) retarde la mise en service — la sonde couvre ce délai.
+      start_period: 600s
       retries: 3
     networks:
       - cloison-internal

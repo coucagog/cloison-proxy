@@ -31,6 +31,12 @@ pub enum DetectorKind {
     Ip,
     /// Date pattern.
     Date,
+    /// NER sidecar PERSON (cloison-detect, wiring B.1) : le cœur n'émet
+    /// jamais ce type lui-même — seuls des spans externes validés le portent.
+    Person,
+    /// NER sidecar LOC (cloison-detect, wiring B.1) : idem, jamais émis par
+    /// les détecteurs embarqués.
+    Location,
     /// Named gazetteer (e.g., "ville_sn", "nom_sn").
     Gazetteer(String),
 }
@@ -44,6 +50,8 @@ impl std::fmt::Display for DetectorKind {
             DetectorKind::CreditCard => write!(f, "CreditCard"),
             DetectorKind::Ip => write!(f, "Ip"),
             DetectorKind::Date => write!(f, "Date"),
+            DetectorKind::Person => write!(f, "Person"),
+            DetectorKind::Location => write!(f, "Location"),
             DetectorKind::Gazetteer(name) => write!(f, "Gazetteer({})", name),
         }
     }

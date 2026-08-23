@@ -53,6 +53,17 @@ def main(argv: list[str] | None = None) -> int:
         logger.info("check: configuration OK (transport=%s, preload=%s)", transport, config.preload)
         return 0
 
+    # B.2 — préchargement au boot (CLOISON_PRELOAD != none) : les modèles sont
+    # chargés AVANT de servir (latence du 1er appel évitée, pic mémoire
+    # maîtrisé au démarrage). Dégradation gracieuse : un modèle absent ou un
+    # téléchargement HF qui échoue ne fait jamais tomber le service.
+    if config.preload != "none":
+        logger.info("preload au boot: niveau=%s (chargement des modèles...)", config.preload)
+        service.preload(config.preload)
+        logger.info("preload au boot: terminé (niveau=%s)", config.preload)
+    else:
+        logger.info("preload au boot: désactivé (CLOISON_PRELOAD=none) — chargement lazy")
+
     if transport == "grpc":
         if not grpc_available():
             logger.error("grpc: code généré absent — impossible de servir le transport nominal")

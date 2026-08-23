@@ -182,6 +182,10 @@ impl Sentinel {
     pub const TAG_IP: &'static str = "IP";
     /// Kind tag for dates.
     pub const TAG_DATE: &'static str = "DT";
+    /// Kind tag for NER sidecar PERSON (wiring B.1).
+    pub const TAG_PERSON: &'static str = "PE";
+    /// Kind tag for NER sidecar LOC (wiring B.1).
+    pub const TAG_LOCATION: &'static str = "LO";
     /// Kind tag for gazetteer prefix matches.
     pub const TAG_GAZETTEER_PREFIX: &'static str = "GZ";
 
@@ -251,6 +255,8 @@ impl Sentinel {
             DetectorKind::CreditCard => Self::TAG_CREDIT_CARD,
             DetectorKind::Ip => Self::TAG_IP,
             DetectorKind::Date => Self::TAG_DATE,
+            DetectorKind::Person => Self::TAG_PERSON,
+            DetectorKind::Location => Self::TAG_LOCATION,
             DetectorKind::Gazetteer(name) => {
                 // GZ + first letter of name uppercase
                 match name.as_str() {
@@ -271,6 +277,8 @@ impl Sentinel {
             "CC" => Ok(DetectorKind::CreditCard),
             "IP" => Ok(DetectorKind::Ip),
             "DT" => Ok(DetectorKind::Date),
+            "PE" => Ok(DetectorKind::Person),
+            "LO" => Ok(DetectorKind::Location),
             "GZA" => Ok(DetectorKind::Gazetteer("nom_sn".to_string())),
             "GZV" => Ok(DetectorKind::Gazetteer("ville_sn".to_string())),
             other if other.starts_with("GZ") => {

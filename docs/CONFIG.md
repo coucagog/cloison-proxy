@@ -54,7 +54,7 @@
 | `CLOISON_REST_PORT` | detect | non | `8080` | port REST (repli ; **note : la spec STACK-7 mentionnait 8789 — le code écoute sur 8080**, surchargeable ici) |
 | `CLOISON_TRANSPORT` | detect | non | `rest` | `rest` \| `grpc` \| `both` |
 | `CLOISON_OFFLINE` | detect | non | `0` | `1` = aucun téléchargement réseau |
-| `CLOISON_PRELOAD` | detect | non | `auto` | `none` \| `auto` (presidio) \| `all` |
+| `CLOISON_PRELOAD` | detect | non | `auto` | `none` \| `auto` (presidio) \| `all` — **effectif au boot depuis B.2** (les modèles sont chargés avant de servir, pas au premier appel) |
 | `CLOISON_SPACY_SIZE` | detect | non | `md` | `sm` \| `md` \| `lg` (`fr_core_news_*`) — défaut `md` depuis le verdict GO (fr_sm hallucine PERSON/LOC) |
 | `CLOISON_MODEL_CACHE_GB` | detect | non | `6.0` | cache modèles (Go) |
 | `CLOISON_MODEL_DIR` | detect | non | `./models` | répertoire des modèles lourds (GLiNER…) — volume `/models` |
@@ -80,7 +80,8 @@ formes, score ≤ 0.85 du canonique).
 | `OPENROUTER_API_KEY` | ops | **oui** | — | clé fournisseur (partie amont de la clé composite) |
 | `CLOISON_ACCESS_TOKEN` | ops | **oui** | — | alias du jeton local (partie `mn_*`) pour le compose |
 | `CLOISON_PG_PASSWORD` | ops | **oui** | `cloison-dev-only` | mot de passe du miroir postgres (profil `db`, dev) |
-| `CLOISON_DETECT_URL` *(STACK-7)* | ops | non | — | URL REST du sidecar consommée par le core — **non lu par le binaire actuel** |
+| `CLOISON_DETECT_URL` *(B.1)* | ops | non | — | URL REST `POST /detect` du sidecar NER — **lu par le binaire** : les spans PERSON/LOC du sidecar sont fusionnés à la détection embarquée (validation core). Absent = détection embarquée seule. Dégradation gracieuse : sidecar indisponible → warn, jamais d'erreur |
+| `CLOISON_DETECT_TIMEOUT_MS` *(B.1)* | ops | non | `2000` | timeout de la requête detect — au-delà, dégradation gracieuse (détection embarquée seule) |
 
 ## 5. Compatibilité fournisseurs (chemins amont)
 

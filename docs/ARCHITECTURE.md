@@ -82,8 +82,13 @@ Stateless : `Detect(text, locale, policy, session, core_spans) -> spans[]`.
 Transport nominal gRPC (`proto/detect.proto`), repli REST (`POST /detect`).
 Le core Rust valide les spans contre sa propre tokenisation ; le sidecar ne
 persiste rien et dégrade gracieusement si un modèle est absent (jamais de
-crash). Wire edge→detect (`CLOISON_DETECT_URL`) : **cible STACK-7**, non
-encore lu par le binaire.
+crash). **Wire edge→detect (`CLOISON_DETECT_URL`) : implémenté (B.1)** — le
+proxy consulte le sidecar (REST) en plus de ses détecteurs embarqués ; les
+spans PERSON/LOC sont fusionnés par `cloison-core::Engine::tokenize_with_extra`
+après validation (offsets UTF-8, type activé, valeur re-tranchée, aucun
+chevauchement). Dégradation gracieuse : sidecar indisponible → détection
+embarquée seule (warn, jamais d'erreur). Le premier boot de detect télécharge
+et précharge les modèles (`CLOISON_PRELOAD`, effectif depuis B.2).
 
 ## 7. Déploiement (STACK-7)
 

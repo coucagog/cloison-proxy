@@ -26,7 +26,7 @@ use serde_json::{json, Value};
 use tower::ServiceExt;
 use url::Url;
 
-use cloison_proxy::config::{Config, StreamConfig, UpstreamConfig};
+use cloison_proxy::config::{Config, DetectConfig, StreamConfig, UpstreamConfig};
 use cloison_proxy::handlers::AppState;
 use cloison_proxy::routes::router;
 
@@ -369,6 +369,8 @@ fn test_config(mock_url: &str) -> Config {
         audit_keys: None,
         audit_k: 5,
         audit_ledger_file: None,
+        // B.1 : pas de sidecar detect dans ces tests — détection embarquée seule.
+        detect: DetectConfig::default(),
     }
 }
 

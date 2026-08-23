@@ -20,6 +20,7 @@ use zeroize::Zeroizing;
 
 use crate::auth::CompositeKey;
 use crate::config::{Config, StreamConfig};
+use crate::detect::DetectClient;
 use crate::engine::{self, AuditEngine, RequestEngine};
 use crate::errors::{ErrorKind, ProxyError};
 use crate::openai::{ChatCompletionRequest, CompletionRequest, Content, Prompt};
@@ -53,6 +54,9 @@ pub struct AppState {
     /// `CLOISON_AUDIT_MODE=1`. Quand il est présent, chaque requête est
     /// **comptée sans être masquée** et produit un reçu signé.
     pub audit: Option<Arc<AuditEngine>>,
+    /// Client du sidecar detect (wiring B.1) ; `None` = détection embarquée
+    /// seule. Une panne du sidecar dégrade gracieusement (jamais d'erreur).
+    pub detect: Option<DetectClient>,
 }
 
 impl AppState {
@@ -72,6 +76,18 @@ impl AppState {
         } else {
             None
         };
+        let detect = match &config.detect.url {
+            Some(_) => {
+                let client = DetectClient::new(&config.detect)?;
+                tracing::info!(
+                    url = %config.detect.url.as_ref().map(|u| u.as_str()).unwrap_or(""),
+                    timeout_ms = config.detect.timeout.as_millis(),
+                    "wiring edge→detect actif (B.1) — sidecar NER consommé"
+                );
+                Some(client)
+            }
+            None => None,
+        };
         Ok(Self {
             keys,
             policy,
@@ -80,6 +96,7 @@ impl AppState {
             metrics: Metrics::default(),
             expected_access_token: config.expected_access_token.clone(),
             audit,
+            detect,
         })
     }
 }
@@ -116,20 +133,20 @@ pub async fn chat_completions(
         return audit_chat_completions(state, key, req, request_id).await;
     }
 
-    let req_engine = Arc::new(Mutex::new(RequestEngine::new(&state.keys, &request_id)?));
+    let mut req_engine = RequestEngine::new(&state.keys, &request_id)?;
 
     // Phase aller : tokenisation complète du corps (registre = cette requête).
-    let tokenized = {
-        let mut guard = req_engine.lock().expect("engine mutex poisoned");
-        engine::tokenize_chat_request(&mut req, &mut guard, &state.policy)?;
-        serde_json::to_value(&req).map_err(|e| {
-            ProxyError::new(ErrorKind::Internal, "failed to serialize request")
-                .with_field("request_id", &request_id)
-                .with_field("detail", e.to_string())
-        })?
-    };
+    // B.1 : le sidecar detect est consulté (dégradation gracieuse s'il est
+    // indisponible — jamais d'erreur).
+    engine::tokenize_chat_request(&mut req, &mut req_engine, &state.policy, state.detect.as_ref()).await?;
+    let tokenized = serde_json::to_value(&req).map_err(|e| {
+        ProxyError::new(ErrorKind::Internal, "failed to serialize request")
+            .with_field("request_id", &request_id)
+            .with_field("detail", e.to_string())
+    })?;
 
     if req.stream {
+        let req_engine = Arc::new(Mutex::new(req_engine));
         let upstream = match state.upstream.chat_completions_stream(&key.upstream_key, tokenized).await {
             Ok(u) => u,
             Err(e) => {
@@ -156,10 +173,8 @@ pub async fn chat_completions(
                 return Err(e.with_field("request_id", &request_id));
             }
         };
-        let restored = {
-            let guard = req_engine.lock().expect("engine mutex poisoned");
-            engine::restore_chat_response_value(upstream, &guard, &state.stream_cfg.neutral_marker, &state.metrics, &request_id)
-        }?;
+        let restored =
+            engine::restore_chat_response_value(upstream, &req_engine, &state.stream_cfg.neutral_marker, &state.metrics, &request_id)?;
         Ok(Json(restored).into_response())
     }
 }
@@ -195,7 +210,7 @@ pub async fn completions_legacy(
     }
 
     let mut req_engine = RequestEngine::new(&state.keys, &request_id)?;
-    engine::tokenize_completion_request(&mut req, &mut req_engine, &state.policy)?;
+    engine::tokenize_completion_request(&mut req, &mut req_engine, &state.policy, state.detect.as_ref()).await?;
     let tokenized = serde_json::to_value(&req).map_err(|e| {
         ProxyError::new(ErrorKind::Internal, "failed to serialize request")
             .with_field("request_id", &request_id)

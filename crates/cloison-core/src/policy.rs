@@ -39,6 +39,12 @@ impl DetectorPolicy {
         enabled.insert(DetectorKind::CreditCard);
         enabled.insert(DetectorKind::Ip);
         enabled.insert(DetectorKind::Date);
+        // NER sidecar (wiring B.1) : activés par défaut — les détecteurs
+        // embarqués n'émettent JAMAIS ces types, seuls des spans externes
+        // validés par `Engine::tokenize_with_extra` les portent. Sans
+        // sidecar configuré, aucun impact.
+        enabled.insert(DetectorKind::Person);
+        enabled.insert(DetectorKind::Location);
         // Gazetteers embarqués (noms/toponymes sénégalais) : masqués par
         // défaut — la doc (DATA-MODEL §1, THREAT-MODEL) annonce des
         // sentinelles GZ* ; sans eux, les noms passaient en clair.

@@ -106,10 +106,66 @@ impl Engine {
     ///      a. If generalization rule exists → generalize (never tokenize)
     ///      b. Otherwise → emit token, register, store in vault, replace with sentinel
     ///   3. Return tokenized text and emitted token references
-    pub fn tokenize(&mut self, text: &str, policy: &Policy, _request_id: &str) -> CloisonResult<TokenizeResult> {
-        // Step 1: Detect
+    pub fn tokenize(&mut self, text: &str, policy: &Policy, request_id: &str) -> CloisonResult<TokenizeResult> {
         let spans = self.detector.detect_with_policy(text, &policy.detection);
+        self.process_spans(text, policy, spans, request_id)
+    }
 
+    /// Tokenize with additional NER sidecar spans (wiring edge→detect, B.1).
+    ///
+    /// Le cœur reste la **source de vérité** : chaque span externe est validé
+    /// avant fusion (jamais de confiance aveugle au sidecar) :
+    ///   1. type activé par la politique (`policy.detection.is_enabled`) ;
+    ///   2. bornes d'octets valides ET sur frontières de caractères UTF-8 ;
+    ///   3. valeur **re-tranchée du texte** (`text[start..end]`) — la valeur
+    ///      fournie par le sidecar est ignorée ;
+    ///   4. aucun chevauchement avec les spans embarqués (ni entre externes).
+    /// Un span externe invalide est ignoré (jamais une erreur — le sidecar
+    /// est optionnel et dégradable).
+    pub fn tokenize_with_extra(
+        &mut self,
+        text: &str,
+        policy: &Policy,
+        request_id: &str,
+        extra: &[Span],
+    ) -> CloisonResult<TokenizeResult> {
+        let mut spans = self.detector.detect_with_policy(text, &policy.detection);
+        for s in extra {
+            if !policy.detection.is_enabled(&s.entity_type) {
+                continue;
+            }
+            // Bornes valides + frontières UTF-8 (les offsets sidecar sont des
+            // octets — un mauvais découpage ne doit jamais paniquer).
+            if s.start >= s.end || s.end > text.len() {
+                continue;
+            }
+            if !text.is_char_boundary(s.start) || !text.is_char_boundary(s.end) {
+                continue;
+            }
+            // Pas de chevauchement avec un span déjà retenu (core ou externe).
+            if spans.iter().any(|c| s.start < c.end && c.start < s.end) {
+                continue;
+            }
+            spans.push(Span {
+                entity_type: s.entity_type.clone(),
+                start: s.start,
+                end: s.end,
+                score: s.score,
+                value: text[s.start..s.end].to_string(),
+            });
+        }
+        self.process_spans(text, policy, spans, request_id)
+    }
+
+    /// Applique la généralisation/tokenisation sur une liste de spans
+    /// (détection embarquée + spans externes validés).
+    fn process_spans(
+        &mut self,
+        text: &str,
+        policy: &Policy,
+        spans: Vec<Span>,
+        request_id: &str,
+    ) -> CloisonResult<TokenizeResult> {
         // Sort by descending position so replacement doesn't break offsets
         let mut spans = spans;
         spans.sort_by_key(|b| std::cmp::Reverse(b.start));
@@ -321,6 +377,7 @@ fn extract_sentinel_positions(text: &str) -> Vec<(String, usize, usize)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::detection::DetectorKind;
     use crate::policy::Policy;
     use crate::token::SessionKeys;
 
@@ -424,5 +481,129 @@ mod tests {
         let r2 = engine2.tokenize("user@example.com", &policy, "req-b").unwrap();
 
         assert_ne!(r1.emitted[0].body_b32, r2.emitted[0].body_b32);
+    }
+
+    // -----------------------------------------------------------------------
+    // Wiring edge→detect (B.1) : spans NER externes validés par le cœur.
+    // -----------------------------------------------------------------------
+
+    /// Span NER externe (PERSON) — offsets d'octets de "Xolani Ndlovu".
+    fn person_span(text: &str) -> Span {
+        let start = text.find("Xolani Ndlovu").expect("nom présent");
+        Span {
+            entity_type: DetectorKind::Person,
+            start,
+            end: start + "Xolani Ndlovu".len(),
+            score: 0.95,
+            value: String::new(), // la valeur sidecar est IGNORÉE (re-tranchée)
+        }
+    }
+
+    #[test]
+    fn test_tokenize_with_extra_person_masked_and_roundtrip() {
+        let keys = test_keys();
+        let mut engine = Engine::new(keys).unwrap();
+        let policy = Policy::default();
+
+        // Nom NON sénégalais : aucun détecteur embarqué ne le trouve — seul
+        // le span externe (sidecar NER) permet le masquage.
+        let text = "Xolani Ndlovu vient de Soweto";
+        let extra = vec![person_span(text)];
+        let result = engine.tokenize_with_extra(text, &policy, "req-extra-1", &extra).unwrap();
+
+        assert!(!result.text_out.contains("Xolani Ndlovu"), "nom masqué par le span externe");
+        assert!(result.text_out.contains('⟦'), "sentinelle émise");
+        assert_eq!(result.emitted.len(), 1);
+        assert_eq!(result.emitted[0].kind_tag, "PE", "tag PERSON");
+
+        // Roundtrip complet (restauration des jetons de cette requête).
+        let restored = engine.restore(&result.text_out, "req-extra-1").unwrap();
+        assert_eq!(restored.text_out, text);
+        assert_eq!(restored.counters.blocked, 0);
+        assert_eq!(restored.counters.restored, 1);
+    }
+
+    #[test]
+    fn test_tokenize_with_extra_invalid_spans_ignored() {
+        let keys = test_keys();
+        let mut engine = Engine::new(keys).unwrap();
+        let policy = Policy::default();
+
+        let text = "Xolani Ndlovu vient de Soweto";
+        let n = text.len();
+
+        // 1. Hors bornes.
+        let out_of_bounds = Span {
+            entity_type: DetectorKind::Person,
+            start: n - 2,
+            end: n + 5,
+            score: 0.9,
+            value: String::new(),
+        };
+        // 2. Chevauche un span embarqué (email) : l'email du core prime.
+        let overlapping = Span {
+            entity_type: DetectorKind::Person,
+            start: 0,
+            end: text.find("vient").unwrap(),
+            score: 0.9,
+            value: String::new(),
+        };
+        // 3. Type non activé par la politique (gazetteer inconnu).
+        let disabled = Span {
+            entity_type: DetectorKind::Gazetteer("inexistant_gz".to_string()),
+            start: 0,
+            end: 6,
+            score: 0.9,
+            value: String::new(),
+        };
+        // 4. Frontière UTF-8 invalide (start au milieu d'un caractère multi-octets).
+        let text_utf8 = "é Xolani Ndlovu";
+        let bad_boundary = Span {
+            entity_type: DetectorKind::Person,
+            start: 1, // au milieu de 'é' (2 octets)
+            end: 1 + "Xolani Ndlovu".len(),
+            score: 0.9,
+            value: String::new(),
+        };
+
+        let extra = vec![out_of_bounds, overlapping, disabled, bad_boundary.clone()];
+        let result = engine
+            .tokenize_with_extra(text, &policy, "req-extra-2", &extra)
+            .unwrap();
+        // Aucun span externe valide (aucun ne couvre "Xolani Ndlovu" entier
+        // sans chevauchement) → rien de masqué, texte intact.
+        assert_eq!(result.text_out, text, "spans invalides ignorés");
+        assert!(result.emitted.is_empty());
+
+        // Le span valide dans le texte UTF-8 doit être rejeté (frontière).
+        let r2 = engine
+            .tokenize_with_extra(text_utf8, &policy, "req-extra-3", &[bad_boundary])
+            .unwrap();
+        assert_eq!(r2.text_out, text_utf8, "frontière UTF-8 invalide rejetée");
+    }
+
+    #[test]
+    fn test_tokenize_with_extra_overlap_core_span_skipped() {
+        let keys = test_keys();
+        let mut engine = Engine::new(keys).unwrap();
+        let policy = Policy::default();
+
+        // L'email est détecté par le core ; un span externe PERSON qui
+        // recouvre l'email doit être ignoré (le core prime).
+        let text = "Contactez user@example.com svp";
+        let start = text.find("user@example.com").unwrap();
+        let overlapping = Span {
+            entity_type: DetectorKind::Person,
+            start,
+            end: start + "user@example.com".len(),
+            score: 0.9,
+            value: String::new(),
+        };
+        let result = engine
+            .tokenize_with_extra(text, &policy, "req-extra-4", &[overlapping])
+            .unwrap();
+        assert!(!result.text_out.contains("user@example.com"), "email masqué par le core");
+        assert_eq!(result.emitted.len(), 1, "un seul jeton (l'email), pas de doublon");
+        assert_eq!(result.emitted[0].kind_tag, "EM");
     }
 }
