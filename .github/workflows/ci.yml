@@ -51,7 +51,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # Toolchain épinglée 1.97 (comme fmt) : le clippy stable courant introduit
+      # des lints absents de la toolchain de validation (ex. chunks_exact_to_as_chunks
+      # en 1.98) — la CI doit être déterministe par rapport au dépôt.
+      - uses: dtolnay/rust-toolchain@1.97.0
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
@@ -62,7 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.97.0
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace --locked
       # PostgresStore (feature `pg`) doit compiler en CI (dette STACK-8 :
@@ -82,6 +85,10 @@ jobs:
           cache: pip
           cache-dependency-path: services/cloison-detect/requirements.txt
       - run: pip install -r services/cloison-detect/requirements.txt
+        env:
+          # torch==2.5.1+cpu n'existe que sur l'index CPU PyTorch (pas PyPI) —
+          # même index que le Dockerfile detect (dette DEPLOY-2 : pin + CPU-only).
+          PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
       - name: Modèle spaCy (une fois)
         run: python -m spacy download fr_core_news_sm
       - name: Tests hors-ligne (stubs, aucun téléchargement, aucune PII réelle)

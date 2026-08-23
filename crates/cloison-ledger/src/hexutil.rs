@@ -26,7 +26,9 @@ pub fn decode(s: &str) -> Result<Vec<u8>, HexError> {
         return Err(HexError);
     }
     let mut out = Vec::with_capacity(bytes.len() / 2);
-    for pair in bytes.chunks_exact(2) {
+    // La longueur est paire (vérifiée ci-dessus) : `as_chunks::<2>()` ne laisse
+    // aucun reste — équivalent à `chunks_exact`, sans le lint clippy 1.98.
+    for pair in bytes.as_chunks::<2>().0 {
         let hi = nibble(pair[0])?;
         let lo = nibble(pair[1])?;
         out.push((hi << 4) | lo);
