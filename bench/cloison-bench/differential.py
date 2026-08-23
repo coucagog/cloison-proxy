@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
-"""Différentiel STACK-2 : cloison-core (Rust) vs baseline Presidio (Python).
-Charge le jeu synthétique STACK-1, lance les deux détecteurs sur chaque document,
+"""Différentiel : cloison-core (Rust) vs baseline Presidio (Python).
+Charge le jeu synthétique, lance les deux détecteurs sur chaque document,
 compare les spans (mapping de types) et écrit un rapport de divergences.
 
-Exigence charte §5.2 : "Différentiel / oracle : cloison-core vs Presidio bien
-configuré sur le même corpus ; toute divergence loggée."
+Exigence charte CLOISON §5.2 : "Différentiel / oracle : cloison-core vs Presidio
+bien configuré sur le même corpus ; toute divergence loggée."
+
+Chemins configurables par env (défauts relatifs au dépôt) :
+  CLOISON_CORE_BIN  binaire detect_cli de cloison-core (défaut: target/debug/detect_cli)
+  CLOISON_DATASET   jeu synthétique (défaut: results/dataset.jsonl)
+  CLOISON_DIFF_OUT  rapport de sortie (défaut: results_differential.json)
 """
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 
-CORE_BIN = Path("/home/debian/Cloison/cloison/target/debug/detect_cli")
-DATASET = Path("/home/debian/Cloison/cloison/bench/cloison-bench/results/dataset.jsonl")
-OUT = Path("/home/debian/Cloison/cloison/crates/cloison-core/results_differential.json")
+BASE = Path(__file__).resolve().parent
+CORE_BIN = Path(os.environ.get("CLOISON_CORE_BIN", str(BASE / "target" / "debug" / "detect_cli")))
+DATASET = Path(os.environ.get("CLOISON_DATASET", str(BASE / "results" / "dataset.jsonl")))
+OUT = Path(os.environ.get("CLOISON_DIFF_OUT", str(BASE / "results_differential.json")))
 
 # Mapping types core -> grille CLOISON
 CORE_TYPE_MAP = {
@@ -82,7 +89,7 @@ def exact_match(pred, gold):
 
 def main():
     if not DATASET.exists():
-        print(f"Dataset introuvable: {DATASET} — lance d'abord le benchmark STACK-1")
+        print(f"Dataset introuvable: {DATASET} — lance d'abord le benchmark (run_benchmark.py)")
         return 1
 
     docs = [json.loads(l) for l in DATASET.read_text(encoding="utf-8").splitlines()]
