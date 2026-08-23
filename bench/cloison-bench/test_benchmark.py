@@ -244,10 +244,11 @@ class TestGenerator:
     
     def test_generate_tel(self):
         """Teste la génération de numéros de téléphone."""
-        for _ in range(10):
+        prefixes = ('70', '71', '75', '76', '77', '78')
+        for _ in range(50):
             tel = generate_tel()
             # Vérifier le format
-            assert '+' in tel or tel.startswith(('70', '76', '77', '78'))
+            assert '+' in tel or tel.startswith(prefixes)
     
     def test_generate_mail(self):
         """Teste la génération d'emails."""

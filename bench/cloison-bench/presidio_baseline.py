@@ -130,38 +130,38 @@ class SenegalPhoneRecognizer(PatternRecognizer):
     - 7X XXX XX XX (formats locaux)
     - (+221) 7X XXX XX XX
     
-    Préfixes opérateurs: 70, 76, 77, 78
+    Préfixes opérateurs: 70, 71, 75, 76, 77, 78
     """
     
     PATTERNS = [
         # Format international complet
         Pattern(
             name="tel_international",
-            regex=r"\+221(?:70|75|76|77|78)\d{7}",
+            regex=r"\+221(?:70|71|75|76|77|78)\d{7}",
             score=0.9
         ),
         # Format international avec 00
         Pattern(
             name="tel_international_00",
-            regex=r"00221(?:70|75|76|77|78)\d{7}",
+            regex=r"00221(?:70|71|75|76|77|78)\d{7}",
             score=0.85
         ),
         # Format local 9 chiffres
         Pattern(
             name="tel_local",
-            regex=r"(?:70|75|76|77|78)\d{7}",
+            regex=r"(?:70|71|75|76|77|78)\d{7}",
             score=0.6
         ),
         # Format formaté avec espaces
         Pattern(
             name="tel_formatted",
-            regex=r"\+221\s?[67][078]\s?\d{3}\s?\d{2}\s?\d{2}",
+            regex=r"\+221\s?(?:70|71|75|76|77|78)\s?\d{3}\s?\d{2}\s?\d{2}",
             score=0.85
         ),
         # Format avec parenthèses
         Pattern(
             name="tel_parentheses",
-            regex=r"\(\+221\)\s?[67][078]\s?\d{3}\s?\d{2}\s?\d{2}",
+            regex=r"\(\+221\)\s?(?:70|71|75|76|77|78)\s?\d{3}\s?\d{2}\s?\d{2}",
             score=0.85
         ),
     ]

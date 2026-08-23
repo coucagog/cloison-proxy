@@ -197,7 +197,7 @@ impl Detector {
         .map_err(|e| CloisonError::Detection(format!("email regex: {}", e)))?;
 
         let phone_sn_re = Regex::new(
-            r"(?:\+221|00221)\s?(?:7[0-9]|3[0-9])\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2}|(?:70|75|76|77|78)(?:[0-9]{7}|\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2})"
+            r"(?:\+221|00221)\s?(?:7[0-9]|3[0-9])\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2}|(?:70|71|75|76|77|78)(?:[0-9]{7}|\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2})"
         )
         .map_err(|e| CloisonError::Detection(format!("phone_sn regex: {}", e)))?;
 
@@ -506,6 +506,28 @@ mod tests {
         let spans = det.detect_phone_sn("Appeler +221 77 123 45 67 maintenant");
         assert!(!spans.is_empty());
         assert_eq!(spans[0].entity_type, DetectorKind::PhoneSn);
+    }
+
+    #[test]
+    fn test_detect_phone_sn_prefixes_71_75() {
+        // Les préfixes mobiles sénégalais 71 et 75 existent depuis 2026
+        // (correctif de couverture — REPRISE-DEPLOIEMENT §6ter) : un numéro en
+        // 71/75 non détecté partirait en clair vers le LLM (invariant I1).
+        let det = Detector::new().unwrap();
+        for (text, _expected) in [
+            ("Appeler le 71 123 45 67", "71 local"),
+            ("Appeler le 75 123 45 67", "75 local"),
+            ("Appeler le 771234567", "71 concat"),
+            ("Appeler le 751234567", "75 concat"),
+            ("Appeler +221 71 123 45 67", "71 international"),
+            ("Appeler +221 75 123 45 67", "75 international"),
+            ("Appeler +221711234567", "71 international concat"),
+            ("Appeler +221751234567", "75 international concat"),
+        ] {
+            let spans = det.detect_phone_sn(text);
+            assert!(!spans.is_empty(), "{} ({}) doit être détecté", text, _expected);
+            assert_eq!(spans[0].entity_type, DetectorKind::PhoneSn);
+        }
     }
 
     #[test]

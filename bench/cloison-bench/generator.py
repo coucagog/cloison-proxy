@@ -103,10 +103,14 @@ DOMAINS_GENERIC = [
 ]
 
 # Préfixes opérateurs téléphoniques sénégalais
+# NB : les préfixes 71 et 75 existent depuis 2026 (correctif de couverture,
+# REPRISE-DEPLOIEMENT §6ter). Attribution opérateur à confirmer (ARTP) —
+# la répartition ci-dessous est une hypothèse de travail ; seule la présence
+# des préfixes dans le jeu compte pour la couverture de détection.
 PREFIXES_TEL = {
     "Orange": ["77", "78"],
-    "Free": ["76"],
-    "Expresso": ["70"]
+    "Free": ["75", "76"],
+    "Expresso": ["70", "71"]
 }
 
 # Templates de documents par niveau de difficulté
