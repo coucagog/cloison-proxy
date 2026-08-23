@@ -109,18 +109,25 @@ Runs historiques conservés : `go_nogo_final.offline-avant-fixes.json`,
   honnêteté N0), DEPLOY (volet certificats charte §12), SECURITY (invariants I9–I12 + I-A10),
   CONFIG (défauts detect + DATABASE_URL), DATA-MODEL (PostgresStore), gabarit
   « Comment lancer/tester » dans STACK-3..7.
-- ⏳ Reste ouvert : `session_ref_hashed` sur `request_id` ; proxy ne consomme pas
-  `/v1/control/version` (long-poll rotation) ; wiring edge→detect (`CLOISON_DETECT_URL`) ;
-  image detect `CLOISON_LITE=1` (afroxlmr absent en prod — à re-décider) ; latence CPU
-  2-6 s/doc (GPU conseillé).
+- ⏳ Reste ouvert : `session_ref_hashed` sur `request_id` → **RÉGLÉ (DEPLOY-5 :
+  hash du jeton d'accès, session réelle)** ; proxy ne consomme pas
+  `/v1/control/version` → **RÉGLÉ (DEPLOY-5 : long-poll + purge)** ; wiring
+  edge→detect (`CLOISON_DETECT_URL`) → **RÉGLÉ (B.1, et NER africain réparé
+  DEPLOY-6)** ; image detect `CLOISON_LITE=1` → **image COMPLÈTE déployée** ;
+  latence CPU 2-6 s/doc → **mesurée ~0,5 s (court) / ~1,7 s (160 mots)**,
+  GPU/ONNX recommandés (DEPLOY-6).
 
 ### PRIORITÉ 4 — Déploiement wonkom.ai (le GO est tranché → poursuivre)
-- Suivre `docs/DEPLOY.md` : docker compose (edge 8787, control 8788, detect), Caddy TLS
-  (déjà présent sur l'hôte — conteneur caddy tourne), secrets via `.env` (jamais commités).
-- Sous-domaines prévus : api.wonkom.ai, cp.wonkom.ai, journal.wonkom.ai, detect.wonkom.ai.
-- À décider : image detect **non-LITE** (le fossé GO repose sur afroxlmr — `CLOISON_LITE=1`
-  par défaut exclut torch/transformers), GPU pour la latence (2-6 s/doc CPU), calibration
-  fine des seuils en prod (`measure_clusters.py` laissé dans bench).
+- **DÉPLOYÉ** (DEPLOY-1→6, VPS 144.217.81.251) : edge 8787 publié
+  (`api.wonkom.ai`), control 8788 interne, detect interne (image COMPLÈTE,
+  afroxlmr actif, torch 2.6.0), postgres interne, journal public
+  (`journal.wonkom.ai`), Caddy TLS + sonde J-14, memwatch 0 OOM.
+- **Wiring C actif** : auth par hash via contrôle, ingest automatique des
+  reçus d'audit (ledger public à 3 lignes), long-poll rotation.
+- **CI verte (8 jobs)** + images GHCR publiées + e2e LLM réel.
+- Reste à décision MLS : publication open-core (`docs/OPEN-CORE.md` §4),
+  GPU (latence ~0,5 s typique mesurée — acceptable CPU), voie ONNX (piste
+  documentée DEPLOY-6).
 
 ## 6. Infos pratiques pour reprendre
 
