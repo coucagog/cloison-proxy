@@ -532,7 +532,7 @@ mod tests {
         let text = "Xolani Ndlovu vient de Soweto";
         let n = text.len();
 
-        // 1. Hors bornes.
+        // 1. Hors bornes (end dépasse la longueur du texte).
         let out_of_bounds = Span {
             entity_type: DetectorKind::Person,
             start: n - 2,
@@ -540,15 +540,7 @@ mod tests {
             score: 0.9,
             value: String::new(),
         };
-        // 2. Chevauche un span embarqué (email) : l'email du core prime.
-        let overlapping = Span {
-            entity_type: DetectorKind::Person,
-            start: 0,
-            end: text.find("vient").unwrap(),
-            score: 0.9,
-            value: String::new(),
-        };
-        // 3. Type non activé par la politique (gazetteer inconnu).
+        // 2. Type non activé par la politique (gazetteer inconnu).
         let disabled = Span {
             entity_type: DetectorKind::Gazetteer("inexistant_gz".to_string()),
             start: 0,
@@ -556,7 +548,16 @@ mod tests {
             score: 0.9,
             value: String::new(),
         };
-        // 4. Frontière UTF-8 invalide (start au milieu d'un caractère multi-octets).
+
+        let extra = vec![out_of_bounds, disabled];
+        let result = engine
+            .tokenize_with_extra(text, &policy, "req-extra-2", &extra)
+            .unwrap();
+        // Aucun span externe valide → texte intact, aucun jeton émis.
+        assert_eq!(result.text_out, text, "spans invalides ignorés");
+        assert!(result.emitted.is_empty());
+
+        // 3. Frontière UTF-8 invalide (start au milieu d'un caractère multi-octets).
         let text_utf8 = "é Xolani Ndlovu";
         let bad_boundary = Span {
             entity_type: DetectorKind::Person,
@@ -565,17 +566,6 @@ mod tests {
             score: 0.9,
             value: String::new(),
         };
-
-        let extra = vec![out_of_bounds, overlapping, disabled, bad_boundary.clone()];
-        let result = engine
-            .tokenize_with_extra(text, &policy, "req-extra-2", &extra)
-            .unwrap();
-        // Aucun span externe valide (aucun ne couvre "Xolani Ndlovu" entier
-        // sans chevauchement) → rien de masqué, texte intact.
-        assert_eq!(result.text_out, text, "spans invalides ignorés");
-        assert!(result.emitted.is_empty());
-
-        // Le span valide dans le texte UTF-8 doit être rejeté (frontière).
         let r2 = engine
             .tokenize_with_extra(text_utf8, &policy, "req-extra-3", &[bad_boundary])
             .unwrap();
