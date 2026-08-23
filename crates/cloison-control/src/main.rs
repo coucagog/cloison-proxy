@@ -28,6 +28,11 @@ fn hex_bytes(hex: &str, _what: &str) -> ControlResult<Vec<u8>> {
         .map_err(|_| ControlError::TokenInvalid)
 }
 
+/// Encodage hexadécimal (clé publique du contrôle → fichier de vérification).
+fn to_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
 #[tokio::main]
 async fn main() -> ControlResult<()> {
     tracing_subscriber::fmt()
@@ -68,6 +73,30 @@ async fn main() -> ControlResult<()> {
             SigningKey::generate(&mut rand::rngs::OsRng)
         }
     };
+
+    // C — surface journal public (journal.wonkom.ai) : la clé publique du
+    // contrôle est écrite à côté du ledger (volume partagé, monté en lecture
+    // seule par le conteneur public) pour que le vérificateur valide la chaîne
+    // SANS exposer l'API admin (THREAT-MODEL §3.1). Écriture atomique
+    // (tmp + rename) pour ne jamais servir un fichier partiellement écrit.
+    if let Ok(ledger_path) = std::env::var("CLOISON_LEDGER_FILE") {
+        if let Some(dir) = std::path::Path::new(&ledger_path).parent() {
+            let tmp = dir.join("control_pubkey.hex.tmp");
+            let final_path = dir.join("control_pubkey.hex");
+            let pub_hex = to_hex(control_signing_key.verifying_key().to_bytes().as_slice());
+            match std::fs::write(&tmp, pub_hex.as_bytes()).and_then(|_| std::fs::rename(&tmp, &final_path)) {
+                Ok(()) => tracing::info!(
+                    path = %final_path.display(),
+                    "clé publique du contrôle écrite (vérification publique du journal)"
+                ),
+                Err(e) => tracing::warn!(
+                    path = %final_path.display(),
+                    detail = %e,
+                    "écriture de la clé publique du contrôle impossible"
+                ),
+            }
+        }
+    }
 
     // Store : PostgreSQL si CLOISON_DATABASE_URL (feature `pg`), sinon mémoire.
     let store: Arc<dyn cloison_control::store::Store> = match std::env::var("CLOISON_DATABASE_URL") {

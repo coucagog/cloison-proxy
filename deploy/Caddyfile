@@ -40,3 +40,19 @@ api.wonkom.ai {
         }
     }
 }
+
+# Journal de transparence public (étape C, DEPLOY-2) : LECTURE SEULE, agrégé
+# (compteurs k-anonymes) — jamais de texte (charte §8, invariant I9). Le
+# conteneur journal n'est publié que sur 127.0.0.1 (THREAT-MODEL §3.1).
+journal.wonkom.ai {
+    reverse_proxy 127.0.0.1:8789
+    encode gzip
+    tls {
+        issuer acme {
+            dir https://acme-v02.api.letsencrypt.org/directory
+        }
+        issuer acme {
+            dir https://acme.zerossl.com/v2/DV90
+        }
+    }
+}

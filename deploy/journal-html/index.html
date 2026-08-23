@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLOISON — Journal de transparence</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+  h1 { font-size: 1.4rem; }
+  .card { border: 1px solid #ddd; border-radius: 8px; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .ok { color: #0a7d2f; font-weight: 600; }
+  .ko { color: #b00020; font-weight: 600; }
+  code { background: #f4f4f4; padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.9em; }
+  input[type=text] { width: 100%; box-sizing: border-box; padding: 0.4rem; font-family: monospace; }
+  button { margin-top: 0.5rem; padding: 0.4rem 1rem; cursor: pointer; }
+  footer { margin-top: 2rem; font-size: 0.8rem; color: #666; }
+</style>
+</head>
+<body>
+<h1>CLOISON — Journal de transparence</h1>
+<p>Journal append-only vérifiable du plan de contrôle aveugle. La vérification
+s'exécute <strong>dans votre navigateur</strong> (WASM <code>cloison-verify</code>) :
+aucune donnée ne quitte la page. Le journal ne contient que des compteurs
+k-anonymisés signés — jamais de texte ni de PII (invariant I9).</p>
+
+<div class="card" id="status">Chargement du journal…</div>
+
+<div class="card">
+  <h2>Vérification de la chaîne</h2>
+  <p id="verdict">—</p>
+  <p id="details">—</p>
+</div>
+
+<div class="card">
+  <h2>Preuve d'inclusion</h2>
+  <p>Recherche d'un <code>payload_hash</code> (hex 32 octets) dans le journal.</p>
+  <input type="text" id="hash" placeholder="payload_hash hex (ex. 0a1b2c…)" autocomplete="off">
+  <br><button onclick="checkInclusion()">Vérifier l'inclusion</button>
+  <p id="inclusion">—</p>
+</div>
+
+<footer>
+  CLOISON — proxy de confidentialité PII. Vérification publique hors-ligne :
+  <code>cloison-verify</code> (WASM). Consulter <code>/ledger.jsonl</code> et
+  <code>/control_pubkey.hex</code> pour la vérification hors-ligne manuelle.
+</footer>
+
+<script type="module">
+import init, { verify_chain_bytes, prove_inclusion_bytes } from './verify/verify.js';
+
+const statusEl = document.getElementById('status');
+const verdictEl = document.getElementById('verdict');
+const detailsEl = document.getElementById('details');
+const inclusionEl = document.getElementById('inclusion');
+
+window.__entriesJson = '[]';
+
+async function loadAndVerify() {
+  try {
+    await init();
+    const [ledgerRes, keyRes] = await Promise.all([
+      fetch('./ledger.jsonl'),
+      fetch('./control_pubkey.hex'),
+    ]);
+    if (!ledgerRes.ok || !keyRes.ok) {
+      throw new Error('journal ou clé introuvable (HTTP ' + ledgerRes.status + '/' + keyRes.status + ')');
+    }
+    const ledgerText = (await ledgerRes.text()).trim();
+    const keyHex = (await keyRes.text()).trim();
+    const entriesJson = ledgerText ? '[' + ledgerText.split('\n').join(',') + ']' : '[]';
+    window.__entriesJson = entriesJson;
+
+    const verdict = JSON.parse(verify_chain_bytes(entriesJson, keyHex));
+    const entries = JSON.parse(entriesJson);
+    const head = entries.length ? entries[entries.length - 1] : null;
+
+    if (verdict.ok) {
+      statusEl.textContent = '✅ Chaîne vérifiée';
+      statusEl.className = 'card ok';
+      verdictEl.textContent = 'Signatures Ed25519 valides et chaîne de hachage intacte.';
+    } else {
+      statusEl.textContent = '❌ Échec de vérification';
+      statusEl.className = 'card ko';
+      verdictEl.textContent = verdict.error || 'erreur inconnue';
+    }
+    detailsEl.textContent =
+      `${entries.length} entrée(s) — ${head ? 'tête seq ' + head.seq + ' (hash ' + hex(head.entry_hash).slice(0, 16) + '…)' : 'genèse absente'} — clé publique du contrôle ${keyHex.slice(0, 8)}…`;
+  } catch (e) {
+    statusEl.textContent = 'Erreur : ' + e;
+    statusEl.className = 'card ko';
+  }
+}
+
+function hex(bytes) {
+  return bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+window.checkInclusion = function () {
+  const h = document.getElementById('hash').value.trim();
+  inclusionEl.textContent = '';
+  if (!h) { inclusionEl.textContent = 'Saisissez un hash.'; return; }
+  try {
+    const ok = prove_inclusion_bytes(window.__entriesJson, h);
+    inclusionEl.textContent = ok ? '✅ payload inclus dans le journal.' : '❌ payload absent du journal.';
+  } catch (e) {
+    inclusionEl.textContent = 'Erreur : ' + e;
+  }
+};
+
+loadAndVerify();
+</script>
+</body>
+</html>

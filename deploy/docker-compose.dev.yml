@@ -121,6 +121,10 @@ services:
       # Ed25519) — persistance implémentée par le binaire STACK-7.
       CLOISON_LEDGER_FILE: ${CLOISON_LEDGER_FILE:-/data/ledger.jsonl}
       CLOISON_TENANT_KEY_HEX: ${CLOISON_TENANT_KEY_HEX:?défini dans .env}
+      # Clé de signature Ed25519 du contrôle (64 hex) : STABLE en production —
+      # le ledger doit rester vérifiable entre redémarrages (surface publique
+      # journal.wonkom.ai, étape C). Absente → clé éphémère (dev).
+      CLOISON_CONTROL_SIGNING_KEY: ${CLOISON_CONTROL_SIGNING_KEY:-}
       # PostgresStore (STACK-8, feature `pg` — image construite avec) :
       # activer avec le profil `db` et CLOISON_DATABASE_URL. Absent →
       # InMemoryStore (perte au restart, dev).
@@ -210,6 +214,32 @@ services:
       retries: 3
     networks:
       - cloison-internal
+
+  # ---------------------------------------------------------------------------
+  # Journal public (étape C, DEPLOY-2) : surface lecture-seule de transparence
+  # (journal.wonkom.ai). Sert le ledger + la clé publique du contrôle + une
+  # page de vérification WASM (cloison-verify). Port publié UNIQUEMENT sur
+  # 127.0.0.1 : joignable par Caddy seul, jamais directement par le public.
+  # Le volume control-data est monté en LECTURE SEULE (aucune écriture).
+  # ---------------------------------------------------------------------------
+  journal:
+    image: ghcr.io/coucagog/cloison-journal:latest
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.journal
+    volumes:
+      - control-data:/srv/journal:ro
+    ports:
+      - "127.0.0.1:8789:80"
+    tmpfs:
+      - /tmp
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - cloison-net
 
   # ---------------------------------------------------------------------------
   # Postgres (profil `db`, STACK-8) : persistance du plan de contrôle via

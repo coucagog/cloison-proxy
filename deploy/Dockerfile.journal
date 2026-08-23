@@ -1,0 +1,54 @@
+# =============================================================================
+# CLOISON — Conteneur du journal public (lecture seule, vérifiable).
+#
+# Rôle : servir `journal.wonkom.ai` — le ledger append-only (`/ledger.jsonl`),
+# la clé publique du contrôle (`/control_pubkey.hex`) et une page de
+# vérification dont le WASM (`cloison-verify`) valide la chaîne + signatures
+# DANS LE NAVIGATEUR (vérification publique, rien ne quitte la page).
+#
+# Règles respectées :
+#   - LECTURE SEULE : le volume `control-data` est monté en `:ro` par le
+#     compose — aucun chemin d'écriture pour ce conteneur.
+#   - Exposition minimale (THREAT-MODEL §3.1) : le port n'est publié que sur
+#     127.0.0.1 (uniquement joignable via Caddy) ; l'API admin du contrôle
+#     n'est jamais exposée.
+#   - nginx distroless-like : alpine, non-root (nginx uid 101 par défaut),
+#     read-only + tmpfs (compose).
+#
+# Build WASM : cloison-verify (feature `wasm`, wasm32-unknown-unknown) puis
+# wasm-bindgen (version épinglée = Cargo.lock) → glue + .wasm servis en
+# statique. Build context = racine du dépôt :
+#   docker build -f deploy/Dockerfile.journal -t ghcr.io/coucagog/cloison-journal:latest .
+# =============================================================================
+
+# --- Stage 1 : build du WASM vérificateur ------------------------------------
+FROM rust:1.97-bookworm AS wasm
+
+RUN rustup target add wasm32-unknown-unknown
+
+WORKDIR /build
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+
+# wasm-bindgen-cli épinglé sur la version du Cargo.lock (glue compatible).
+RUN cargo install wasm-bindgen-cli --version 0.2.127 --locked
+RUN cargo build -p cloison-verify --features wasm --target wasm32-unknown-unknown --release --locked \
+    && mkdir -p /out \
+    && wasm-bindgen --target web --out-dir /out \
+         target/wasm32-unknown-unknown/release/cloison_verify.wasm
+
+# --- Stage 2 : nginx statique (alpine, non-root) ------------------------------
+FROM nginx:1.27-alpine
+
+# Page de vérification + glue WASM.
+COPY journal-html/ /usr/share/nginx/html/
+COPY --from=wasm /out/ /usr/share/nginx/html/verify/
+
+# ledger + clé publique : montés en lecture seule par le compose à
+# /srv/journal (volume control-data). nginx les sert à la racine.
+COPY nginx-journal.conf /etc/nginx/conf.d/default.conf
+
+# non-root : uid 101 (nginx alpine).
+USER 101
+
+EXPOSE 80
