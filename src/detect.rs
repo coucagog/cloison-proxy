@@ -53,7 +53,10 @@ impl DetectClient {
         let http = reqwest::Client::builder()
             .connect_timeout(config.timeout)
             .build()
-            .map_err(|e| ProxyError::new(ErrorKind::Internal, "failed to build detect http client").with_field("detail", e.to_string()))?;
+            .map_err(|e| {
+                ProxyError::new(ErrorKind::Internal, "failed to build detect http client")
+                    .with_field("detail", e.to_string())
+            })?;
         Ok(Self {
             http,
             url,
@@ -79,18 +82,23 @@ impl DetectClient {
             .timeout(self.timeout)
             .send()
             .await
-            .map_err(|e| ProxyError::new(ErrorKind::Upstream, "detect sidecar request failed").with_field("detail", e.to_string()))?;
+            .map_err(|e| {
+                ProxyError::new(ErrorKind::Upstream, "detect sidecar request failed")
+                    .with_field("detail", e.to_string())
+            })?;
         let status = resp.status();
         if !status.is_success() {
             let detail = resp.text().await.unwrap_or_default();
-            return Err(ProxyError::new(ErrorKind::Upstream, "detect sidecar error status")
-                .with_field("status", status.to_string())
-                .with_field("detail", detail));
+            return Err(
+                ProxyError::new(ErrorKind::Upstream, "detect sidecar error status")
+                    .with_field("status", status.to_string())
+                    .with_field("detail", detail),
+            );
         }
-        let parsed: DetectResponseBody = resp
-            .json()
-            .await
-            .map_err(|e| ProxyError::new(ErrorKind::Upstream, "invalid detect sidecar response").with_field("detail", e.to_string()))?;
+        let parsed: DetectResponseBody = resp.json().await.map_err(|e| {
+            ProxyError::new(ErrorKind::Upstream, "invalid detect sidecar response")
+                .with_field("detail", e.to_string())
+        })?;
         let mut spans = Vec::new();
         for s in parsed.spans {
             let kind = match s.type_.as_str() {
