@@ -99,24 +99,16 @@ attrapé le bug que les 70 tests ne voyaient pas).
 
 ## 6. Prochaine session — DETTES prioritaires (ordre validé par le pilote)
 
-### ① Publication open-core PUBLIQUE
-**Objectif** : rendre la promesse « nous ne lisons pas » vérifiable (charte
-§5.1) — publier les composants ouverts en dépôts publics `coucagog/cloison-*`.
-**Démarrage** (procédure détaillée dans `docs/OPEN-CORE.md` §4) :
-1. `git subtree split --prefix=crates/cloison-core` (puis audit, ledger,
-   verify, control, proxy, cli, wasm ; `services/cloison-detect` ;
-   `bench/cloison-bench`) → branches de publication ;
-2. créer les dépôts publics (API GitHub, token de `~/.git-credentials`),
-   pousser les branches + tags `v0.1.0` ;
-3. **licences** : proxy = AGPL-3.0 (texte `LICENSE-AGPL-3.0` à ajouter au
-   sous-arbre), reste Apache-2.0 ;
-4. **vérifier `cargo test` sur chaque sous-arbre** — ordre des path deps :
-   core → audit → ledger → control → proxy/verify (les `path` deviennent des
-   versions crates.io ou des git deps épinglées) ;
-5. README public + lien vers la vérification WASM du journal.
-**Gardes** : zéro PII/secret par construction (invariants) ; le corpus
-(`cloison-corpus`) reste privé ; acte irréversible → une validation pilote
-explicite est actée (cette dette est validée pour la session).
+### ~~① Publication open-core PUBLIQUE~~ → **RÉSOLUE (DEPLOY-7, 23 août 2026)**
+
+**Publié** : 10 dépôts publics `coucagog/cloison-{core,proxy,audit,control,
+ledger,verify,cli,wasm,detect,bench}` (branche `main` + tag `v0.1.0`),
+extraits par `git subtree split` de la source de vérité (`4ed0c45`), adaptés
+(Cargo.toml autonome, **git deps épinglées** `tag = "v0.1.0"`, licences,
+README), vérifiés deux fois (workspace path-deps puis dépôts publiés avec git
+deps réelles — tout vert), `Cargo.lock` verrouillés. Portes : 0 secret / 0 PII
+dans l'historique complet ; `cloison-corpus` jamais publié. Détails :
+`journal/DEPLOY-7.md`, `docs/OPEN-CORE.md` §4.
 
 ### ② GPU
 **Objectif** : réduire la latence detect (mesurée ~0,5 s court / ~1,7 s

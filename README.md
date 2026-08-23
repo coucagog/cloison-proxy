@@ -1,7 +1,7 @@
 # CLOISON — proxy de confidentialité PII compatible OpenAI
 
 > **Nom de travail :** CLOISON. **Dépôt :** `coucagog/cloison` (privé). **Serveur de dev :** VPS 144.217.81.251 (`wonkom.ai`).
-> **Statut :** STACK-0 → 8 livrés, **GO/NO-GO final = GO** (grille v1.1, modèles réels), déploiement DEPLOY-1 → 4 actif. Projet autonome, indépendant de `mania.sn`.
+> **Statut :** STACK-0 → 8 livrés, **GO/NO-GO final = GO** (grille v1.1, modèles réels), déploiement DEPLOY-1 → 6 actif, **open-core publié** (DEPLOY-7). Projet autonome, indépendant de `mania.sn`.
 
 Un **proxy de confidentialité PII compatible OpenAI** qui s'intercale entre une interface/agent IA
 (Open WebUI, bolt.diy, LibreChat, agents type Hermes) et un fournisseur de LLM (OpenAI, Anthropic…).
@@ -66,15 +66,29 @@ alimenté par le vrai pipeline (DEPLOY-4). E2E prouvé : mock 12/12, LLM réel 8
 (ledger public + vérification WASM) · stack interne control/detect/postgres, 0 OOM (memwatch),
 certs auto-renouvelés (Caddy + sonde J-14).
 
-## Licences (open-core, décision journal DEPLOY-5)
+## Licences (open-core — **publié**, DEPLOY-7)
 
-- Composants vérifiables (`cloison-core`, `cloison-ledger`, `cloison-verify`, `cloison-audit`,
-  `cloison-control`, `cloison-cli`, `cloison-wasm`, `services/cloison-detect`,
-  `bench/cloison-bench`) : **Apache-2.0**.
+Les composants ouverts sont **publics** sous `github.com/coucagog/cloison-*`
+(branche `main`, tag `v0.1.0`) — l'open source est la condition de la promesse
+« nous ne lisons pas » (charte §5.1, journal `DEPLOY-7.md`) :
+
+| Composant | Dépôt public | Licence |
+|---|---|---|
+| Moteur | [cloison-core](https://github.com/coucagog/cloison-core) | Apache-2.0 |
+| Passerelle | [cloison-proxy](https://github.com/coucagog/cloison-proxy) | **AGPL-3.0** |
+| Journal | [cloison-ledger](https://github.com/coucagog/cloison-ledger) | Apache-2.0 |
+| Vérificateur | [cloison-verify](https://github.com/coucagog/cloison-verify) | Apache-2.0 |
+| Mode audit | [cloison-audit](https://github.com/coucagog/cloison-audit) | Apache-2.0 |
+| Plan de contrôle | [cloison-control](https://github.com/coucagog/cloison-control) | Apache-2.0 |
+| Outillage CLI | [cloison-cli](https://github.com/coucagog/cloison-cli) | Apache-2.0 |
+| Wrapper WASM | [cloison-wasm](https://github.com/coucagog/cloison-wasm) | Apache-2.0 |
+| Sidecar NER | [cloison-detect](https://github.com/coucagog/cloison-detect) | Apache-2.0 |
+| Harnais de bench | [cloison-bench](https://github.com/coucagog/cloison-bench) | Apache-2.0 |
+
 - Passerelle serveur (`cloison-proxy`) : **AGPL-3.0** (anti-forks hébergés fermés, charte §5.1).
 - `cloison-corpus` : **privé** (jamais publié).
 
-Détails et procédure de publication : [`docs/OPEN-CORE.md`](docs/OPEN-CORE.md).
+Détails et procédure : [`docs/OPEN-CORE.md`](docs/OPEN-CORE.md).
 
 ## Démarrage rapide
 

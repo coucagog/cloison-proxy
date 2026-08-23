@@ -55,24 +55,47 @@ validation MLS.
 > sont des listes **embarquées de code** (publiques), distinctes du corpus
 > privé (jeux d'évaluation, tables de fréquence, catalogue des non-détections).
 
-## 4. Publication (procédure, à décision MLS — non exécutée)
+## 4. Publication (EXÉCUTÉE — DEPLOY-7, 23 août 2026)
 
-La publication réelle (création de dépôts **publics** sur GitHub, push des
-sous-arbres) est un acte irréversible : elle attend la décision explicite de
-MLS (moment de la « première release publique », charte §5.1/STACK-0). La
-procédure est prête :
+> ~~à décision MLS — non exécutée~~ → **EXÉCUTÉE** : dette ① de
+> `journal/REPRISE-DEPLOIEMENT.md` §6 validée par le pilote pour la session,
+> campagne journalisée dans `journal/DEPLOY-7.md`.
 
-1. `git subtree split --prefix=crates/cloison-core` (et proxy, ledger, verify,
-   audit, control, cli, wasm ; `services/cloison-detect` ; `bench/cloison-bench`)
-   → branches de publication ;
-2. création des dépôts publics `coucagog/cloison-<composant>` (GitHub API) ;
-3. push des branches + tags `v0.1.0` ;
-4. vérification : `cargo test` sur chaque sous-arbre (les crates ont des
-   dépendances internes — publier `core` avant `audit`, `audit` avant
-   `control`/`proxy`, `ledger` avant `control`/`verify` ; les `path`
-   deviennent des versions crates.io ou des git deps épinglées) ;
-5. mise à jour du README public + badge « vérifiable » (lien vers la
-   vérification WASM du journal).
+Les 10 composants ouverts sont publiés en dépôts **publics** `coucagog/cloison-*`
+(branche `main` + tag `v0.1.0`), extraits par `git subtree split` depuis la source
+de vérité (commit `4ed0c45`) :
+
+| Composant | Dépôt public | Licence |
+|---|---|---|
+| Moteur | [coucagog/cloison-core](https://github.com/coucagog/cloison-core) | Apache-2.0 |
+| Passerelle | [coucagog/cloison-proxy](https://github.com/coucagog/cloison-proxy) | **AGPL-3.0** |
+| Journal | [coucagog/cloison-ledger](https://github.com/coucagog/cloison-ledger) | Apache-2.0 |
+| Vérificateur | [coucagog/cloison-verify](https://github.com/coucagog/cloison-verify) | Apache-2.0 |
+| Mode audit | [coucagog/cloison-audit](https://github.com/coucagog/cloison-audit) | Apache-2.0 |
+| Plan de contrôle | [coucagog/cloison-control](https://github.com/coucagog/cloison-control) | Apache-2.0 |
+| Outillage CLI | [coucagog/cloison-cli](https://github.com/coucagog/cloison-cli) | Apache-2.0 |
+| Wrapper WASM | [coucagog/cloison-wasm](https://github.com/coucagog/cloison-wasm) | Apache-2.0 |
+| Sidecar NER | [coucagog/cloison-detect](https://github.com/coucagog/cloison-detect) | Apache-2.0 |
+| Harnais de bench | [coucagog/cloison-bench](https://github.com/coucagog/cloison-bench) | Apache-2.0 |
+
+Adaptations par sous-arbre (commit de publication) : `Cargo.toml` autonome (les
+valeurs héritées du workspace sont inlinées), dépendances internes en **git deps
+épinglées** (`tag = "v0.1.0"`), texte de licence ajouté, README public. Le
+`cloison-corpus` reste **privé** (jamais publié).
+
+**Vérification** (voir `journal/DEPLOY-7.md`) : portes de sécurité (0 secret /
+0 PII dans l'historique complet), `cargo test`/`clippy`/`fmt` par sous-arbre
+(workspace équivalent, path deps), pytest detect (71) + bench (32), puis re-test
+des dépôts publiés eux-mêmes (git deps réelles depuis GitHub).
+
+Procédure (référence, réexécutable pour les versions suivantes) :
+
+1. `git subtree split --prefix=<composant>` → branche de publication ;
+2. création du dépôt public `coucagog/cloison-<composant>` (GitHub API) ;
+3. push de la branche + tag `v0.1.0` (ordre de dépendance : core/ledger →
+   audit → verify/control/proxy → cli/wasm/detect/bench) ;
+4. vérification : `cargo test` sur chaque sous-arbre (git deps épinglées) ;
+5. README public + lien vers la vérification WASM du journal.
 
 ## 5. Où vivent les licences
 
