@@ -84,6 +84,12 @@ licences tranchées (proxy AGPL-3.0, reste Apache-2.0), et vérifier chaque sous
   branche `main`, tag `v0.1.0` (push `pub/<composant> → main` + `refs/tags/v0.1.0`).
 - Licences : proxy = **AGPL-3.0** (LICENSE + LICENSE-AGPL-3.0, texte officiel
   GNU) ; les 9 autres = Apache-2.0.
+- **Correctif licence post-publication** : au premier passage, `LICENSE` du repo
+  proxy contenait encore le texte Apache (copié du monorepo) — GitHub détectait
+  Apache-2.0. Corrigé : `LICENSE` = texte AGPL-3.0 canonique (GNU), commit
+  `b4f83f4` sur `main` + re-pointage du tag `v0.1.0` (release initiale, aucun
+  consommateur externe ; changement = fichier de licence seul). Vérifié : la
+  détection GitHub renvoie désormais **AGPL-3.0**.
 
 ### Vérification post-publication (dépôts publiés, git deps réelles)
 
