@@ -85,9 +85,11 @@ RUN if [ "$CLOISON_LITE" = "1" ]; then \
 # SPACY_MODEL vide → saut (build hors-ligne, mode dégradé au runtime).
 # PIP_TARGET (env ci-dessus) fait atterrir le modèle dans /opt/deps.
 # Le presidio_oracle charge fr + en (config.presidio.languages) : les DEUX
-# modèles sont requis, sinon l'oracle retombe en regex+gazetteers.
+# modèles sont requis, sinon l'oracle retombe en regex+gazetteers. Les noms
+# sont ALIGNÉS sur `spacy_size` (constat DEPLOY-2 : en_core_web_sm ne
+# correspondait jamais au mapping EN pour md → presidio dégradé en silence).
 ARG SPACY_MODEL=fr_core_news_md
-ARG SPACY_EN_MODEL=en_core_web_sm
+ARG SPACY_EN_MODEL=en_core_web_md
 RUN if [ -n "$SPACY_MODEL" ]; then python -m spacy download "$SPACY_MODEL"; fi \
     && if [ -n "$SPACY_EN_MODEL" ]; then python -m spacy download "$SPACY_EN_MODEL"; fi
 

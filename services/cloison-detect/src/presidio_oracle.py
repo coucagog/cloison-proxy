@@ -156,9 +156,14 @@ class PresidioOracle:
         return compiled
 
     def _spacy_model(self, lang: str) -> str:
+        # Aligné sur `spacy_size` pour les DEUX langues (constat DEPLOY-2) :
+        # l'ancien mapping EN renvoyait `en_core_web_lg` pour md — modèle jamais
+        # fourni par l'image (seul en_core_web_sm était téléchargé) → spacy
+        # tentait un téléchargement réseau (impossible sur le réseau interne
+        # sans egress) → presidio retombait en regex+gazetteers silencieusement.
         if lang == "fr":
             return f"fr_core_news_{self._config.spacy_size}"
-        return "en_core_web_sm" if self._config.spacy_size == "sm" else "en_core_web_lg"
+        return f"en_core_web_{self._config.spacy_size}"
 
     # -- détection ------------------------------------------------------------
     def detect(self, text: str, locale: str = "fr", policy: Policy | None = None) -> list[Span]:
