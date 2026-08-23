@@ -9,6 +9,7 @@ tests/test_detect_service.py (CLOISON_OFFLINE=1 via conftest).
 from __future__ import annotations
 
 import sys
+import types
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -275,3 +276,147 @@ def test_african_detect_never_passes_offset_mapping_to_model():
     assert spans, "le détecteur africain doit produire des spans (plus de [] silencieux)"
     assert spans[0].type is SpanType.LOC
     assert spans[0].score >= 0.50, "score au-dessus du seuil interne african"
+
+
+# ---------------------------------------------------------------------------
+# Voie ONNX (dette ③, journal DEPLOY-8) — backend ONNX Runtime, fallback torch
+# ---------------------------------------------------------------------------
+
+
+class FakeTokenizerNp:
+    """Fake tokenizer numpy (return_tensors="np") — mêmes shapes que le torch."""
+
+    def __call__(self, text, **kwargs):  # noqa: ARG002
+        import numpy as np
+
+        return {
+            "input_ids": np.array([[0, 5, 9, 2]]),
+            "attention_mask": np.array([[1, 1, 1, 1]]),
+            "offset_mapping": np.array([[(0, 0), (0, 5), (5, 9), (0, 0)]]),
+        }
+
+
+class FakeOrtSession:
+    """Stub d'ort.InferenceSession : logits cannés (numpy), MÊMES valeurs que
+    le test torch (labels 2 = LOC pour les tokens 1-2)."""
+
+    def __init__(self, path, providers=None):  # noqa: ARG002
+        self._path = path
+
+    def get_inputs(self):
+        return [
+            types.SimpleNamespace(name="input_ids"),
+            types.SimpleNamespace(name="attention_mask"),
+        ]
+
+    def run(self, outputs, feeds):  # noqa: ARG002
+        import numpy as np
+
+        logits = np.array(
+            [[[0.1, 0.1, 0.8], [0.1, 0.1, 0.8], [0.1, 0.1, 0.8], [0.9, 0.05, 0.05]]],
+            dtype=np.float32,
+        )
+        return [logits]
+
+
+def _write_onnx_files(tmp_path, int8: bool = True) -> Path:
+    """Pré-provisionne le dossier <model>-onnx (layout réaliste : model.onnx
+    fp32 + [model-int8.onnx] + label_map.json)."""
+    onnx_dir = tmp_path / "afroxlmr-onnx"
+    onnx_dir.mkdir(exist_ok=True)
+    (onnx_dir / "model.onnx").write_bytes(b"fake-onnx-fp32")
+    if int8:
+        (onnx_dir / "model-int8.onnx").write_bytes(b"fake-onnx-int8")
+    (onnx_dir / "label_map.json").write_text(
+        '{"0": "O", "1": "PER", "2": "LOC"}', encoding="utf-8"
+    )
+    return onnx_dir
+
+
+def test_onnx_backend_init_loads_session_and_labels(tmp_path, monkeypatch):
+    """CLOISON_ONNX=1 : le backend ONNX charge la session + le label_map."""
+    _write_onnx_files(tmp_path, int8=True)
+    monkeypatch.setattr(
+        african_mod, "ort", types.SimpleNamespace(InferenceSession=FakeOrtSession)
+    )
+    cfg = Config(model_dir=str(tmp_path), onnx=True, african=AfricanConfig(model_name="afroxlmr"))
+    det = african_mod.AfricanModelDetector(cfg)
+    assert det._try_onnx_backend("dummy-model", FakeTokenizerNp(), {}) is True
+    assert det._session is not None
+    assert det._backend() == "onnx-int8"
+    assert det._labels_map == {0: "O", 1: "PER", 2: "LOC"}
+    assert det._tokenizer is not None
+
+
+def test_onnx_fp32_selected_when_int8_off(tmp_path, monkeypatch):
+    """CLOISON_ONNX_INT8=0 : le fichier fp32 (model.onnx) est utilisé."""
+    _write_onnx_files(tmp_path, int8=False)
+    monkeypatch.setattr(
+        african_mod, "ort", types.SimpleNamespace(InferenceSession=FakeOrtSession)
+    )
+    cfg = Config(
+        model_dir=str(tmp_path), onnx=True, onnx_int8=False,
+        african=AfricanConfig(model_name="afroxlmr"),
+    )
+    det = african_mod.AfricanModelDetector(cfg)
+    assert det._try_onnx_backend("dummy-model", FakeTokenizerNp(), {}) is True
+    assert det._backend() == "onnx"
+
+
+def test_onnx_fallback_when_session_fails(tmp_path, monkeypatch):
+    """Échec d'initialisation ONNX -> repli torch (jamais d'erreur, jamais de blocage)."""
+    _write_onnx_files(tmp_path, int8=True)
+
+    class BrokenSession(FakeOrtSession):
+        def __init__(self, path, providers=None):  # noqa: ARG002
+            raise RuntimeError("session cassée")
+
+    monkeypatch.setattr(
+        african_mod, "ort", types.SimpleNamespace(InferenceSession=BrokenSession)
+    )
+    cfg = Config(model_dir=str(tmp_path), onnx=True, african=AfricanConfig(model_name="afroxlmr"))
+    det = african_mod.AfricanModelDetector(cfg)
+    assert det._try_onnx_backend("dummy-model", FakeTokenizerNp(), {}) is False
+    assert det._session is None
+
+
+def test_onnx_detect_aligns_spans_from_numpy_logits(tmp_path, monkeypatch):
+    """Le backend ONNX produit les mêmes spans que torch (mêmes logits cannés)."""
+    _write_onnx_files(tmp_path, int8=True)
+    monkeypatch.setattr(
+        african_mod, "ort", types.SimpleNamespace(InferenceSession=FakeOrtSession)
+    )
+    det = african_mod.AfricanModelDetector(
+        Config(model_dir=str(tmp_path), onnx=True, african=AfricanConfig(model_name="afroxlmr"))
+    )
+    assert det._try_onnx_backend("dummy-model", FakeTokenizerNp(), {}) is True
+    det._load_attempted = True  # contourne le chargement réel
+    spans = det.detect("Bonjour Aminata Diop à Dakar", locale="fr", policy=None)
+    assert spans, "le backend ONNX doit produire des spans"
+    assert spans[0].type is SpanType.LOC
+    assert spans[0].score >= 0.50, "score au-dessus du seuil interne african"
+
+
+def test_onnx_export_missing_file_degrades_gracefully(tmp_path, monkeypatch):
+    """Fichier ONNX absent + export impossible -> False, pas de crash."""
+    monkeypatch.setattr(
+        african_mod, "ort", types.SimpleNamespace(InferenceSession=FakeOrtSession)
+    )
+
+    def boom(*a, **k):  # noqa: ARG002
+        raise RuntimeError("modèle indisponible")
+
+    monkeypatch.setattr(
+        african_mod.AutoModelForTokenClassification, "from_pretrained", staticmethod(boom)
+    )
+    cfg = Config(model_dir=str(tmp_path), onnx=True, african=AfricanConfig(model_name="afroxlmr"))
+    det = african_mod.AfricanModelDetector(cfg)
+    assert det._try_onnx_backend("dummy-model", FakeTokenizerNp(), {}) is False
+    assert det._session is None
+
+
+def test_onnx_disabled_uses_torch_backend_by_default():
+    """CLOISON_ONNX absent (défaut) : aucun backend ONNX sélectionné."""
+    det = african_mod.AfricanModelDetector(Config(onnx=False))
+    assert det._session is None
+    assert det._backend() == "none"

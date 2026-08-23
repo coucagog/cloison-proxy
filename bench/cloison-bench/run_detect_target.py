@@ -34,6 +34,9 @@ if OFFLINE:
 AFRICAN_MODEL = os.environ.get("CLOISON_AFRICAN_MODEL", "afroxlmr").strip().lower()
 # Seuil final de la politique de détection (calibration ; défaut produit 0.40).
 MIN_SCORE = float(os.environ.get("CLOISON_MIN_SCORE", "0.40"))
+# Voie ONNX (dette ③, journal DEPLOY-8) : CLOISON_ONNX=1 -> inférence du NER
+# africain via ONNX Runtime (CPU int8) — re-validation GO du chemin ONNX.
+ONNX = os.environ.get("CLOISON_ONNX", "0").strip().lower() in ("1", "true", "yes", "on")
 
 
 def load_baseline_ref() -> dict:
@@ -61,9 +64,10 @@ def main() -> int:
     from src.config import Config, AfricanConfig
 
     # Sélection du NER ouest-africain (env) ; défaut = défaut produit.
-    print(f"  NER ouest-africain : {AFRICAN_MODEL!r} | min_score : {MIN_SCORE}")
+    print(f"  NER ouest-africain : {AFRICAN_MODEL!r} | min_score : {MIN_SCORE}"
+          f" | onnx : {'1 (ONNX Runtime)' if ONNX else '0 (torch)'}")
     policy = Policy(min_score=MIN_SCORE)
-    svc = DetectService(Config(african=AfricanConfig(model_name=AFRICAN_MODEL)))
+    svc = DetectService(Config(onnx=ONNX, african=AfricanConfig(model_name=AFRICAN_MODEL)))
     CORE_BIN = ROOT.parent.parent / "target" / "debug" / "detect_cli"
     import subprocess
 
@@ -184,7 +188,9 @@ def main() -> int:
         "macro_f1": result.macro_f1,
         "specificity": result.specificity,
         "baseline_ref": baseline,
-        "note": ("OFFLINE" if OFFLINE else "avec modèles") + f" · africain={AFRICAN_MODEL}",
+        "note": ("OFFLINE" if OFFLINE else "avec modèles")
+                + f" · africain={AFRICAN_MODEL}"
+                + (" · onnx-int8" if ONNX else " · torch"),
     }, ensure_ascii=False, indent=2))
     print(f"  Rapport écrit : {out}")
     return 0 if go else 1

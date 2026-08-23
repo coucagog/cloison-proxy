@@ -44,7 +44,7 @@ GLiNER zéro-shot (PERSON/LOC/ORG, lazy) ───────┤→ fusion (vot
 ## Installation
 
 ```bash
-cd _stage/stack6/services/cloison-detect
+cd services/cloison-detect
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 # Modèle spaCy pour l'oracle Presidio (une fois ; hors-ligne ensuite) :
@@ -79,7 +79,27 @@ Variables d'environnement (préfixe `CLOISON_`) : `GRPC_PORT` (50051),
 `REST_PORT` (8080), `TRANSPORT` (`rest`|`grpc`|`both`), `OFFLINE` (0),
 `PRELOAD` (`none`|`auto`|`all`), `SPACY_SIZE` (`sm`|`lg`),
 `MODEL_CACHE_GB` (6), `MODEL_DIR` (./models), `BUDGET_SECONDS` (2.0),
-`QUARANTINE_SECONDS` (300), `QI_WINDOW` (160), `LOG_LEVEL` (INFO).
+`QUARANTINE_SECONDS` (300), `QI_WINDOW` (160), `LOG_LEVEL` (INFO),
+`ONNX` (0), `ONNX_INT8` (1).
+
+## Voie ONNX (dette ③, journal DEPLOY-8)
+
+`CLOISON_ONNX=1` fait passer l'inférence du **NER africain** (afroxlmr — le
+goulot de latence, ~1,7 s sur les docs longs en torch) par **ONNX Runtime**
+(CPU, quantisation dynamique int8 par défaut — `CLOISON_ONNX_INT8=0` pour
+fp32). Gain attendu ×2-3 sur les docs longs.
+
+- Le modèle ONNX vit dans `<MODEL_DIR>/<model_name>-onnx/` (`model.onnx` fp32,
+  `model-int8.onnx`, `label_map.json`) ; s'il manque, il est **exporté** au
+  premier chargement (`torch.onnx.export`, dynamic axes) puis quantisé.
+- **Fallback torch automatique** : ONNX indisponible (paquet absent, fichier
+  corrompu, session en échec) → repli sur le backend torch, jamais d'erreur,
+  jamais de blocage. Le verdict GO (grille v1.1) est re-validé sur les deux
+  chemins (journal DEPLOY-8).
+- **GLiNER n'est PAS concerné** : gliner 0.2.12 n'offre pas d'export ONNX
+  (architecture span-based) — décision documentée, GLiNER reste en torch.
+- Le backend actif est exposé par `GET /models` (champ `backend` :
+  `onnx-int8` | `onnx` | `torch`).
 
 ## API REST
 

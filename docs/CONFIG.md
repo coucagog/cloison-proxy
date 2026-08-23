@@ -66,7 +66,8 @@
 | `CLOISON_BUDGET_SECONDS` | detect | non | `2.0` | deadline douce par requête |
 | `CLOISON_QUARANTINE_SECONDS` | detect | non | `300.0` | pas de rechargement après crash |
 | `CLOISON_SESSION_MENTIONS_MAX` | detect | non | `200` | borne documentaire (côté core) |
-| `CLOISON_ONNX` | detect | non | `0` | bascule runtime ONNX |
+| `CLOISON_ONNX` | detect | non | `0` | `1` = inférence du NER africain (afroxlmr) via **ONNX Runtime** (CPU, int8 dynamique) au lieu de torch — gain ×2-3 attendu sur les docs longs (dette ③, DEPLOY-8). Fallback torch automatique si l'ONNX est indisponible ; GLiNER reste en torch (pas d'export ONNX dans gliner 0.2.12) |
+| `CLOISON_ONNX_INT8` | detect | non | `1` | `0` = conserver l'export ONNX fp32 (référence précision) au lieu de la quantisation dynamique int8 |
 | `CLOISON_LOG_LEVEL` | detect | non | `INFO` | niveau de log |
 | `CLOISON_CONSENSUS_PERSON_LOC` | detect | non | `1` | `1` = span PERSON/LOC mono-source < 0.90 refusé à la fusion (spécificité ; exempté `recall_only`) |
 | `CLOISON_AFRICAN_MODEL` *(via `CLOISON_PRELOAD=all` ou config)* | detect | non | `afroxlmr` | NER ouest-africain : `serengeti` \| `afroxlmr` \| `masakha` — défaut `afroxlmr` (MasakhaNER 1+2, vrai NER) depuis le verdict GO ; `serengeti` est un LM sans tête NER (inutilisable), `masakha` est gated (401) |

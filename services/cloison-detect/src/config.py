@@ -174,7 +174,13 @@ class Config(BaseModel):
     budget_seconds: float = 2.0           # deadline douce par requête
     quarantine_seconds: float = 300.0     # pas de rechargement après un crash
     session_mentions_max: int = 200       # borne documentaire (côté core)
+    # Voie ONNX (dette ③, journal DEPLOY-8) : `CLOISON_ONNX=1` fait passer
+    # l'inférence du NER africain (afroxlmr) par ONNX Runtime (CPU, quantisation
+    # dynamique int8) au lieu de torch — gain attendu ×2-3 sur les docs longs.
+    # Fallback torch automatique si l'ONNX est indisponible. `CLOISON_ONNX_INT8=0`
+    # pour conserver l'export fp32 (référence précision) au lieu de l'int8.
     onnx: bool = False
+    onnx_int8: bool = True
     log_level: str = "INFO"
 
     presidio: PresidioConfig = Field(default_factory=PresidioConfig)
@@ -252,6 +258,7 @@ class Config(BaseModel):
             quarantine_seconds=_float("CLOISON_QUARANTINE_SECONDS", defaults.quarantine_seconds),
             session_mentions_max=_int("CLOISON_SESSION_MENTIONS_MAX", defaults.session_mentions_max),
             onnx=_bool("CLOISON_ONNX", defaults.onnx),
+            onnx_int8=_bool("CLOISON_ONNX_INT8", defaults.onnx_int8),
             log_level=_str("CLOISON_LOG_LEVEL", defaults.log_level),
             consensus_person_loc=_bool("CLOISON_CONSENSUS_PERSON_LOC", defaults.consensus_person_loc),
         )

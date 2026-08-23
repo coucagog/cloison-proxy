@@ -1,6 +1,12 @@
-# CLOISON STACK-1 Benchmark
+# CLOISON Benchmark — harnais public GO/NO-GO
 
-Harnais de benchmark pour mesurer le fossé de détection PII entre un détecteur ouest-africain et une baseline Presidio bien configurée, sur un jeu de données 100% synthétique sénégalais.
+Harnais de benchmark pour mesurer le **fossé de détection PII** entre un détecteur
+ouest-africain et une baseline Presidio bien configurée, sur un jeu de données
+**100 % synthétique** sénégalais. Méthodologie **publique** (charte CLOISON §5.1) —
+c'est la preuve que le produit se justifie.
+
+Fait partie du projet [CLOISON](https://github.com/coucagog/cloison) — proxy de
+confidentialité PII compatible OpenAI.
 
 ## Entités supportées
 
@@ -12,49 +18,50 @@ Harnais de benchmark pour mesurer le fossé de détection PII entre un détecteu
 | MAIL | Adresses email | 0.15 |
 | TEL | Numéros de téléphone sénégalais (+221, préfixes 70/76/77/78) | 0.10 |
 
+## Grille GO/NO-GO (v1.1 — pré-enregistrée, figée)
+
+Le projet CLOISON passe **GO** si les 5 conditions suivantes sont **simultanément**
+remplies (baseline Presidio forte, `results/rapport.json` → `baseline_ref`) :
+
+| Condition | Seuil |
+|---|---|
+| F1_PERSON | ≥ baseline + 0.12 |
+| F1_LOC | ≥ baseline + 0.15 |
+| F1_CNI | non-régression (≥ baseline) |
+| Macro F1 | ≥ baseline + 0.10 |
+| Spécificité non-PII | ≥ 60 % |
+
+> Vérification : `grille.json` (source de vérité). Verdict 2026 : **GO** —
+> PERSON 0.937 · LOC 0.835 · CNI 1.000 · macro 0.954 · spécificité 0.77
+> (artefacts dans `results/go_nogo_final.json` et `results/*.json`).
+
 ## Installation
 
 ```bash
-# Créer un environnement virtuel
 python -m venv venv
-source venv/bin/activate  # Linux/macOS
-# ou: venv\Scripts\activate  # Windows
-
-# Installer les dépendances
+source venv/bin/activate  # Linux/macOS ; ou: venv\Scripts\activate (Windows)
 pip install -r requirements.txt
-
-# Télécharger le modèle spaCy français
 python -m spacy download fr_core_news_md
 ```
 
 ## Utilisation
 
-### Lancer le benchmark complet
-
 ```bash
-# Avec les paramètres par défaut (seed=42, 500 documents)
+# Baseline + harnais (seed 42, 500 documents)
 python run_benchmark.py
 
-# Avec des paramètres personnalisés
-python run_benchmark.py --seed 42 --samples 500 --output ./results
+# Détecteur cible complet (sidecar cloison-detect requis dans PYTHONPATH) :
+#   git clone https://github.com/coucagog/cloison-detect
+#   export PYTHONPATH=/chemin/cloison-detect
+CLOISON_OFFLINE=1 python run_detect_target.py
 ```
-
-### Arguments CLI
-
-| Argument | Défaut | Description |
-|----------|--------|-------------|
-| `--seed` | 42 | Graine aléatoire pour reproductibilité |
-| `--samples` | 500 | Nombre de documents à générer |
-| `--output` | `./results` | Répertoire de sortie |
 
 ### Fichiers générés
 
-Après exécution, le répertoire de sortie contient:
-
 ```
 results/
-├── dataset.jsonl       # Dataset synthétique avec annotations gold
-├── predictions.jsonl   # Prédictions de la baseline Presidio
+├── dataset.jsonl       # Dataset synthétique avec annotations gold (gitignoré)
+├── predictions.jsonl   # Prédictions (gitignoré)
 ├── rapport.json        # Rapport complet en JSON
 └── rapport.md          # Rapport en Markdown
 ```
@@ -62,144 +69,54 @@ results/
 ## Structure du projet
 
 ```
-cloison-bench/
-├── generator.py           # Générateur de dataset synthétique
-├── scoring.py             # Module d'évaluation et métriques
-├── presidio_baseline.py   # Configuration Presidio forte
-├── run_benchmark.py       # CLI principal
-├── test_benchmark.py      # Tests unitaires
-├── requirements.txt       # Dépendances Python
-└── README.md              # Ce fichier
+generator.py           # Générateur de dataset synthétique (seed 42, 0 PII réelle)
+scoring.py             # Module d'évaluation et métriques (exact match, bootstrap IC 95 %)
+presidio_baseline.py   # Configuration Presidio forte (FR + CNI Luhn + gazetteers)
+run_benchmark.py       # CLI principal (baseline)
+run_detect_target.py   # GO/NO-GO avec le détecteur cible (cloison-detect)
+measure_clusters.py    # Analyse des clusters de scores (calibration des seuils)
+differential.py        # Différentiel cloison-core vs Presidio (oracle, charte §5.2)
+test_benchmark.py      # Tests unitaires (32)
+grille.json            # Grille de scoring pré-enregistrée (source de vérité)
+protocole.txt          # Protocole figé
 ```
 
 ## Dataset synthétique
 
-### Niveaux de difficulté
+1. **Simple** (32%) : documents courts (1-3 phrases), 1-2 entités max
+2. **Contextual** (32%) : documents moyens (3-7 phrases), 3-6 entités entrelacées
+3. **Adversarial** (16%) : documents complexes (5-15 phrases), 5-10 entités, contextes pièges
+4. **Non-PII** (20%) : documents sans PII pour mesurer la spécificité
 
-1. **Simple** (32%): Documents courts (1-3 phrases), 1-2 entités max
-2. **Contextual** (32%): Documents moyens (3-7 phrases), 3-6 entités entrelacées
-3. **Adversarial** (16%): Documents complexes (5-15 phrases), 5-10 entités, contextes pièges
-4. **Non-PII** (20%): Documents sans PII pour mesurer la spécificité
-
-### Format JSONLines
-
-```json
-{
-  "doc_id": "doc_0001",
-  "text": "Mamadou Diop réside à Dakar...",
-  "entities": [
-    {"type": "PERSON", "start": 0, "end": 12, "text": "Mamadou Diop"},
-    {"type": "LOC", "start": 23, "end": 28, "text": "Dakar"}
-  ],
-  "difficulty": "simple",
-  "seed": 42
-}
-```
+**Zéro PII réelle** : noms, CNI (Luhn), téléphones, emails, lieux 100 % synthétiques —
+vérifié par audit d'échantillon (invariant CLOISON : le jeu n'est pas collecté, il est généré).
 
 ## Métriques
 
-### Matching
-
-- **Exact match strict**: positions start/end identiques + type correct
-- **Normalisation**: lowercase, NFC pour diacritiques, espaces normalisés
-
-### Scores calculés
-
-- **Precision, Recall, F1** par type d'entité
-- **macro-F1**: moyenne non pondérée des F1
-- **weighted-F1**: moyenne pondérée par les poids de la grille
-- **IC 95%**: intervalles de confiance par bootstrap (1000 itérations)
-
-### Critères GO/NO-GO
-
-Le projet CLOISON passe GO si:
-
-1. macro_F1_global >= baseline_macro_F1 + 0.10
-2. F1_PERSON >= baseline_F1_PERSON + 0.12
-3. F1_CNI >= baseline_F1_CNI + 0.08
-
-Les 3 critères doivent être remplis simultanément.
-
-## Algorithme Luhn pour CNI
-
-Les numéros CNI sénégalais synthétiques respectent:
-
-- Format: 13 chiffres commençant par '1'
-- Validation: checksum Luhn (mod 10)
-- Formats: compact ou avec espaces (1XX XXX XXXX XX)
-
-```python
-from generator import generate_cni, validate_cni_luhn
-
-cni_full, cni_formatted = generate_cni()
-# cni_full: "1752345678017"
-# cni_formatted: "175 234 5678 01"
-
-is_valid = validate_cni_luhn(cni_full)  # True
-```
+- **Exact match strict** : positions start/end identiques + type correct ;
+  normalisation casse/diacritiques/espaces ; chevauchement partiel = FP + FN.
+- **Precision, Recall, F1** par type d'entité ; **macro-F1** (moyenne non pondérée) ;
+  **IC 95 %** par bootstrap (1000 itérations) ; **spécificité** non-PII au niveau document.
 
 ## Reproductibilité
 
-Le benchmark est entièrement reproductible avec:
-
-- Graine fixe (défaut: 42)
-- Hash SHA-256 du dataset
-- Versions figées des dépendances
-
-```bash
-# Vérifier le hash du dataset
-sha256sum results/dataset.jsonl
-```
+- Graine fixe (seed 42) ; hash SHA-256 du dataset (`sha256sum results/dataset.jsonl`).
+- Critères **pré-enregistrés** dans `grille.json` — non modifiables après observation.
 
 ## Tests
 
 ```bash
-# Lancer tous les tests
-pytest test_benchmark.py -v
-
-# Avec couverture
-pytest test_benchmark.py --cov=. --cov-report=html
+pytest test_benchmark.py -v     # 32 tests (Luhn, roundtrip, spans, grille)
 ```
 
-## Extension
+## Dépendance sur cloison-detect
 
-### Ajouter un nouveau détecteur
-
-```python
-# Custom detector interface
-def detect_pii(text: str) -> list[dict]:
-    """
-    Args:
-        text: Texte à analyser
-        
-    Returns:
-        List of {'type': str, 'start': int, 'end': int, 'text': str}
-    """
-    # Votre implémentation
-    pass
-
-# Utiliser avec le scorer
-from scoring import Scorer
-
-scorer = Scorer(seed=42)
-result = scorer.score(gold_docs, your_predictions)
-```
-
-### Modifier les templates
-
-Les templates de documents sont définis dans `generator.py`. Ajoutez vos templates dans les listes:
-
-- `TEMPLATES_SIMPLE`
-- `TEMPLATES_CONTEXTUAL`
-- `TEMPLATES_ADVERSARIAL`
-- `TEMPLATES_NON_PII`
+`run_detect_target.py` importe le pipeline de détection
+([cloison-detect](https://github.com/coucagog/cloison-detect)) : ajouter son
+répertoire racine au `PYTHONPATH` (voir ci-dessus). `differential.py` lance le
+binaire `detect_cli` de [cloison-core](https://github.com/coucagog/cloison-core)
+(`CLOISON_CORE_BIN` env pour le chemin).
 
 ## Licence
 
-Ce code fait partie du projet CLOISON. Aucune donnée PII réelle n'est utilisée.
-
-## Références
-
-- Grille de scoring: `_stage/stack1/grille.json`
-- Protocole: `_stage/stack1/protocole.txt`
-- Presidio: https://github.com/microsoft/presidio
+Apache-2.0 — voir [LICENSE](LICENSE).

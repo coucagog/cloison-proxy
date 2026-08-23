@@ -121,18 +121,16 @@ GO (précision fp16/int8). Le verdict GO ne requiert pas le GPU — c'est une
 décision d'infrastructure (achat/cloud) + d'ingénierie.
 **Si pas de GPU** : passer à la dette ③ (ONNX) qui est l'optimisation CPU.
 
-### ③ Priorisation de la voie ONNX
-**Objectif** : trancher ET (si prioritaire) implémenter l'optimisation CPU
-(`CLOISON_ONNX` est une **bascule morte** : config parse mais non câblée).
-**Démarrage** :
-1. Décision de priorité : ONNX int8 (×2-3 sur les docs longs, sans GPU) vs
-   GPU (×10-30, coût infra) vs les deux en séquence ;
-2. si implémentation : exporter afroxlmr/GLiNER en ONNX (dynamic axes),
-   session `onnxruntime` CPU int8 dans `african_models.py`/
-   `gliner_detect.py`, fallback torch si échec ;
-3. **re-valider le GO** (règle §5 : la précision int8 peut décaler les scores —
-   grille v1.1, 5 conditions) + `measure_clusters.py` ;
-4. documenter le gain mesuré.
+### ~~③ Priorisation de la voie ONNX~~ → **RÉSOLUE (DEPLOY-8, 23 août 2026)**
+
+**Implémenté et validé** : `CLOISON_ONNX` câblée (config → code → tests → docs),
+inférence du NER africain (afroxlmr) via ONNX Runtime CPU (int8 dynamique,
+repli fp32, fallback torch), export au premier chargement (dynamic axes) —
+**GO re-validé sur le chemin ONNX** (macro 0.9546, PERSON 0.9380, LOC 0.8351,
+spéc 0.77 — écart int8 vs torch négligeable), latence doc moyen ~20-25 %.
+GLiNER reste en torch (pas d'export ONNX dans gliner 0.2.12 — décision
+documentée). Dépôt public `cloison-detect` re-publié v0.2.0. Détails :
+`journal/DEPLOY-8.md`.
 
 ## 6bis. Secondaires (si le temps le permet)
 
