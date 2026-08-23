@@ -140,7 +140,21 @@ Runs historiques conservés : `go_nogo_final.offline-avant-fixes.json`,
 Les numéros mobiles sénégalais ont évolué : les préfixes **71** et **75** existent
 désormais. Inventaire précis des regex/jeux à mettre à jour (core + bench, dont les
 dépôts publics) et exigence de re-validation GO : voir `REPRISE-DEPLOIEMENT.md` §6ter.
-C'est un correctif de couverture (PII en clair sinon), priorité avant/avec ONNX.
+C'est un correctif de couverture (PII en clair sinon) — **programmé dans la session
+de finalisation N3** (REPRISE-DEPLOIEMENT §6 ①).
+
+### PRIORITÉ 6 — stratégie (décision pilote 23/08/2026) : finir N3, puis N0 léger
+
+**N3 et N0 sont les priorités produit.**
+- **N3 d'abord (prochaine session)** : terminer la couche commerciale (onboarding
+  locataire, `cloison-cli`, docs client, métriques k-anonymes) + régler la dette
+  71/75 au passage. Plan détaillé : `REPRISE-DEPLOIEMENT.md` §6.
+- **N0 ensuite (session ultérieure)** : le plus léger possible — moteur **Rust
+  seul** (core, sans sidecar NER Python), kit portable (natif desktop/mobile +
+  WASM), déclinaisons daemon desktop (v1) / mobile embarqué / navigateur. Coffre
+  persistant, auth 100 % locale, limites honnêtes documentées. Décisions et
+  questions ouvertes : `REPRISE-DEPLOIEMENT.md` §6bis.
+- **GPU (dette ②)** : en attente (aucun GPU disponible, décision reportée).
 
 ## 6. Infos pratiques pour reprendre
 

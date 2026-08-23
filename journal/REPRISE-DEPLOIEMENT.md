@@ -97,54 +97,113 @@ impose de re-valider avec les VRAIS modèles** (pytest ne couvre pas le chemin
 réel) : `bench/cloison-bench` + `measure_clusters.py` sur le VPS (le GO run a
 attrapé le bug que les 70 tests ne voyaient pas).
 
-## 6. Prochaine session — DETTES prioritaires (ordre validé par le pilote)
+## 6. Prochaine session — FINALISER N3 + dette 71/75 (ordre validé par le pilote, 23/08/2026)
 
-### ~~① Publication open-core PUBLIQUE~~ → **RÉSOLUE (DEPLOY-7, 23 août 2026)**
+> Décision pilote : **N3 et N0 sont les priorités**. Cette session **termine N3**
+> (couche commerciale) et règle **au passage** la dette 71/75 (couverture
+> téléphonique — c'est le moteur qu'on embarque). **N0 (kit léger, daemon
+> desktop) est une session ULTÉRIEURE, après N3** (design posé en §6bis).
+> **GPU : en attente** (aucun GPU disponible — décision reportée ; option
+> « GPU local dans l'infra » à re-voir plus tard).
 
-**Publié** : 10 dépôts publics `coucagog/cloison-{core,proxy,audit,control,
-ledger,verify,cli,wasm,detect,bench}` (branche `main` + tag `v0.1.0`),
-extraits par `git subtree split` de la source de vérité (`4ed0c45`), adaptés
-(Cargo.toml autonome, **git deps épinglées** `tag = "v0.1.0"`, licences,
-README), vérifiés deux fois (workspace path-deps puis dépôts publiés avec git
-deps réelles — tout vert), `Cargo.lock` verrouillés. Portes : 0 secret / 0 PII
-dans l'historique complet ; `cloison-corpus` jamais publié. Détails :
-`journal/DEPLOY-7.md`, `docs/OPEN-CORE.md` §4.
+### ① Dette 71/75 — préfixes téléphoniques sénégalais (CORRECTIF — cette session)
 
-### ② GPU
-**Objectif** : réduire la latence detect (mesurée ~0,5 s court / ~1,7 s
-160 mots sur CPU) à ~50-150 ms/doc.
-**Démarrage** : sizing documenté dans `journal/DEPLOY-6.md` — carte d'entrée
-~2-4 Go VRAM (T4/L4 ou équivalent cloud), afroxlmr-large en fp16 (ou int8
-~1 Go) ; brancher `torch.cuda`/`device="cuda"` dans `african_models.py` +
-`gliner_detect.py` (config `CLOISON_DEVICE` à ajouter), re-mesurer, re-valider
-GO (précision fp16/int8). Le verdict GO ne requiert pas le GPU — c'est une
-décision d'infrastructure (achat/cloud) + d'ingénierie.
-**Si pas de GPU** : passer à la dette ③ (ONNX) qui est l'optimisation CPU.
+Inventaire exact : §6ter. Étapes :
 
-### ~~③ Priorisation de la voie ONNX~~ → **RÉSOLUE (DEPLOY-8, 23 août 2026)**
+1. `crates/cloison-core/src/detection.rs` (l.200) : ajouter `71` à la branche
+   locale `(?:70|71|75|76|77|78)`.
+2. `bench/cloison-bench/presidio_baseline.py` (l.140/146/152 + l.158/164) :
+   ajouter 71 (et aligner les patterns espacés sur 71/75/76).
+3. `bench/cloison-bench/generator.py` (l.106-109) : ajouter 71/75 à
+   `PREFIXES_TEL` (attribution opérateur à confirmer) — le jeu doit générer
+   ces numéros.
+4. `bench/cloison-bench/README.md` : table TEL à jour.
+5. **Re-validation GO obligatoire** (règle §5) : jeu avec 71/75, grille v1.1
+   (5 conditions), puis e2e mock/réel. Tests unitaires core + bench.
+6. **Prod** : rebuild de l'image edge (le core est embarqué dans le proxy) +
+   redéploiement.
+7. **Open-core** : re-publier `cloison-core` + `cloison-bench` (tag `v0.2.0`,
+   procédure `docs/OPEN-CORE.md` §4 — même mécanique que DEPLOY-8).
 
-**Implémenté et validé** : `CLOISON_ONNX` câblée (config → code → tests → docs),
-inférence du NER africain (afroxlmr) via ONNX Runtime CPU (int8 dynamique,
-repli fp32, fallback torch), export au premier chargement (dynamic axes) —
-**GO re-validé sur le chemin ONNX** (macro 0.9546, PERSON 0.9380, LOC 0.8351,
-spéc 0.77 — écart int8 vs torch négligeable), latence doc moyen ~20-25 %.
-GLiNER reste en torch (pas d'export ONNX dans gliner 0.2.12 — décision
-documentée). Dépôt public `cloison-detect` re-publié v0.2.0. Détails :
-`journal/DEPLOY-8.md`.
+### ② N3 — couche commerciale (TERMINER N3 — cette session)
 
-## 6bis. Secondaires (si le temps le permet)
+La stack est fonctionnelle ; il manque la couche « un client peut nous
+acheter » :
+
+1. **`cloison-cli` (squelette)** : remplir l'outillage ops N3 — provisioning
+   tenant + jeton `mn_` (enveloppe de `deploy/provision_control.sh`), rotation,
+   requêtes ledger, stats. Débloque aussi la re-publication du dépôt public
+   `cloison-cli` (publié vide à DEPLOY-7).
+2. **Onboarding locataire** : flux bout en bout documenté + scripté —
+   création tenant, génération jeton `mn_`, livraison de la **clé composite**
+   au client, vérification `POST /v1/control/verify`.
+3. **Docs client** : guide « pointer votre interface IA sur `api.wonkom.ai` »
+   (2 champs : base URL + clé composite), FAQ confidentialité, liens journal
+   public + open-core (la promesse vérifiable).
+4. **Métriques / rapport client** : rapport de conformité k-anonyme
+   (`GET /v1/audit/report`, mode audit observe-only) présentable au client —
+   le ledger comme source de vérité.
+5. **Décisions en attente (DEPLOY-1)** : `dsh.wonkom.ai` (DNS mort — retirer
+   l'enregistrement ou le documenter) ; mode audit public vs interne.
+6. **Vérifications finales N3** : ledger alimenté par du trafic réel, memwatch
+   0 OOM, certs J-14, e2e réel, stack stable.
+
+**Porte de sortie N3** : onboarding client possible de bout en bout (tenant →
+clé composite → requête réelle → journal alimenté) · 71/75 réglé avec GO
+re-validé · docs client publiées · `cloison-cli` livré · dettes à jour.
+
+### Dettes résolues (référence)
+
+- ① open-core public : **RÉSOLUE** (DEPLOY-7) — 10 dépôts `coucagog/cloison-*`,
+  git deps épinglées v0.1.0, vérifiés deux fois. Détails : `journal/DEPLOY-7.md`.
+- ③ voie ONNX : **RÉSOLUE** (DEPLOY-8) — `CLOISON_ONNX` câblée (ONNX Runtime
+  CPU int8 pour afroxlmr), GO re-validé (macro 0.9546), latence doc moyen
+  ~20-25 %, `cloison-detect`/`cloison-bench` re-publiés v0.2.0. Détails :
+  `journal/DEPLOY-8.md`.
+
+## 6bis. En attente / sessions suivantes
+
+### GPU (dette ②) — EN ATTENTE (reporté, décision pilote 23/08/2026)
+
+Aucun GPU disponible pour le moment → dette ouverte jusqu'à nouvel ordre. Si
+un **GPU local** (dans l'infra) ou une autre approche est envisagé, le sizing
+et la procédure sont documentés (DEPLOY-6) ; la **baseline ONNX chiffrée de
+DEPLOY-8** sert de référence pour mesurer le gain.
+
+### N0 — kit moteur léger (session ULTÉRIEURE, après N3)
+
+Décisions pilote posées (23/08/2026) :
+
+- **N0 le plus léger possible** : moteur **Rust seul** (core : détection
+  structurée + gazetteers), **SANS sidecar NER Python** (charte §4 : le
+  sidecar est pour les paliers serveur/enclave) — ~quelques Mo, offline,
+  mobile-friendly. Limite honnête à documenter : rappel PERSON/LOC en texte
+  libre réduit (voie ONNX = rampe vers un NER léger plus tard).
+- **Kit portable** : core en bibliothèque (natif desktop/mobile + WASM
+  navigateur) — déclinaisons : **daemon desktop** (endpoint
+  OpenAI-compatible `localhost:8787`, réutilise le proxy — **recommandé
+  v1**), **mobile** (moteur embarqué — pas de daemon sur iOS), **navigateur**
+  (`cloison-wasm`, à écrire — squelette aujourd'hui).
+- **Décisions techniques** : coffre **persistant** (clé locale keychain,
+  perte = fail-loud), **auth 100 % locale** (jeton `mn_` résolu localement —
+  zéro dépendance au plan de contrôle pour masquer ; audit k-anonyme
+  **opt-in** vers le journal), philosophie référencée (invariants, open-core,
+  lien journal, mention « poste compromis »).
+- **Questions ouvertes** : surface v1 (daemon desktop vs app embarquée —
+  reco daemon) ; alias intra-session (R1-R7) + jauge quasi-id dans le core v1
+  (léger, déterministe) ou report v1.1 documenté.
+- **Prérequis** : dette 71/75 réglée AVANT d'embarquer le moteur (session N3).
+
+### Secondaires (si le temps le permet)
 
 - **Épingler les deps bench** (`bench/cloison-bench/requirements.txt` :
   presidio/spacy/numpy en `>=`) — la baseline régénérée a dérivé
-  (macro 0.7501 → 0.7623, spécificité 0.42 → 0.54) à cause de presidio plus
-  récent ; la référence officielle 0.7501 reste gravée dans `rapport.json`.
-  Pinner pour la reproductibilité.
+  (macro 0.7501 → 0.7623, spécificité 0.42 → 0.54) ; la référence officielle
+  0.7501 reste gravée dans `rapport.json`. Pinner pour la reproductibilité.
 - **Latence sous charge** — le modèle partagé sérialise les requêtes
   (verrou) : pool d'inférence ou batching par lot si la charge augmente.
-- **CI** — le run `cf2d0c6` est vert (9/9, torch 2.6.0, e2e LLM réel) ;
-  surveiller le prochain push ; secrets GitHub e2e posés.
-- **Hygiène** — `CLOISON_ONNX` mort : implémenter (dette ③) ou retirer la
-  variable de la config/compose/docs pour ne pas mentir.
+- **CI** — le run `cf2d0c6` est vert ; surveiller le prochain push (le push
+  ONNX va déclencher un run complet) ; secrets GitHub e2e posés.
 
 ## 6ter. Signalé pilote (23/08/2026) — préfixes téléphoniques sénégalais 71/75
 
@@ -173,7 +232,8 @@ correctif de couverture, pas une amélioration.
   puis e2e mock/réel.
 - **Prod** : l'edge embarque le core → rebuild + redéploiement après la mise à jour.
 
-**Priorité proposée** : avant ou avec la dette ③ (ONNX) — même zone (détection).
+**Priorité** : correctif de couverture (PII en clair sinon) — **à régler dans la
+prochaine session (N3)**, voir §6 ①.
 
 ## 7. Leçons opérationnelles (à ne pas refaire)
 
