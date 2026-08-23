@@ -125,6 +125,9 @@ services:
       # le ledger doit rester vérifiable entre redémarrages (surface publique
       # journal.wonkom.ai, étape C). Absente → clé éphémère (dev).
       CLOISON_CONTROL_SIGNING_KEY: ${CLOISON_CONTROL_SIGNING_KEY:-}
+      # Clé publique Ed25519 de l'agent au bord (64 hex) : vérifie sig_agent
+      # des reçus à l'ingest (POST /v1/control/ingest). Absente → éphémère.
+      CLOISON_AGENT_VERIFY_KEY: ${CLOISON_AGENT_VERIFY_KEY:-}
       # PostgresStore (STACK-8, feature `pg` — image construite avec) :
       # activer avec le profil `db` et CLOISON_DATABASE_URL. Absent →
       # InMemoryStore (perte au restart, dev).
