@@ -12,7 +12,9 @@
 //! - `CLOISON_EXPECTED_ACCESS_TOKEN` (optionnel, comparé à temps constant) ;
 //! - `CLOISON_TENANT_KEY_HEX` (64 hex — requis hors mock), `CLOISON_SESSION_SALT_HEX`
 //!   (32 hex — aléatoire par boot si absent) ;
-//! - `CLOISON_MOCK_MODE` (`1`/`true` : assouplit les prérequis, clé locataire de dev).
+//! - `CLOISON_MOCK_MODE` (`1`/`true` : assouplit les prérequis, clé locataire de dev) ;
+//! - `CLOISON_DETECT_URL` (optionnel — URL REST `POST /detect` du sidecar NER,
+//!   wiring B.1), `CLOISON_DETECT_TIMEOUT_MS` (défaut 2000).
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -44,6 +46,8 @@ pub const DEFAULT_REQUEST_TIMEOUT_MS: u64 = 30_000;
 pub const DEFAULT_KEEP_ALIVE_MS: u64 = 15_000;
 /// Seuil k-anonyme du rapport de conformité par défaut (STACK-4).
 pub const DEFAULT_AUDIT_K: usize = 5;
+/// Timeout de la requête detect par défaut (ms) — B.1.
+pub const DEFAULT_DETECT_TIMEOUT_MS: u64 = 2_000;
 
 /// Configuration complète du proxy.
 #[derive(Clone)]
@@ -77,6 +81,29 @@ pub struct Config {
     /// append-only 0600, rechargé au boot. `None` = journal en mémoire seule
     /// (perte au restart, dégradé).
     pub audit_ledger_file: Option<PathBuf>,
+    /// Wiring edge → sidecar detect (B.1) : URL REST du sidecar NER
+    /// (`CLOISON_DETECT_URL`, ex. `http://detect:8080/detect`). `None` =
+    /// détection embarquée seule (comportement historique).
+    pub detect: DetectConfig,
+}
+
+/// Configuration du sidecar `cloison-detect` (wiring edge→detect, B.1).
+#[derive(Debug, Clone)]
+pub struct DetectConfig {
+    /// URL complète du endpoint REST `POST /detect` ; `None` = non câblé.
+    pub url: Option<Url>,
+    /// Timeout de la requête detect (ms) — au-delà, dégradation gracieuse
+    /// (détection embarquée seule), jamais de blocage du proxy.
+    pub timeout: Duration,
+}
+
+impl Default for DetectConfig {
+    fn default() -> Self {
+        Self {
+            url: None,
+            timeout: Duration::from_millis(DEFAULT_DETECT_TIMEOUT_MS),
+        }
+    }
 }
 
 impl std::fmt::Debug for Config {
@@ -100,6 +127,8 @@ impl std::fmt::Debug for Config {
             .field("audit_keys", &self.audit_keys)
             .field("audit_k", &self.audit_k)
             .field("audit_ledger_file", &self.audit_ledger_file)
+            .field("detect_url", &self.detect.url)
+            .field("detect_timeout", &self.detect.timeout)
             .finish_non_exhaustive()
     }
 }
@@ -237,6 +266,17 @@ pub fn load() -> Result<Config, ProxyError> {
         s => Some(PathBuf::from(s)),
     };
 
+    // B.1 — wiring edge → detect : URL REST du sidecar NER (optionnel).
+    let detect = DetectConfig {
+        url: match env("CLOISON_DETECT_URL", "") {
+            s if s.is_empty() => None,
+            s => Some(Url::parse(&s).map_err(|e| {
+                ProxyError::new(ErrorKind::Internal, "invalid CLOISON_DETECT_URL").with_field("detail", e.to_string())
+            })?),
+        },
+        timeout: Duration::from_millis(env_u64("CLOISON_DETECT_TIMEOUT_MS", DEFAULT_DETECT_TIMEOUT_MS)?),
+    };
+
     Ok(Config {
         listen_addr,
         upstream,
@@ -249,6 +289,7 @@ pub fn load() -> Result<Config, ProxyError> {
         audit_keys,
         audit_k,
         audit_ledger_file,
+        detect,
     })
 }
 

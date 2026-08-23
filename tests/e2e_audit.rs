@@ -31,7 +31,7 @@ use url::Url;
 use cloison_audit::ed25519_dalek::{SigningKey, VerifyingKey};
 use cloison_audit::receipt::Receipt;
 use cloison_audit::report::ConformanceReport;
-use cloison_proxy::config::{Config, StreamConfig, UpstreamConfig};
+use cloison_proxy::config::{Config, DetectConfig, StreamConfig, UpstreamConfig};
 use cloison_proxy::handlers::AppState;
 use cloison_proxy::routes::router;
 
@@ -230,6 +230,8 @@ fn audit_config(mock_url: &str, seed_path: Option<&std::path::Path>) -> Config {
         audit_keys: seed_path.map(|p| p.to_path_buf()),
         audit_k: 5,
         audit_ledger_file: None,
+        // B.1 : pas de sidecar detect dans ces tests — détection embarquée seule.
+        detect: DetectConfig::default(),
     }
 }
 
