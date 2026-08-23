@@ -7,6 +7,7 @@ rust-version = "1.75"
 # est en AGPL-3.0 (anti-forks hébergés fermés) ; les composants vérifiables
 # (core/ledger/verify/audit/control/cli/wasm) restent Apache-2.0 (workspace).
 license = "AGPL-3.0"
+repository = "https://github.com/coucagog/cloison-proxy"
 description = "CLOISON STACK-3 : passerelle OpenAI-compatible avec tokenisation PII"
 
 [dependencies]
@@ -29,8 +30,8 @@ rand = "0.8"
 # Wiring C — hash des jetons `mn_` (même domaine que le contrôle : le clair ne
 # quitte jamais le bord, seul le digest SHA-256 circule).
 sha2 = "0.10"
-cloison-core = { path = "../cloison-core" }
-cloison-audit = { path = "../cloison-audit" }
+cloison-core = { git = "https://github.com/coucagog/cloison-core", tag = "v0.1.0" }
+cloison-audit = { git = "https://github.com/coucagog/cloison-audit", tag = "v0.1.0" }
 
 [dev-dependencies]
 http-body-util = "0.1"
