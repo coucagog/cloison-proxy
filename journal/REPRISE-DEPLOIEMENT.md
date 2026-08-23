@@ -148,6 +148,35 @@ décision d'infrastructure (achat/cloud) + d'ingénierie.
 - **Hygiène** — `CLOISON_ONNX` mort : implémenter (dette ③) ou retirer la
   variable de la config/compose/docs pour ne pas mentir.
 
+## 6ter. Signalé pilote (23/08/2026) — préfixes téléphoniques sénégalais 71/75
+
+**Constat** : les numéros mobiles sénégalais ont évolué ces derniers mois — les
+préfixes **71** et **75** existent désormais. Un numéro en 71/75 non détecté est
+une **PII qui part en clair vers le LLM** (invariant I1, charte §6.1) : c'est un
+correctif de couverture, pas une amélioration.
+
+**Inventaire exact (état `4ed0c45`) :**
+
+| Fichier | État actuel | À faire |
+|---|---|---|
+| `crates/cloison-core/src/detection.rs` (l.200) | international `+221/00221 7[0-9]` couvre 71/75 ✅ ; **format local `(?:70\|75\|76\|77\|78)` → 71 MANQUANT** | ajouter `71` |
+| `bench/cloison-bench/presidio_baseline.py` (l.140/146/152) | `(?:70\|75\|76\|77\|78)\d{7}` ×3 → **71 MANQUANT** (75 présent) | ajouter `71` |
+| `bench/cloison-bench/presidio_baseline.py` (l.158/164) | patterns espacés `[67][078]` → **71/75 absents** | aligner |
+| `bench/cloison-bench/generator.py` (l.106-109) | `PREFIXES_TEL = {Orange:[77,78], Free:[76], Expresso:[70]}` → **71/75 absents** (le jeu ne les génère jamais) | ajouter 71/75 (attribution opérateur à confirmer) |
+| `bench/cloison-bench/README.md` | table TEL « préfixes 70/76/77/78 » | mettre à jour |
+
+**Répercussions** :
+- **2 dépôts PUBLICS concernés** : `coucagog/cloison-core` et
+  `coucagog/cloison-bench` → re-publier (commit + tag `v0.2.0`, procédure
+  `docs/OPEN-CORE.md` §4) ; `cloison-detect` n'a pas de regex TEL propre (l'oracle
+  Presidio par défaut détecte `PHONE_NUMBER` — à confirmer sur 71/75).
+- **Re-validation obligatoire** (règle §5) : le jeu benchmark doit inclure 71/75,
+  la baseline change → **vérifier que le verdict GO tient toujours** (grille v1.1),
+  puis e2e mock/réel.
+- **Prod** : l'edge embarque le core → rebuild + redéploiement après la mise à jour.
+
+**Priorité proposée** : avant ou avec la dette ③ (ONNX) — même zone (détection).
+
 ## 7. Leçons opérationnelles (à ne pas refaire)
 
 - **Egress interdit** sur `cloison-internal` : provisionner les modèles AVANT

@@ -125,9 +125,18 @@ Runs historiques conservés : `go_nogo_final.offline-avant-fixes.json`,
 - **Wiring C actif** : auth par hash via contrôle, ingest automatique des
   reçus d'audit (ledger public à 3 lignes), long-poll rotation.
 - **CI verte (8 jobs)** + images GHCR publiées + e2e LLM réel.
-- Reste à décision MLS : publication open-core (`docs/OPEN-CORE.md` §4),
-  GPU (latence ~0,5 s typique mesurée — acceptable CPU), voie ONNX (piste
-  documentée DEPLOY-6).
+- **Open-core PUBLIÉ** (DEPLOY-7, 23/08/2026) : 10 dépôts publics
+  `coucagog/cloison-*` (branche main + tag v0.1.0) — voir
+  `journal/DEPLOY-7.md` et `docs/OPEN-CORE.md` §4.
+- Reste à décision MLS : GPU (latence ~0,5 s typique mesurée — acceptable CPU),
+  voie ONNX (piste documentée DEPLOY-6).
+
+### PRIORITÉ 5 — signalé pilote (23/08/2026) : préfixes téléphoniques 71/75
+
+Les numéros mobiles sénégalais ont évolué : les préfixes **71** et **75** existent
+désormais. Inventaire précis des regex/jeux à mettre à jour (core + bench, dont les
+dépôts publics) et exigence de re-validation GO : voir `REPRISE-DEPLOIEMENT.md` §6ter.
+C'est un correctif de couverture (PII en clair sinon), priorité avant/avec ONNX.
 
 ## 6. Infos pratiques pour reprendre
 
