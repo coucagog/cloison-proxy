@@ -97,31 +97,64 @@ impose de re-valider avec les VRAIS modèles** (pytest ne couvre pas le chemin
 réel) : `bench/cloison-bench` + `measure_clusters.py` sur le VPS (le GO run a
 attrapé le bug que les 70 tests ne voyaient pas).
 
-## 6. Prochaine session — chantiers recommandés (par priorité)
+## 6. Prochaine session — DETTES prioritaires (ordre validé par le pilote)
 
-1. **Open-core : publication publique (décision MLS requise)** —
-   `docs/OPEN-CORE.md` §4 : `git subtree split` des crates (core, proxy,
-   ledger, verify, audit, control, cli, wasm ; detect ; bench) → dépôts
-   publics `coucagog/cloison-*`, licences (proxy AGPL-3.0, reste Apache-2.0),
-   vérifier `cargo test` sur chaque sous-arbre (ordre des path deps), tags
-   `v0.1.0`. Acte irréversible → validation MLS explicite.
-2. **Voie ONNX (optimisation CPU latence)** — `CLOISON_ONNX` est une
-   **bascule morte** (config parse mais non câblée) : exporter afroxlmr/GLiNER
-   en ONNX + `onnxruntime` CPU int8 (gain attendu ×2-3 sur les docs longs),
-   **puis re-valider le GO** (la précision int8 peut décaler les scores).
-3. **GPU (décision MLS)** — sizing documenté (DEPLOY-6) : carte ~2-4 Go VRAM
-   → afroxlmr à ~50-150 ms/doc (×10-30) ; le verdict GO ne le requiert pas.
-4. **Épingler les deps bench** (`bench/cloison-bench/requirements.txt` :
-   presidio/spacy/numpy en `>=`) — la baseline régénérée a dérivé
-   (macro 0.7501 → 0.7623, spécificité 0.42 → 0.54) à cause de presidio plus
-   récent ; la référence officielle 0.7501 reste gravée dans `rapport.json`.
-   Pinner pour la reproductibilité.
-5. **Latence sous charge** — le modèle partagé sérialise les requêtes
-   (verrou) : pool d'inférence ou batching par lot si la charge augmente.
-6. **CI** — vérifier le run du prochain push (torch 2.6.0 : test-detect 71
-   tests + images detect rebuild) ; les secrets GitHub e2e sont posés.
-7. **Hygiène** — `CLOISON_ONNX` mort : implémenter (chantier 2) ou retirer la
-   variable de la config/compose/docs pour ne pas mentir.
+### ① Publication open-core PUBLIQUE
+**Objectif** : rendre la promesse « nous ne lisons pas » vérifiable (charte
+§5.1) — publier les composants ouverts en dépôts publics `coucagog/cloison-*`.
+**Démarrage** (procédure détaillée dans `docs/OPEN-CORE.md` §4) :
+1. `git subtree split --prefix=crates/cloison-core` (puis audit, ledger,
+   verify, control, proxy, cli, wasm ; `services/cloison-detect` ;
+   `bench/cloison-bench`) → branches de publication ;
+2. créer les dépôts publics (API GitHub, token de `~/.git-credentials`),
+   pousser les branches + tags `v0.1.0` ;
+3. **licences** : proxy = AGPL-3.0 (texte `LICENSE-AGPL-3.0` à ajouter au
+   sous-arbre), reste Apache-2.0 ;
+4. **vérifier `cargo test` sur chaque sous-arbre** — ordre des path deps :
+   core → audit → ledger → control → proxy/verify (les `path` deviennent des
+   versions crates.io ou des git deps épinglées) ;
+5. README public + lien vers la vérification WASM du journal.
+**Gardes** : zéro PII/secret par construction (invariants) ; le corpus
+(`cloison-corpus`) reste privé ; acte irréversible → une validation pilote
+explicite est actée (cette dette est validée pour la session).
+
+### ② GPU
+**Objectif** : réduire la latence detect (mesurée ~0,5 s court / ~1,7 s
+160 mots sur CPU) à ~50-150 ms/doc.
+**Démarrage** : sizing documenté dans `journal/DEPLOY-6.md` — carte d'entrée
+~2-4 Go VRAM (T4/L4 ou équivalent cloud), afroxlmr-large en fp16 (ou int8
+~1 Go) ; brancher `torch.cuda`/`device="cuda"` dans `african_models.py` +
+`gliner_detect.py` (config `CLOISON_DEVICE` à ajouter), re-mesurer, re-valider
+GO (précision fp16/int8). Le verdict GO ne requiert pas le GPU — c'est une
+décision d'infrastructure (achat/cloud) + d'ingénierie.
+**Si pas de GPU** : passer à la dette ③ (ONNX) qui est l'optimisation CPU.
+
+### ③ Priorisation de la voie ONNX
+**Objectif** : trancher ET (si prioritaire) implémenter l'optimisation CPU
+(`CLOISON_ONNX` est une **bascule morte** : config parse mais non câblée).
+**Démarrage** :
+1. Décision de priorité : ONNX int8 (×2-3 sur les docs longs, sans GPU) vs
+   GPU (×10-30, coût infra) vs les deux en séquence ;
+2. si implémentation : exporter afroxlmr/GLiNER en ONNX (dynamic axes),
+   session `onnxruntime` CPU int8 dans `african_models.py`/
+   `gliner_detect.py`, fallback torch si échec ;
+3. **re-valider le GO** (règle §5 : la précision int8 peut décaler les scores —
+   grille v1.1, 5 conditions) + `measure_clusters.py` ;
+4. documenter le gain mesuré.
+
+## 6bis. Secondaires (si le temps le permet)
+
+- **Épingler les deps bench** (`bench/cloison-bench/requirements.txt` :
+  presidio/spacy/numpy en `>=`) — la baseline régénérée a dérivé
+  (macro 0.7501 → 0.7623, spécificité 0.42 → 0.54) à cause de presidio plus
+  récent ; la référence officielle 0.7501 reste gravée dans `rapport.json`.
+  Pinner pour la reproductibilité.
+- **Latence sous charge** — le modèle partagé sérialise les requêtes
+  (verrou) : pool d'inférence ou batching par lot si la charge augmente.
+- **CI** — le run `cf2d0c6` est vert (9/9, torch 2.6.0, e2e LLM réel) ;
+  surveiller le prochain push ; secrets GitHub e2e posés.
+- **Hygiène** — `CLOISON_ONNX` mort : implémenter (dette ③) ou retirer la
+  variable de la config/compose/docs pour ne pas mentir.
 
 ## 7. Leçons opérationnelles (à ne pas refaire)
 
