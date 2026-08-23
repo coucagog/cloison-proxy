@@ -205,9 +205,9 @@ impl Detector {
         // la crate `regex` standard ne les supporte pas). Le préfixe capturé est
         // retiré par detect_cni_sn (offset ajusté).
         let cni_sn_re = Regex::new(
-            r"(?:^|[^0-9])(1\d{2}[ \u00A0]?\d{3}[ \u00A0]?\d{4}[ \u00A0]?\d{3}|1\d{12})"
+            r"(?:^|[^0-9])(1\d{2}[ \u00A0]?\d{3}[ \u00A0]?\d{4}[ \u00A0]?\d{3}|1\d{12})",
         )
-            .map_err(|e| CloisonError::Detection(format!("cni_sn regex: {}", e)))?;
+        .map_err(|e| CloisonError::Detection(format!("cni_sn regex: {}", e)))?;
 
         let credit_card_re = Regex::new(r"\b(?:\d[ -]?){13,19}\b")
             .map_err(|e| CloisonError::Detection(format!("credit_card regex: {}", e)))?;
@@ -533,8 +533,12 @@ mod tests {
     fn test_gazetteer_nom_sn() {
         let det = Detector::new().unwrap();
         let spans = det.detect_all("Amadou est arrivé à Dakar");
-        assert!(spans.iter().any(|s| matches!(s.entity_type, DetectorKind::Gazetteer(ref n) if n == "nom_sn")));
-        assert!(spans.iter().any(|s| matches!(s.entity_type, DetectorKind::Gazetteer(ref n) if n == "ville_sn")));
+        assert!(spans
+            .iter()
+            .any(|s| matches!(s.entity_type, DetectorKind::Gazetteer(ref n) if n == "nom_sn")));
+        assert!(spans
+            .iter()
+            .any(|s| matches!(s.entity_type, DetectorKind::Gazetteer(ref n) if n == "ville_sn")));
     }
 
     #[test]
@@ -553,14 +557,25 @@ mod tests {
             .iter()
             .filter(|s| s.entity_type == DetectorKind::CniSn)
             .collect();
-        assert_eq!(cni_spans.len(), 1, "la CNI doit survivre au conflit CreditCard: {:?}", spans);
+        assert_eq!(
+            cni_spans.len(),
+            1,
+            "la CNI doit survivre au conflit CreditCard: {:?}",
+            spans
+        );
         assert!(
-            !spans.iter().any(|s| s.entity_type == DetectorKind::CreditCard),
+            !spans
+                .iter()
+                .any(|s| s.entity_type == DetectorKind::CreditCard),
             "aucun span CreditCard ne doit chevaucher la CNI: {:?}",
             spans
         );
         let s = cni_spans[0];
-        assert_eq!(&text[s.start..s.end], &cni, "span CNI exact (sans séparateur)");
+        assert_eq!(
+            &text[s.start..s.end],
+            &cni,
+            "span CNI exact (sans séparateur)"
+        );
     }
 
     #[test]
@@ -570,7 +585,9 @@ mod tests {
         let det = Detector::new().unwrap();
         let spans = det.detect_all("carte 4242424242424242 valide");
         assert!(
-            spans.iter().any(|s| s.entity_type == DetectorKind::CreditCard),
+            spans
+                .iter()
+                .any(|s| s.entity_type == DetectorKind::CreditCard),
             "carte bancaire toujours détectée: {:?}",
             spans
         );
@@ -581,7 +598,8 @@ mod tests {
         // Régression benchmark STACK-1 (MAIL 0.91) : le regex était ASCII-only
         // et ratait les emails à local-part accentué (marèmesylla@…).
         let det = Detector::new().unwrap();
-        let spans = det.detect_email("contact: marèmesylla@dakar.sn et amadou.bâ_diallo@entreprise.sn");
+        let spans =
+            det.detect_email("contact: marèmesylla@dakar.sn et amadou.bâ_diallo@entreprise.sn");
         assert_eq!(spans.len(), 2, "emails accentués détectés: {:?}", spans);
         assert!(spans.iter().all(|s| s.entity_type == DetectorKind::Email));
     }

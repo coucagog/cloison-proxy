@@ -60,7 +60,9 @@ impl Store for PostgresStore {
             .bind(tenant.tokens_version as i64)
             .execute(&self.pool)
             .await
-            .map_err(map_pg_conflict(|| ControlError::TenantConflict(tenant.id.clone())))?;
+            .map_err(map_pg_conflict(|| {
+                ControlError::TenantConflict(tenant.id.clone())
+            }))?;
             Ok(())
         })
     }
@@ -129,7 +131,11 @@ impl Store for PostgresStore {
                 return Ok(None);
             };
             // État : ni révoqué, ni roté hors grâce (même règle que InMemoryStore).
-            Ok(if token.is_active_at(now) { Some(token) } else { None })
+            Ok(if token.is_active_at(now) {
+                Some(token)
+            } else {
+                None
+            })
         })
     }
 
@@ -160,13 +166,12 @@ impl Store for PostgresStore {
                 return Err(ControlError::TokenNotFound(old_id.to_string()));
             }
             // Le nouveau jeton hérite des scopes de l'ancien (règle InMemoryStore).
-            let scopes_json: String = sqlx::query_scalar(
-                "SELECT scopes FROM api_tokens WHERE id = $1",
-            )
-            .bind(old_id)
-            .fetch_one(&self.pool)
-            .await
-            .map_err(pg_err)?;
+            let scopes_json: String =
+                sqlx::query_scalar("SELECT scopes FROM api_tokens WHERE id = $1")
+                    .bind(old_id)
+                    .fetch_one(&self.pool)
+                    .await
+                    .map_err(pg_err)?;
             let mut new = new_token.clone();
             new.scopes = parse_scopes(scopes_json);
             sqlx::query(
@@ -221,13 +226,12 @@ impl Store for PostgresStore {
 
     fn tokens_version(&self, tenant_id: &str) -> ControlResult<u64> {
         block_on(async {
-            let v: Option<i64> = sqlx::query_scalar(
-                "SELECT tokens_version FROM tenants WHERE id = $1",
-            )
-            .bind(tenant_id)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(pg_err)?;
+            let v: Option<i64> =
+                sqlx::query_scalar("SELECT tokens_version FROM tenants WHERE id = $1")
+                    .bind(tenant_id)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .map_err(pg_err)?;
             v.map(|v| v as u64)
                 .ok_or_else(|| ControlError::TenantNotFound(tenant_id.to_string()))
         })

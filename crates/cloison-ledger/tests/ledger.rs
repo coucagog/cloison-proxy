@@ -25,7 +25,11 @@ fn build_chain(count: u64) -> (Ledger, LedgerEntry) {
     let mut ledger = Ledger::with_verify_key(key.verifying_key());
     let mut head = ledger.head().cloned().expect("genesis seeded");
     for i in 1..=count {
-        let entry = head.next(payload_hash(&sample_payload("tenant-x", i)), 1_700_000_000 + i, &key);
+        let entry = head.next(
+            payload_hash(&sample_payload("tenant-x", i)),
+            1_700_000_000 + i,
+            &key,
+        );
         ledger.append(entry.clone()).expect("append ok");
         head = entry;
     }
@@ -39,7 +43,10 @@ fn genesis_is_well_formed() {
     assert_eq!(g.prev_hash, GENESIS_PREV_HASH);
     assert_eq!(g.payload_hash, GENESIS_PREV_HASH);
     assert_eq!(g.ts_unix, 0);
-    assert!(g.sig.is_empty(), "genèse non signée (signatures à partir de seq=1)");
+    assert!(
+        g.sig.is_empty(),
+        "genèse non signée (signatures à partir de seq=1)"
+    );
     assert_eq!(
         g.entry_hash,
         LedgerEntry::compute_entry_hash(0, &GENESIS_PREV_HASH, &GENESIS_PREV_HASH, 0)
@@ -54,8 +61,7 @@ fn entry_hash_is_sha256_of_canonical_header() {
     let prev_hash = [0xAB; 32];
     let payload_hash_bytes = [0xCD; 32];
     let ts = 1_700_000_001u64;
-    let digest =
-        LedgerEntry::compute_entry_hash(seq, &prev_hash, &payload_hash_bytes, ts);
+    let digest = LedgerEntry::compute_entry_hash(seq, &prev_hash, &payload_hash_bytes, ts);
     assert_eq!(
         hex(&digest),
         "6f6d1ca79db36e4f81aa4259f4eb8068ef2ca90dd310550f7ca49eb4da3b67aa"
@@ -111,7 +117,11 @@ fn append_verifies_chain_sequentially() {
     let mut ledger = Ledger::with_verify_key(key.verifying_key());
     let mut head = ledger.head().cloned().unwrap();
     for i in 1..=3u64 {
-        let entry = head.next(payload_hash(&sample_payload("t", i)), 1_700_000_000 + i, &key);
+        let entry = head.next(
+            payload_hash(&sample_payload("t", i)),
+            1_700_000_000 + i,
+            &key,
+        );
         ledger.append(entry.clone()).unwrap();
         head = entry;
     }
@@ -199,7 +209,10 @@ fn payload_hash_is_canonical_json() {
     assert_eq!(payload_hash(&a), payload_hash(&b));
     // Le hash est stable via le JSON canonique servi.
     let json = serde_json::to_string(&a).unwrap();
-    assert_eq!(payload_hash(&a), cloison_ledger::payload_hash_from_json(&json));
+    assert_eq!(
+        payload_hash(&a),
+        cloison_ledger::payload_hash_from_json(&json)
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -263,7 +276,11 @@ fn mem_ledger_store_append_and_read() {
     store.append(&Ledger::genesis()).unwrap();
     let mut prev = Ledger::genesis();
     for i in 1..=3u64 {
-        let entry = prev.next(payload_hash(&sample_payload("t", i)), 1_700_000_000 + i, &key);
+        let entry = prev.next(
+            payload_hash(&sample_payload("t", i)),
+            1_700_000_000 + i,
+            &key,
+        );
         store.append(&entry).unwrap();
         prev = entry;
     }
@@ -282,7 +299,11 @@ fn append_only_file_ledger_roundtrip_and_append_only() {
     let mut entries = vec![Ledger::genesis()];
     for i in 1..=3u64 {
         let prev = entries.last().unwrap();
-        entries.push(prev.next(payload_hash(&sample_payload("t", i)), 1_700_000_000 + i, &key));
+        entries.push(prev.next(
+            payload_hash(&sample_payload("t", i)),
+            1_700_000_000 + i,
+            &key,
+        ));
     }
     {
         let store = AppendOnlyFileLedger::open(&path).unwrap();
@@ -316,7 +337,11 @@ fn ledger_open_file_reloads_chain_and_verifies() {
         let mut ledger = Ledger::open_file(&path, key.verifying_key()).unwrap();
         let mut head = ledger.head().cloned().unwrap();
         for i in 1..=5u64 {
-            let entry = head.next(payload_hash(&sample_payload("t", i)), 1_700_000_000 + i, &key);
+            let entry = head.next(
+                payload_hash(&sample_payload("t", i)),
+                1_700_000_000 + i,
+                &key,
+            );
             ledger.append(entry.clone()).unwrap();
             head = entry;
         }

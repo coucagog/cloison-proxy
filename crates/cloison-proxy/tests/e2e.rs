@@ -50,7 +50,9 @@ enum MockMode {
     /// + écho des `tool_calls` de la première message qui en a.
     ChatEcho,
     /// Stream : écho du contenu en chunks de tailles données (découpe les sentinelles).
-    ChatStream { chunk_lens: Vec<usize> },
+    ChatStream {
+        chunk_lens: Vec<usize>,
+    },
     /// Stream : le dernier chunk se termine au milieu de la sentinelle finale.
     ChatStreamTruncated,
     ChatStreamToolCall,
@@ -92,21 +94,37 @@ impl MockUpstream {
         self.auth_seen.lock().unwrap().len()
     }
     fn last_auth(&self) -> String {
-        self.auth_seen.lock().unwrap().last().cloned().unwrap_or_default()
+        self.auth_seen
+            .lock()
+            .unwrap()
+            .last()
+            .cloned()
+            .unwrap_or_default()
     }
     fn body_count(&self) -> usize {
         self.bodies_seen.lock().unwrap().len()
     }
     fn last_body(&self) -> Value {
-        self.bodies_seen.lock().unwrap().last().cloned().unwrap_or(Value::Null)
+        self.bodies_seen
+            .lock()
+            .unwrap()
+            .last()
+            .cloned()
+            .unwrap_or(Value::Null)
     }
 }
 
-fn mock_router(mode: MockMode, auth_seen: Arc<Mutex<Vec<String>>>, bodies_seen: Arc<Mutex<Vec<Value>>>) -> Router {
+fn mock_router(
+    mode: MockMode,
+    auth_seen: Arc<Mutex<Vec<String>>>,
+    bodies_seen: Arc<Mutex<Vec<Value>>>,
+) -> Router {
     Router::new()
         .route(
             "/v1/chat/completions",
-            post(move |req: Request| mock_chat(req, mode.clone(), auth_seen.clone(), bodies_seen.clone())),
+            post(move |req: Request| {
+                mock_chat(req, mode.clone(), auth_seen.clone(), bodies_seen.clone())
+            }),
         )
         .route("/v1/completions", post(mock_completions))
         .route("/v1/models", get(mock_models))
@@ -125,7 +143,9 @@ async fn mock_chat(
         .unwrap_or("")
         .to_string();
     auth_seen.lock().unwrap().push(auth);
-    let body_bytes = axum::body::to_bytes(req.into_body(), 1024 * 1024).await.unwrap();
+    let body_bytes = axum::body::to_bytes(req.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
     let body: Value = serde_json::from_slice(&body_bytes).unwrap_or(Value::Null);
     bodies_seen.lock().unwrap().push(body.clone());
 
@@ -149,7 +169,9 @@ fn first_content(body: &Value) -> Option<String> {
         .and_then(|m| m.as_array())
         .and_then(|arr| {
             arr.iter().rev().find_map(|m| {
-                m.get("content").and_then(|c| c.as_str()).map(str::to_string)
+                m.get("content")
+                    .and_then(|c| c.as_str())
+                    .map(str::to_string)
             })
         })
 }
@@ -170,7 +192,9 @@ fn first_tool_calls(body: &Value) -> Option<Value> {
 
 fn chat_echo_with(body: &Value, forced_content: Option<&str>) -> Json<Value> {
     let model = body.get("model").cloned().unwrap_or(json!("mock-echo"));
-    let content = forced_content.map(str::to_string).or_else(|| first_content(body));
+    let content = forced_content
+        .map(str::to_string)
+        .or_else(|| first_content(body));
     let tool_calls = first_tool_calls(body);
     Json(json!({
         "id": "chatcmpl-mock-1",
@@ -215,7 +239,11 @@ fn split_chunks(content: &str, lens: &[usize]) -> Vec<String> {
     chunks
 }
 
-fn chat_stream(body: &Value, chunk_lens: &[usize], truncated: bool) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+fn chat_stream(
+    body: &Value,
+    chunk_lens: &[usize],
+    truncated: bool,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let model = body.get("model").cloned().unwrap_or(json!("mock-echo"));
     let content = first_content(body).unwrap_or_default();
 
@@ -313,13 +341,21 @@ fn chat_stream_toolcall(body: &Value) -> Sse<impl Stream<Item = Result<Event, In
 
 /// Sentinelle forgee : shape plausible (⟦ + 26 × 'a' + ·EM⟧) mais hors registre.
 fn forged_content() -> String {
-    format!("{}aaaaaaaaaaaaaaaaaaaaaaaaaa{}EM{}", '\u{27E6}', '\u{00B7}', '\u{27E7}')
+    format!(
+        "{}aaaaaaaaaaaaaaaaaaaaaaaaaa{}EM{}",
+        '\u{27E6}', '\u{00B7}', '\u{27E7}'
+    )
 }
 
 async fn mock_completions(req: Request) -> Response {
-    let body_bytes = axum::body::to_bytes(req.into_body(), 1024 * 1024).await.unwrap();
+    let body_bytes = axum::body::to_bytes(req.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
     let body: Value = serde_json::from_slice(&body_bytes).unwrap_or(Value::Null);
-    let prompt = body.get("prompt").and_then(|p| p.as_str()).map(str::to_string);
+    let prompt = body
+        .get("prompt")
+        .and_then(|p| p.as_str())
+        .map(str::to_string);
     let model = body.get("model").cloned().unwrap_or(json!("mock-echo"));
     Json(json!({
         "id": "cmpl-mock-1",
@@ -447,28 +483,62 @@ async fn non_stream_roundtrip_restores_pii() {
             {"role": "user", "content": "Contact: user@example.com, tel +221 77 123 45 67, ip 192.168.1.10"}
         ]
     });
-    let (status, resp_body) = send_json(&app, "POST", "/v1/chat/completions", Some(&good_auth()), Some(body)).await;
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
 
     let resp: Value = serde_json::from_str(&resp_body).unwrap();
     let content = resp["choices"][0]["message"]["content"].as_str().unwrap();
-    assert!(content.contains("user@example.com"), "email restored: {content}");
-    assert!(content.contains("+221 77 123 45 67"), "phone restored: {content}");
-    assert!(!content.contains('\u{27E6}'), "no sentinel leaked: {content}");
+    assert!(
+        content.contains("user@example.com"),
+        "email restored: {content}"
+    );
+    assert!(
+        content.contains("+221 77 123 45 67"),
+        "phone restored: {content}"
+    );
+    assert!(
+        !content.contains('\u{27E6}'),
+        "no sentinel leaked: {content}"
+    );
     // L'IP est généralisée par cloison-core (règle basse cardinalité `[IP]`),
     // pas tokenisée : elle ne doit ni fuir en clair ni être restaurée.
-    assert!(!content.contains("192.168.1.10"), "clear ip must not leak: {content}");
-    assert!(content.contains("[IP]"), "ip generalized upstream: {content}");
+    assert!(
+        !content.contains("192.168.1.10"),
+        "clear ip must not leak: {content}"
+    );
+    assert!(
+        content.contains("[IP]"),
+        "ip generalized upstream: {content}"
+    );
 
     // Clé amont transmise intacte (points conservés).
     assert_eq!(mock.last_auth(), format!("Bearer {TEST_UPSTREAM_KEY}"));
 
     // Le mock a reçu un corps transformé (sentinelles + généralisation).
     let upstream_text = mock.last_body().to_string();
-    assert!(!upstream_text.contains("user@example.com"), "clear email reached upstream");
-    assert!(!upstream_text.contains("+221 77 123 45 67"), "clear phone reached upstream");
-    assert!(!upstream_text.contains("192.168.1.10"), "clear ip reached upstream");
-    assert!(upstream_text.contains('\u{27E6}'), "sentinel present upstream");
+    assert!(
+        !upstream_text.contains("user@example.com"),
+        "clear email reached upstream"
+    );
+    assert!(
+        !upstream_text.contains("+221 77 123 45 67"),
+        "clear phone reached upstream"
+    );
+    assert!(
+        !upstream_text.contains("192.168.1.10"),
+        "clear ip reached upstream"
+    );
+    assert!(
+        upstream_text.contains('\u{27E6}'),
+        "sentinel present upstream"
+    );
     assert_eq!(state.metrics.unresolved_tokens.load(Ordering::Relaxed), 0);
 }
 
@@ -492,14 +562,32 @@ async fn tool_calls_arguments_restored() {
             {"role": "tool", "tool_call_id": "call_1", "content": "ok"}
         ]
     });
-    let (status, resp_body) = send_json(&app, "POST", "/v1/chat/completions", Some(&good_auth()), Some(body)).await;
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
 
     let resp: Value = serde_json::from_str(&resp_body).unwrap();
-    let args = resp["choices"][0]["message"]["tool_calls"][0]["function"]["arguments"].as_str().unwrap();
-    assert!(args.contains("user@example.com"), "email restored in arguments: {args}");
-    assert!(args.contains("+221 77 123 45 67"), "phone restored in arguments: {args}");
-    assert!(!args.contains('\u{27E6}'), "no sentinel in arguments: {args}");
+    let args = resp["choices"][0]["message"]["tool_calls"][0]["function"]["arguments"]
+        .as_str()
+        .unwrap();
+    assert!(
+        args.contains("user@example.com"),
+        "email restored in arguments: {args}"
+    );
+    assert!(
+        args.contains("+221 77 123 45 67"),
+        "phone restored in arguments: {args}"
+    );
+    assert!(
+        !args.contains('\u{27E6}'),
+        "no sentinel in arguments: {args}"
+    );
     // Le JSON des arguments reste syntaxiquement valide après restauration.
     let parsed: Value = serde_json::from_str(args).unwrap();
     assert_eq!(parsed["email"], "user@example.com");
@@ -510,7 +598,9 @@ async fn tool_calls_arguments_restored() {
 /// n'est émise, et le flux se termine par `[DONE]`.
 #[tokio::test]
 async fn stream_roundtrip_reassembles_split_sentinels() {
-    let lens = vec![5, 4, 6, 5, 4, 6, 5, 4, 6, 5, 4, 6, 5, 4, 6, 5, 4, 6, 5, 4, 6, 5, 4];
+    let lens = vec![
+        5, 4, 6, 5, 4, 6, 5, 4, 6, 5, 4, 6, 5, 4, 6, 5, 4, 6, 5, 4, 6, 5, 4,
+    ];
     let mock = MockUpstream::start(MockMode::ChatStream { chunk_lens: lens }).await;
     let (state, app) = proxy_app(&mock.url()).await;
 
@@ -520,15 +610,31 @@ async fn stream_roundtrip_reassembles_split_sentinels() {
         "stream": true,
         "messages": [{"role": "user", "content": original}]
     });
-    let (status, resp_body) = send_json(&app, "POST", "/v1/chat/completions", Some(&good_auth()), Some(body)).await;
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
     assert!(resp_body.contains("data: "), "SSE body expected");
 
     let (content, done) = sse_content_deltas(&resp_body);
     assert!(done, "stream must end with data: [DONE]");
-    assert!(!content.contains('\u{27E6}'), "no sentinel leaked to client: {content}");
-    assert!(!content.contains('\u{27E7}'), "no sentinel close leaked: {content}");
-    assert_eq!(content, original, "reassembled stream must equal the original text");
+    assert!(
+        !content.contains('\u{27E6}'),
+        "no sentinel leaked to client: {content}"
+    );
+    assert!(
+        !content.contains('\u{27E7}'),
+        "no sentinel close leaked: {content}"
+    );
+    assert_eq!(
+        content, original,
+        "reassembled stream must equal the original text"
+    );
     assert_eq!(state.metrics.unresolved_tokens.load(Ordering::Relaxed), 0);
 }
 
@@ -545,13 +651,29 @@ async fn stream_truncated_sentinel_redacts_at_closure() {
         "stream": true,
         "messages": [{"role": "user", "content": original}]
     });
-    let (status, resp_body) = send_json(&app, "POST", "/v1/chat/completions", Some(&good_auth()), Some(body)).await;
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
 
     let (content, _done) = sse_content_deltas(&resp_body);
-    assert!(content.contains("[REDACTED]"), "neutral marker expected: {content}");
-    assert!(!content.contains('\u{27E6}'), "no partial sentinel leaked: {content}");
-    assert!(!content.contains("+221 77 123 45 67"), "truncated phone must not leak: {content}");
+    assert!(
+        content.contains("[REDACTED]"),
+        "neutral marker expected: {content}"
+    );
+    assert!(
+        !content.contains('\u{27E6}'),
+        "no partial sentinel leaked: {content}"
+    );
+    assert!(
+        !content.contains("+221 77 123 45 67"),
+        "truncated phone must not leak: {content}"
+    );
     assert_eq!(state.metrics.unresolved_tokens.load(Ordering::Relaxed), 1);
 }
 
@@ -568,11 +690,27 @@ async fn stream_tool_call_first_chunk_preserved_and_args_restored() {
         "stream": true,
         "messages": [{"role": "user", "content": original}]
     });
-    let (status, resp_body) = send_json(&app, "POST", "/v1/chat/completions", Some(&good_auth()), Some(body)).await;
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
-    assert!(resp_body.contains("call_abc123"), "tool call id must reach client: {resp_body}");
-    assert!(resp_body.contains("lookup_user"), "tool name must reach client: {resp_body}");
-    assert!(resp_body.contains("user_id"), "tool args must reach client: {resp_body}");
+    assert!(
+        resp_body.contains("call_abc123"),
+        "tool call id must reach client: {resp_body}"
+    );
+    assert!(
+        resp_body.contains("lookup_user"),
+        "tool name must reach client: {resp_body}"
+    );
+    assert!(
+        resp_body.contains("user_id"),
+        "tool args must reach client: {resp_body}"
+    );
     assert!(resp_body.contains("[DONE]"), "stream must end with [DONE]");
 }
 
@@ -594,7 +732,14 @@ async fn malformed_keys_rejected_without_upstream_call() {
         Some("Bearer .sk"),    // jeton vide
     ];
     for case in cases {
-        let (status, resp_body) = send_json(&app, "POST", "/v1/chat/completions", case, Some(body.clone())).await;
+        let (status, resp_body) = send_json(
+            &app,
+            "POST",
+            "/v1/chat/completions",
+            case,
+            Some(body.clone()),
+        )
+        .await;
         assert_eq!(status, StatusCode::UNAUTHORIZED, "case: {case:?}");
         let resp: Value = serde_json::from_str(&resp_body).unwrap_or(Value::Null);
         assert_eq!(resp["error"]["code"], "invalid_api_key", "case: {case:?}");
@@ -614,12 +759,26 @@ async fn expected_access_token_enforced() {
     let app = router(state.clone());
     let body = json!({"model": "m", "messages": [{"role": "user", "content": "hi"}]});
 
-    let (status, _) = send_json(&app, "POST", "/v1/chat/completions", Some("mn_badtoken.sk-x"), Some(body.clone())).await;
+    let (status, _) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some("mn_badtoken.sk-x"),
+        Some(body.clone()),
+    )
+    .await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
     assert_eq!(mock.body_count(), 0);
     assert_eq!(state.metrics.auth_failures.load(Ordering::Relaxed), 1);
 
-    let (status, resp_body) = send_json(&app, "POST", "/v1/chat/completions", Some("mn_goodtoken.sk-x"), Some(body)).await;
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some("mn_goodtoken.sk-x"),
+        Some(body),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
     let resp: Value = serde_json::from_str(&resp_body).unwrap();
     assert_eq!(resp["choices"][0]["message"]["content"], "hi");
@@ -637,7 +796,14 @@ async fn forged_sentinel_yields_neutral_marker() {
         "model": "mock-echo",
         "messages": [{"role": "user", "content": "some request"}]
     });
-    let (status, resp_body) = send_json(&app, "POST", "/v1/chat/completions", Some(&good_auth()), Some(body)).await;
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
 
     let resp: Value = serde_json::from_str(&resp_body).unwrap();
@@ -655,7 +821,14 @@ async fn legacy_completions_roundtrip() {
     let (_state, app) = proxy_app(&mock.url()).await;
 
     let body = json!({"model": "mock-echo", "prompt": "Contact: user@example.com"});
-    let (status, resp_body) = send_json(&app, "POST", "/v1/completions", Some(&good_auth()), Some(body)).await;
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
 
     let resp: Value = serde_json::from_str(&resp_body).unwrap();
@@ -683,13 +856,28 @@ async fn upstream_error_yields_502() {
     let (_state, app) = proxy_app(&mock.url()).await;
     let body = json!({"model": "m", "messages": [{"role": "user", "content": "hi"}]});
 
-    let (status, resp_body) = send_json(&app, "POST", "/v1/chat/completions", Some(&good_auth()), Some(body.clone())).await;
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body.clone()),
+    )
+    .await;
     assert_eq!(status, StatusCode::BAD_GATEWAY);
     let resp: Value = serde_json::from_str(&resp_body).unwrap();
     assert_eq!(resp["error"]["code"], "upstream_error");
 
-    let stream_body = json!({"model": "m", "stream": true, "messages": [{"role": "user", "content": "hi"}]});
-    let (status, resp_body) = send_json(&app, "POST", "/v1/chat/completions", Some(&good_auth()), Some(stream_body)).await;
+    let stream_body =
+        json!({"model": "m", "stream": true, "messages": [{"role": "user", "content": "hi"}]});
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(stream_body),
+    )
+    .await;
     assert_eq!(status, StatusCode::BAD_GATEWAY);
     assert!(resp_body.contains("upstream_error"), "{resp_body}");
 }

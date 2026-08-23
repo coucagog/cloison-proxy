@@ -106,7 +106,12 @@ impl Engine {
     ///      a. If generalization rule exists → generalize (never tokenize)
     ///      b. Otherwise → emit token, register, store in vault, replace with sentinel
     ///   3. Return tokenized text and emitted token references
-    pub fn tokenize(&mut self, text: &str, policy: &Policy, request_id: &str) -> CloisonResult<TokenizeResult> {
+    pub fn tokenize(
+        &mut self,
+        text: &str,
+        policy: &Policy,
+        request_id: &str,
+    ) -> CloisonResult<TokenizeResult> {
         let spans = self.detector.detect_with_policy(text, &policy.detection);
         self.process_spans(text, policy, spans, request_id)
     }
@@ -176,7 +181,9 @@ impl Engine {
 
         for span in spans {
             // Step 2a: Check generalization
-            if policy.should_generalize(&span.entity_type) || self.generalizer.has_rule(&span.entity_type) {
+            if policy.should_generalize(&span.entity_type)
+                || self.generalizer.has_rule(&span.entity_type)
+            {
                 let replacement = self.generalizer.generalize(&span.entity_type, &span.value);
                 text_out = replace_span(&text_out, span.start, span.end, &replacement);
                 continue;
@@ -186,7 +193,8 @@ impl Engine {
             let token = Token::emit(&span.value, &span.entity_type, &self.keys)?;
 
             // Register in emission registry
-            self.registry.insert(&token.body, &span.value, &span.entity_type);
+            self.registry
+                .insert(&token.body, &span.value, &span.entity_type);
 
             // Store in vault (if available)
             if let Some(ref vault) = self.vault {
@@ -418,7 +426,10 @@ mod tests {
         assert!(!result.text_out.contains("Aminata"));
 
         let restored = engine.restore(&result.text_out, "req-cap").unwrap();
-        assert_eq!(restored.text_out, original, "nom capitalisé + téléphone restaurés");
+        assert_eq!(
+            restored.text_out, original,
+            "nom capitalisé + téléphone restaurés"
+        );
         assert_eq!(restored.counters.blocked, 0, "aucun jeton bloqué");
         assert_eq!(restored.counters.restored, 2, "nom + téléphone restaurés");
     }
@@ -441,7 +452,9 @@ mod tests {
         let policy = Policy::default();
 
         // First tokenize something to set up the registry
-        let _ = engine.tokenize("Contact: user@example.com", &policy, "req-3").unwrap();
+        let _ = engine
+            .tokenize("Contact: user@example.com", &policy, "req-3")
+            .unwrap();
 
         // Now try to restore text with a forged sentinel
         let fake_sentinel = format!(
@@ -454,7 +467,10 @@ mod tests {
         );
 
         let result = engine.restore(&fake_sentinel, "req-3").unwrap();
-        assert!(result.counters.blocked > 0, "Forged sentinel should be blocked");
+        assert!(
+            result.counters.blocked > 0,
+            "Forged sentinel should be blocked"
+        );
     }
 
     #[test]
@@ -464,8 +480,12 @@ mod tests {
         let mut engine2 = Engine::new(keys).unwrap();
         let policy = Policy::default();
 
-        let r1 = engine1.tokenize("user@example.com", &policy, "req-a").unwrap();
-        let r2 = engine2.tokenize("user@example.com", &policy, "req-b").unwrap();
+        let r1 = engine1
+            .tokenize("user@example.com", &policy, "req-a")
+            .unwrap();
+        let r2 = engine2
+            .tokenize("user@example.com", &policy, "req-b")
+            .unwrap();
 
         assert_eq!(r1.emitted[0].body_b32, r2.emitted[0].body_b32);
     }
@@ -478,8 +498,12 @@ mod tests {
         let mut engine2 = Engine::new(keys2).unwrap();
         let policy = Policy::default();
 
-        let r1 = engine1.tokenize("user@example.com", &policy, "req-a").unwrap();
-        let r2 = engine2.tokenize("user@example.com", &policy, "req-b").unwrap();
+        let r1 = engine1
+            .tokenize("user@example.com", &policy, "req-a")
+            .unwrap();
+        let r2 = engine2
+            .tokenize("user@example.com", &policy, "req-b")
+            .unwrap();
 
         assert_ne!(r1.emitted[0].body_b32, r2.emitted[0].body_b32);
     }
@@ -510,9 +534,14 @@ mod tests {
         // le span externe (sidecar NER) permet le masquage.
         let text = "Xolani Ndlovu vient de Soweto";
         let extra = vec![person_span(text)];
-        let result = engine.tokenize_with_extra(text, &policy, "req-extra-1", &extra).unwrap();
+        let result = engine
+            .tokenize_with_extra(text, &policy, "req-extra-1", &extra)
+            .unwrap();
 
-        assert!(!result.text_out.contains("Xolani Ndlovu"), "nom masqué par le span externe");
+        assert!(
+            !result.text_out.contains("Xolani Ndlovu"),
+            "nom masqué par le span externe"
+        );
         assert!(result.text_out.contains('⟦'), "sentinelle émise");
         assert_eq!(result.emitted.len(), 1);
         assert_eq!(result.emitted[0].kind_tag, "PE", "tag PERSON");
@@ -593,8 +622,15 @@ mod tests {
         let result = engine
             .tokenize_with_extra(text, &policy, "req-extra-4", &[overlapping])
             .unwrap();
-        assert!(!result.text_out.contains("user@example.com"), "email masqué par le core");
-        assert_eq!(result.emitted.len(), 1, "un seul jeton (l'email), pas de doublon");
+        assert!(
+            !result.text_out.contains("user@example.com"),
+            "email masqué par le core"
+        );
+        assert_eq!(
+            result.emitted.len(),
+            1,
+            "un seul jeton (l'email), pas de doublon"
+        );
         assert_eq!(result.emitted[0].kind_tag, "EM");
     }
 }

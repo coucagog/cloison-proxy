@@ -40,7 +40,9 @@
 
 use crate::contersign;
 use crate::error::{ControlError, ControlResult};
-use crate::model::{ApiToken, License, LicenseLimites, Plan, Policy, Tenant, TenantStatut, TokenIssued};
+use crate::model::{
+    ApiToken, License, LicenseLimites, Plan, Policy, Tenant, TenantStatut, TokenIssued,
+};
 use crate::store::Store;
 use crate::token;
 use axum::extract::{Path, Query, State};
@@ -151,9 +153,10 @@ impl From<ControlError> for ApiError {
             | ControlError::IngestRejected(_)
             | ControlError::Signature(_)
             | ControlError::Audit(_) => (StatusCode::BAD_REQUEST, err.to_string()),
-            ControlError::Ledger(_) | ControlError::Io(_) | ControlError::Json(_) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, "internal error".to_string())
-            }
+            ControlError::Ledger(_) | ControlError::Io(_) | ControlError::Json(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal error".to_string(),
+            ),
             ControlError::Store(_) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
             ControlError::Internal(_) => (StatusCode::BAD_REQUEST, err.to_string()),
         };
@@ -163,7 +166,11 @@ impl From<ControlError> for ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        (self.status, Json(serde_json::json!({ "error": self.message }))).into_response()
+        (
+            self.status,
+            Json(serde_json::json!({ "error": self.message })),
+        )
+            .into_response()
     }
 }
 
@@ -285,7 +292,12 @@ pub async fn issue_token(
     state.store.create_token(&stored)?;
     tracing::info!(tenant_id, token_id = %id, "token issued (hash only stored)");
     Ok(Json(
-        TokenIssued { id, token: clair, expires_at: None }.to_issued_json(),
+        TokenIssued {
+            id,
+            token: clair,
+            expires_at: None,
+        }
+        .to_issued_json(),
     ))
 }
 
@@ -316,9 +328,12 @@ pub async fn rotate_token(
     let id = token::new_token_id(&tenant_id, now);
     // Le nouveau jeton hérite des scopes de l'ancien (fait dans le store).
     let new_token = ApiToken::issue(id.clone(), tenant_id.clone(), &clair, Vec::new(), now);
-    state
-        .store
-        .rotate_token(&tenant_id, &req.token_id, &new_token, state.grace_period_secs)?;
+    state.store.rotate_token(
+        &tenant_id,
+        &req.token_id,
+        &new_token,
+        state.grace_period_secs,
+    )?;
     tracing::info!(
         tenant_id,
         old_token_id = %req.token_id,
@@ -326,7 +341,12 @@ pub async fn rotate_token(
         "token rotated (ancien en période de grâce)"
     );
     Ok(Json(
-        TokenIssued { id, token: clair, expires_at: None }.to_issued_json(),
+        TokenIssued {
+            id,
+            token: clair,
+            expires_at: None,
+        }
+        .to_issued_json(),
     ))
 }
 
@@ -484,7 +504,9 @@ pub async fn root(State(state): State<AppState>) -> Result<Json<serde_json::Valu
     let ledger = state.ledger.lock().expect("ledger lock poisoned");
     let seq = ledger.head().map(|e| e.seq).unwrap_or(0);
     let root_hash = hexutil::encode(&ledger.root_hash());
-    Ok(Json(serde_json::json!({ "seq": seq, "root_hash": root_hash })))
+    Ok(Json(
+        serde_json::json!({ "seq": seq, "root_hash": root_hash }),
+    ))
 }
 
 /// `GET /v1/control/version?tenant_id=…` — `tokens_version` du tenant.
@@ -526,7 +548,10 @@ pub fn router(state: AppState) -> Router {
         .route("/admin/tenants/{id}", get(get_tenant))
         .route("/admin/tenants/{id}/tokens", post(issue_token))
         .route("/admin/tenants/{id}/rotate", post(rotate_token))
-        .route("/admin/tenants/{id}/tokens/{token_id}", delete(revoke_token))
+        .route(
+            "/admin/tenants/{id}/tokens/{token_id}",
+            delete(revoke_token),
+        )
         .route("/admin/tenants/{id}/policy", put(put_policy))
         .route("/admin/tenants/{id}/licenses", post(add_license))
         .route("/v1/control/ingest", post(ingest))

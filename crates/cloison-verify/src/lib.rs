@@ -97,8 +97,12 @@ pub fn verify_chain(
     if first.prev_hash != GENESIS_PREV_HASH {
         return Err(VerifyError::GenesisMismatch { seq: 0 });
     }
-    if LedgerEntry::compute_entry_hash(first.seq, &first.prev_hash, &first.payload_hash, first.ts_unix)
-        != first.entry_hash
+    if LedgerEntry::compute_entry_hash(
+        first.seq,
+        &first.prev_hash,
+        &first.payload_hash,
+        first.ts_unix,
+    ) != first.entry_hash
     {
         return Err(VerifyError::EntryHashMismatch { seq: 0 });
     }
@@ -116,8 +120,12 @@ pub fn verify_chain(
         if entry.prev_hash != prev_hash {
             return Err(VerifyError::PrevHashMismatch { seq });
         }
-        if LedgerEntry::compute_entry_hash(seq, &entry.prev_hash, &entry.payload_hash, entry.ts_unix)
-            != entry.entry_hash
+        if LedgerEntry::compute_entry_hash(
+            seq,
+            &entry.prev_hash,
+            &entry.payload_hash,
+            entry.ts_unix,
+        ) != entry.entry_hash
         {
             return Err(VerifyError::EntryHashMismatch { seq });
         }
@@ -132,10 +140,7 @@ pub fn verify_chain(
 }
 
 /// Variante retournant un [`ChainVerdict`] structuré (API publique du design).
-pub fn verify_chain_v(
-    entries: &[LedgerEntry],
-    control_key: &VerifyingKey,
-) -> ChainVerdict {
+pub fn verify_chain_v(entries: &[LedgerEntry], control_key: &VerifyingKey) -> ChainVerdict {
     let head = entries.last();
     match verify_chain(entries, control_key) {
         Ok(()) => ChainVerdict {
@@ -168,8 +173,12 @@ pub fn verify_entry(
     if entry.prev_hash != *prev_hash {
         return Err(VerifyError::PrevHashMismatch { seq: entry.seq });
     }
-    if LedgerEntry::compute_entry_hash(entry.seq, &entry.prev_hash, &entry.payload_hash, entry.ts_unix)
-        != entry.entry_hash
+    if LedgerEntry::compute_entry_hash(
+        entry.seq,
+        &entry.prev_hash,
+        &entry.payload_hash,
+        entry.ts_unix,
+    ) != entry.entry_hash
     {
         return Err(VerifyError::EntryHashMismatch { seq: entry.seq });
     }
@@ -183,7 +192,9 @@ pub fn verify_entry(
 /// porte ce `payload_hash`. La preuve n'a de sens que sur une chaîne déjà validée par
 /// [`verify_chain`].
 pub fn prove_inclusion(entries: &[LedgerEntry], payload_hash: &[u8; 32]) -> bool {
-    entries.iter().any(|e| e.seq > 0 && &e.payload_hash == payload_hash)
+    entries
+        .iter()
+        .any(|e| e.seq > 0 && &e.payload_hash == payload_hash)
 }
 
 /// Preuve d'inclusion structurée : localise le `target_seq` et les `entry_hash` du
@@ -203,7 +214,9 @@ pub struct InclusionProof {
 /// Cherche le premier payload du hash demandé et construit la preuve d'inclusion
 /// (préfixe de la chaîne jusqu'au target). Retourne `None` si absent.
 pub fn find_inclusion(entries: &[LedgerEntry], payload_hash: &[u8; 32]) -> Option<InclusionProof> {
-    let target = entries.iter().find(|e| e.seq > 0 && &e.payload_hash == payload_hash)?;
+    let target = entries
+        .iter()
+        .find(|e| e.seq > 0 && &e.payload_hash == payload_hash)?;
     let prefix_hashes = entries
         .iter()
         .filter(|e| e.seq >= 1 && e.seq <= target.seq)
@@ -236,7 +249,9 @@ pub fn verify_chain_with_checkpoint(
 ) -> Result<(), VerifyError> {
     verify_chain(entries, control_key)?;
     if !checkpoint.verify(&Checkpoint::genesis(), checkpoint_key) {
-        return Err(VerifyError::CheckpointInvalid { seq: checkpoint.seq });
+        return Err(VerifyError::CheckpointInvalid {
+            seq: checkpoint.seq,
+        });
     }
     let head_seq = entries.last().map(|e| e.seq).unwrap_or(0);
     if checkpoint.seq > head_seq {
@@ -245,18 +260,24 @@ pub fn verify_chain_with_checkpoint(
             head_seq,
         });
     }
-    let anchored = entries
-        .iter()
-        .find(|e| e.seq == checkpoint.seq)
-        .ok_or(VerifyError::CheckpointMismatch { seq: checkpoint.seq })?;
+    let anchored = entries.iter().find(|e| e.seq == checkpoint.seq).ok_or(
+        VerifyError::CheckpointMismatch {
+            seq: checkpoint.seq,
+        },
+    )?;
     if anchored.entry_hash != checkpoint.entry_hash {
-        return Err(VerifyError::CheckpointMismatch { seq: checkpoint.seq });
+        return Err(VerifyError::CheckpointMismatch {
+            seq: checkpoint.seq,
+        });
     }
     Ok(())
 }
 
 /// Vérifie la signature Ed25519 d'une entrée réelle (`verify_strict`).
-fn verify_entry_signature(entry: &LedgerEntry, control_key: &VerifyingKey) -> Result<(), VerifyError> {
+fn verify_entry_signature(
+    entry: &LedgerEntry,
+    control_key: &VerifyingKey,
+) -> Result<(), VerifyError> {
     let sig_bytes: [u8; SIGNATURE_LEN] = entry
         .sig
         .as_slice()
@@ -278,8 +299,12 @@ fn failure_seq(failure: &VerifyError) -> u64 {
         | VerifyError::BadSignature { seq: expected }
         | VerifyError::TimestampRegressed { seq: expected } => *expected,
         VerifyError::TruncatedChain { checkpoint_seq, .. }
-        | VerifyError::CheckpointInvalid { seq: checkpoint_seq }
-        | VerifyError::CheckpointMismatch { seq: checkpoint_seq } => *checkpoint_seq,
+        | VerifyError::CheckpointInvalid {
+            seq: checkpoint_seq,
+        }
+        | VerifyError::CheckpointMismatch {
+            seq: checkpoint_seq,
+        } => *checkpoint_seq,
     }
 }
 

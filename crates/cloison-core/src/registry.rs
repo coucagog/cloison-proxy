@@ -38,7 +38,8 @@ impl IssuanceRegistry {
             return false;
         }
         self.emitted.insert(body.clone());
-        self.reverse.insert(body.clone(), (plain_value.to_string(), kind.clone()));
+        self.reverse
+            .insert(body.clone(), (plain_value.to_string(), kind.clone()));
         true
     }
 

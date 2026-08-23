@@ -53,7 +53,8 @@ impl UpstreamClient {
             full = format!("{base}{}", &path["/v1".len()..]);
         }
         Url::parse(&full).map_err(|e| {
-            ProxyError::new(ErrorKind::Internal, "invalid upstream URL").with_field("detail", e.to_string())
+            ProxyError::new(ErrorKind::Internal, "invalid upstream URL")
+                .with_field("detail", e.to_string())
         })
     }
 
@@ -102,8 +103,10 @@ impl UpstreamClient {
                 body = %crate::errors::truncate(&body_text, 1024),
                 "upstream non-2xx on stream request"
             );
-            Err(ProxyError::new(ErrorKind::Upstream, "upstream returned an error status")
-                .with_field("status", status.as_u16().to_string()))
+            Err(
+                ProxyError::new(ErrorKind::Upstream, "upstream returned an error status")
+                    .with_field("status", status.as_u16().to_string()),
+            )
         }
     }
 
@@ -124,7 +127,10 @@ impl UpstreamClient {
     }
 
     /// `GET /v1/models` — pass-through (aucune tokenisation).
-    pub async fn models(&self, upstream_key: &Zeroizing<String>) -> Result<serde_json::Value, ProxyError> {
+    pub async fn models(
+        &self,
+        upstream_key: &Zeroizing<String>,
+    ) -> Result<serde_json::Value, ProxyError> {
         let resp = self
             .http
             .get(self.url(&self.config.models_path)?)
@@ -151,8 +157,10 @@ async fn check_success(resp: reqwest::Response) -> Result<serde_json::Value, Pro
             body = %crate::errors::truncate(&body, 1024),
             "upstream non-2xx response"
         );
-        Err(ProxyError::new(ErrorKind::Upstream, "upstream returned an error status")
-            .with_field("status", status.as_u16().to_string()))
+        Err(
+            ProxyError::new(ErrorKind::Upstream, "upstream returned an error status")
+                .with_field("status", status.as_u16().to_string()),
+        )
     }
 }
 
@@ -185,13 +193,19 @@ mod url_tests {
     fn base_with_api_v1_no_double() {
         let u = cfg("https://openrouter.ai/api/v1", "/v1/chat/completions");
         let url = u.url("/v1/chat/completions").unwrap();
-        assert_eq!(url.as_str(), "https://openrouter.ai/api/v1/chat/completions");
+        assert_eq!(
+            url.as_str(),
+            "https://openrouter.ai/api/v1/chat/completions"
+        );
     }
 
     #[test]
     fn base_with_api_v1_relative_path() {
         let u = cfg("https://openrouter.ai/api/v1", "/chat/completions");
         let url = u.url("/chat/completions").unwrap();
-        assert_eq!(url.as_str(), "https://openrouter.ai/api/v1/chat/completions");
+        assert_eq!(
+            url.as_str(),
+            "https://openrouter.ai/api/v1/chat/completions"
+        );
     }
 }

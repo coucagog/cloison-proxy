@@ -20,8 +20,8 @@ use cloison_audit::ed25519_dalek::{SigningKey, VerifyingKey};
 use cloison_audit::receipt::{self, Counters, Receipt, ReceiptMessage};
 use cloison_audit::report::ConformanceReport;
 use cloison_core::{
-    CloisonError, CloisonResult, Detector, DetectorKind, Engine, Policy, RestoreResult,
-    SessionKeys, Sentinel, Span, TokenizeResult,
+    CloisonError, CloisonResult, Detector, DetectorKind, Engine, Policy, RestoreResult, Sentinel,
+    SessionKeys, Span, TokenizeResult,
 };
 
 use crate::detect::DetectClient;
@@ -50,8 +50,10 @@ pub struct RequestEngine {
 impl RequestEngine {
     /// Crée un moteur vierge pour une requête (registre vide).
     pub fn new(keys: &SessionKeys, request_id: &str) -> Result<Self, ProxyError> {
-        let engine = Engine::new(keys.clone())
-            .map_err(|e| ProxyError::new(ErrorKind::Internal, "failed to initialize engine").with_field("detail", e.to_string()))?;
+        let engine = Engine::new(keys.clone()).map_err(|e| {
+            ProxyError::new(ErrorKind::Internal, "failed to initialize engine")
+                .with_field("detail", e.to_string())
+        })?;
         Ok(Self {
             engine,
             request_id: request_id.to_string(),
@@ -113,7 +115,8 @@ pub async fn tokenize_chat_request(
         }
         if let Some(calls) = &mut msg.tool_calls {
             for call in calls {
-                let r = tokenize_with_detect(engine, &call.function.arguments, policy, detect).await?;
+                let r =
+                    tokenize_with_detect(engine, &call.function.arguments, policy, detect).await?;
                 call.function.arguments = r;
             }
         }
@@ -224,8 +227,10 @@ pub fn restore_chat_response_value(
                     "non-stream restore: fail-loud redaction applied"
                 );
             }
-            serde_json::to_value(typed)
-                .map_err(|e| ProxyError::new(ErrorKind::Internal, "failed to serialize restored response").with_field("detail", e.to_string()))
+            serde_json::to_value(typed).map_err(|e| {
+                ProxyError::new(ErrorKind::Internal, "failed to serialize restored response")
+                    .with_field("detail", e.to_string())
+            })
         }
         Err(e) => {
             tracing::warn!(request_id, error = %e, "upstream response shape not recognized; passing through untouched");
@@ -243,7 +248,11 @@ pub fn restore_completion_response(
     let mut agg = RestoreAggregate::default();
     if let Some(choices) = resp.get_mut("choices").and_then(|c| c.as_array_mut()) {
         for choice in choices {
-            if let Some(text) = choice.get("text").and_then(|t| t.as_str()).map(str::to_string) {
+            if let Some(text) = choice
+                .get("text")
+                .and_then(|t| t.as_str())
+                .map(str::to_string)
+            {
                 let r = engine.restore(&text).map_err(proxy_internal)?;
                 if r.counters.blocked + r.counters.incomplete > 0 {
                     choice["text"] = Value::String(neutral_marker.to_string());
@@ -278,7 +287,8 @@ fn apply_restore(
 
 /// Convertit une erreur `cloison-core` en 500 interne (jamais silencieux).
 pub(crate) fn proxy_internal(e: CloisonError) -> ProxyError {
-    ProxyError::new(ErrorKind::Internal, "internal tokenization error").with_field("detail", e.to_string())
+    ProxyError::new(ErrorKind::Internal, "internal tokenization error")
+        .with_field("detail", e.to_string())
 }
 
 // ---------------------------------------------------------------------------
@@ -288,7 +298,10 @@ pub(crate) fn proxy_internal(e: CloisonError) -> ProxyError {
 /// Types à faible cardinalité généralisés par `cloison-core` (jamais
 /// tokenisés) : leurs occurrences sont des drapeaux quasi-identifiants.
 fn is_quasi_identifier(kind: &DetectorKind) -> bool {
-    matches!(kind, DetectorKind::Ip | DetectorKind::Date | DetectorKind::CreditCard)
+    matches!(
+        kind,
+        DetectorKind::Ip | DetectorKind::Date | DetectorKind::CreditCard
+    )
 }
 
 /// Moteur d'audit observe-only : détecte et **compte** sans jamais masquer.
@@ -456,7 +469,10 @@ impl AuditEngine {
     /// Une erreur d'écriture est **remontée** (fail-loud) : le reçu reste
     /// disponible en mémoire, mais la perte au restart devient visible.
     pub fn record(&self, receipt: Receipt) -> Result<(), ProxyError> {
-        self.ledger.lock().expect("audit ledger mutex poisoned").push(receipt.clone());
+        self.ledger
+            .lock()
+            .expect("audit ledger mutex poisoned")
+            .push(receipt.clone());
         if let Some(path) = &self.ledger_path {
             append_receipt_line(path, &receipt)?;
         }
@@ -465,12 +481,18 @@ impl AuditEngine {
 
     /// Nombre de reçus accumulés.
     pub fn receipts_len(&self) -> usize {
-        self.ledger.lock().expect("audit ledger mutex poisoned").len()
+        self.ledger
+            .lock()
+            .expect("audit ledger mutex poisoned")
+            .len()
     }
 
     /// Copie des reçus accumulés (tests, vérification hors-ligne).
     pub fn receipts(&self) -> Vec<Receipt> {
-        self.ledger.lock().expect("audit ledger mutex poisoned").clone()
+        self.ledger
+            .lock()
+            .expect("audit ledger mutex poisoned")
+            .clone()
     }
 
     /// Rapport de conformité k-anonyme sur le journal accumulé.
@@ -524,10 +546,12 @@ impl AuditEngine {
             ),
         };
         let mut report =
-            ConformanceReport::from_receipts(&receipts, period_start, period_end, self.k).map_err(|e| {
-                ProxyError::new(ErrorKind::Internal, "failed to build conformance report")
-                    .with_field("detail", e.to_string())
-            })?;
+            ConformanceReport::from_receipts(&receipts, period_start, period_end, self.k).map_err(
+                |e| {
+                    ProxyError::new(ErrorKind::Internal, "failed to build conformance report")
+                        .with_field("detail", e.to_string())
+                },
+            )?;
         // P0-3 : le rapport servi est signé par la clé de l'agent au bord.
         // Message = JSON canonique {period_start, period_end, total_requests,
         // redacted} — jamais les compteurs bruts (aggregated).
@@ -552,8 +576,11 @@ fn load_or_create_signing_key(path: Option<&Path>) -> Result<SigningKey, ProxyEr
                 s
             } else if raw.len() == 64 {
                 decode_seed_hex(&String::from_utf8_lossy(&raw)).ok_or_else(|| {
-                    ProxyError::new(ErrorKind::Internal, "audit key file must be 32 raw bytes or 64 hex chars")
-                        .with_field("path", p.display().to_string())
+                    ProxyError::new(
+                        ErrorKind::Internal,
+                        "audit key file must be 32 raw bytes or 64 hex chars",
+                    )
+                    .with_field("path", p.display().to_string())
                 })?
             } else {
                 return Err(ProxyError::new(
@@ -571,7 +598,9 @@ fn load_or_create_signing_key(path: Option<&Path>) -> Result<SigningKey, ProxyEr
             Ok(key)
         }
         None => {
-            tracing::warn!("audit mode enabled without CLOISON_AUDIT_KEYS: using an ephemeral signing key");
+            tracing::warn!(
+                "audit mode enabled without CLOISON_AUDIT_KEYS: using an ephemeral signing key"
+            );
             Ok(SigningKey::generate(&mut rand::rngs::OsRng))
         }
     }
@@ -641,18 +670,24 @@ fn append_receipt_line(path: &Path, receipt: &Receipt) -> Result<(), ProxyError>
         .mode(0o600)
         .open(path)
         .map_err(|e| {
-            ProxyError::new(ErrorKind::Internal, "failed to open audit ledger for append")
-                .with_field("path", path.display().to_string())
-                .with_field("detail", e.to_string())
+            ProxyError::new(
+                ErrorKind::Internal,
+                "failed to open audit ledger for append",
+            )
+            .with_field("path", path.display().to_string())
+            .with_field("detail", e.to_string())
         })?;
     file.write_all(line.as_bytes())
         .and_then(|_| file.write_all(b"\n"))
         .and_then(|_| file.flush())
         .and_then(|_| file.sync_all())
         .map_err(|e| {
-            ProxyError::new(ErrorKind::Internal, "failed to append audit receipt to ledger")
-                .with_field("path", path.display().to_string())
-                .with_field("detail", e.to_string())
+            ProxyError::new(
+                ErrorKind::Internal,
+                "failed to append audit receipt to ledger",
+            )
+            .with_field("path", path.display().to_string())
+            .with_field("detail", e.to_string())
         })
 }
 

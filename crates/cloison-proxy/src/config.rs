@@ -181,25 +181,28 @@ pub fn load() -> Result<Config, ProxyError> {
 
     let listen_addr: SocketAddr = match std::env::var("CLOISON_LISTEN_ADDR") {
         Ok(v) => v.parse::<SocketAddr>().map_err(|e| {
-            ProxyError::new(ErrorKind::Internal, "invalid CLOISON_LISTEN_ADDR").with_field("detail", e.to_string())
+            ProxyError::new(ErrorKind::Internal, "invalid CLOISON_LISTEN_ADDR")
+                .with_field("detail", e.to_string())
         })?,
         Err(_) => match std::env::var("CLOISON_PROXY_PORT") {
-            Ok(port) => format!("0.0.0.0:{port}").parse::<SocketAddr>().map_err(|e| {
-                ProxyError::new(ErrorKind::Internal, "invalid CLOISON_PROXY_PORT").with_field("detail", e.to_string())
-            })?,
+            Ok(port) => format!("0.0.0.0:{port}")
+                .parse::<SocketAddr>()
+                .map_err(|e| {
+                    ProxyError::new(ErrorKind::Internal, "invalid CLOISON_PROXY_PORT")
+                        .with_field("detail", e.to_string())
+                })?,
             Err(_) => DEFAULT_LISTEN_ADDR.parse().expect("static default address"),
         },
     };
 
     let base_url = match std::env::var("CLOISON_UPSTREAM_BASE_URL") {
         Ok(v) => Url::parse(&v).map_err(|e| {
-            ProxyError::new(ErrorKind::Internal, "invalid CLOISON_UPSTREAM_BASE_URL").with_field("detail", e.to_string())
+            ProxyError::new(ErrorKind::Internal, "invalid CLOISON_UPSTREAM_BASE_URL")
+                .with_field("detail", e.to_string())
         })?,
-        Err(_) if mock_mode => Url::parse("http://127.0.0.1:1")
-            .expect("static placeholder URL")
-            // En mode mock sans URL, tout appel amont échoue immédiatement et
-            // bruyamment — le test doit toujours pointer un vrai mock.
-            ,
+        // En mode mock sans URL, tout appel amont échoue immédiatement et
+        // bruyamment — le test doit toujours pointer un vrai mock.
+        Err(_) if mock_mode => Url::parse("http://127.0.0.1:1").expect("static placeholder URL"),
         Err(_) => {
             return Err(ProxyError::new(
                 ErrorKind::Internal,
@@ -210,8 +213,11 @@ pub fn load() -> Result<Config, ProxyError> {
 
     let tenant_key: [u8; 32] = match std::env::var("CLOISON_TENANT_KEY_HEX") {
         Ok(v) => decode_hex(&v).map_err(|e| {
-            ProxyError::new(ErrorKind::Internal, "invalid CLOISON_TENANT_KEY_HEX (64 hex chars required)")
-                .with_field("detail", e.to_string())
+            ProxyError::new(
+                ErrorKind::Internal,
+                "invalid CLOISON_TENANT_KEY_HEX (64 hex chars required)",
+            )
+            .with_field("detail", e.to_string())
         })?,
         Err(_) if mock_mode => [0x42; 32],
         Err(_) => {
@@ -225,8 +231,11 @@ pub fn load() -> Result<Config, ProxyError> {
     let session_salt: [u8; 16] = match std::env::var("CLOISON_SESSION_SALT_HEX") {
         // Chaîne vide = non configuré (le compose passe ) : sel aléatoire par boot.
         Ok(v) if !v.is_empty() => decode_hex(&v).map_err(|e| {
-            ProxyError::new(ErrorKind::Internal, "invalid CLOISON_SESSION_SALT_HEX (32 hex chars required)")
-                .with_field("detail", e.to_string())
+            ProxyError::new(
+                ErrorKind::Internal,
+                "invalid CLOISON_SESSION_SALT_HEX (32 hex chars required)",
+            )
+            .with_field("detail", e.to_string())
         })?,
         _ => random_salt(),
     };
@@ -239,10 +248,19 @@ pub fn load() -> Result<Config, ProxyError> {
     let upstream = UpstreamConfig {
         base_url,
         chat_completions_path: env("CLOISON_UPSTREAM_CHAT_PATH", DEFAULT_CHAT_PATH),
-        completions_path: env("CLOISON_UPSTREAM_COMPLETIONS_PATH", DEFAULT_COMPLETIONS_PATH),
+        completions_path: env(
+            "CLOISON_UPSTREAM_COMPLETIONS_PATH",
+            DEFAULT_COMPLETIONS_PATH,
+        ),
         models_path: env("CLOISON_UPSTREAM_MODELS_PATH", DEFAULT_MODELS_PATH),
-        connect_timeout: Duration::from_millis(env_u64("CLOISON_UPSTREAM_CONNECT_TIMEOUT_MS", DEFAULT_CONNECT_TIMEOUT_MS)?),
-        request_timeout: Duration::from_millis(env_u64("CLOISON_UPSTREAM_TIMEOUT_MS", DEFAULT_REQUEST_TIMEOUT_MS)?),
+        connect_timeout: Duration::from_millis(env_u64(
+            "CLOISON_UPSTREAM_CONNECT_TIMEOUT_MS",
+            DEFAULT_CONNECT_TIMEOUT_MS,
+        )?),
+        request_timeout: Duration::from_millis(env_u64(
+            "CLOISON_UPSTREAM_TIMEOUT_MS",
+            DEFAULT_REQUEST_TIMEOUT_MS,
+        )?),
         max_body_bytes: env_usize("CLOISON_MAX_BODY_BYTES", DEFAULT_MAX_BODY_BYTES)?,
     };
 
@@ -250,7 +268,10 @@ pub fn load() -> Result<Config, ProxyError> {
         max_token_len: env_usize("CLOISON_STREAM_MAX_TOKEN_LEN", DEFAULT_STREAM_MAX_TOKEN_LEN)?
             .clamp(1, STREAM_MAX_TOKEN_LEN_CAP),
         neutral_marker: env("CLOISON_STREAM_NEUTRAL_MARKER", DEFAULT_NEUTRAL_MARKER),
-        keep_alive: Duration::from_millis(env_u64("CLOISON_STREAM_KEEP_ALIVE_MS", DEFAULT_KEEP_ALIVE_MS)?),
+        keep_alive: Duration::from_millis(env_u64(
+            "CLOISON_STREAM_KEEP_ALIVE_MS",
+            DEFAULT_KEEP_ALIVE_MS,
+        )?),
     };
 
     // STACK-4 : mode audit observe-only (défaut : désactivé — aucun reçu,
@@ -271,10 +292,14 @@ pub fn load() -> Result<Config, ProxyError> {
         url: match env("CLOISON_DETECT_URL", "") {
             s if s.is_empty() => None,
             s => Some(Url::parse(&s).map_err(|e| {
-                ProxyError::new(ErrorKind::Internal, "invalid CLOISON_DETECT_URL").with_field("detail", e.to_string())
+                ProxyError::new(ErrorKind::Internal, "invalid CLOISON_DETECT_URL")
+                    .with_field("detail", e.to_string())
             })?),
         },
-        timeout: Duration::from_millis(env_u64("CLOISON_DETECT_TIMEOUT_MS", DEFAULT_DETECT_TIMEOUT_MS)?),
+        timeout: Duration::from_millis(env_u64(
+            "CLOISON_DETECT_TIMEOUT_MS",
+            DEFAULT_DETECT_TIMEOUT_MS,
+        )?),
     };
 
     Ok(Config {
@@ -314,7 +339,11 @@ fn env_bool(name: &str) -> Result<bool, ProxyError> {
 fn env_usize(name: &str, default: usize) -> Result<usize, ProxyError> {
     match std::env::var(name) {
         Ok(v) => v.parse::<usize>().map_err(|e| {
-            ProxyError::new(ErrorKind::Internal, format!("invalid integer for {name}: {v}")).with_field("detail", e.to_string())
+            ProxyError::new(
+                ErrorKind::Internal,
+                format!("invalid integer for {name}: {v}"),
+            )
+            .with_field("detail", e.to_string())
         }),
         Err(_) => Ok(default),
     }
@@ -323,7 +352,11 @@ fn env_usize(name: &str, default: usize) -> Result<usize, ProxyError> {
 fn env_u64(name: &str, default: u64) -> Result<u64, ProxyError> {
     match std::env::var(name) {
         Ok(v) => v.parse::<u64>().map_err(|e| {
-            ProxyError::new(ErrorKind::Internal, format!("invalid integer for {name}: {v}")).with_field("detail", e.to_string())
+            ProxyError::new(
+                ErrorKind::Internal,
+                format!("invalid integer for {name}: {v}"),
+            )
+            .with_field("detail", e.to_string())
         }),
         Err(_) => Ok(default),
     }
@@ -340,8 +373,10 @@ fn decode_hex<const N: usize>(input: &str) -> Result<[u8; N], ProxyError> {
     let bytes = input.as_bytes();
     let mut out = [0u8; N];
     for (i, chunk) in bytes.chunks(2).enumerate() {
-        let hi = hex_val(chunk[0]).ok_or_else(|| ProxyError::new(ErrorKind::Internal, "invalid hex digit"))?;
-        let lo = hex_val(chunk[1]).ok_or_else(|| ProxyError::new(ErrorKind::Internal, "invalid hex digit"))?;
+        let hi = hex_val(chunk[0])
+            .ok_or_else(|| ProxyError::new(ErrorKind::Internal, "invalid hex digit"))?;
+        let lo = hex_val(chunk[1])
+            .ok_or_else(|| ProxyError::new(ErrorKind::Internal, "invalid hex digit"))?;
         out[i] = (hi << 4) | lo;
     }
     Ok(out)

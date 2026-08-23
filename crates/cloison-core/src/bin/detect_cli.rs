@@ -19,9 +19,7 @@ fn main() {
     let spans = detector.detect_with_policy(&text, &policy);
 
     // Convertit un offset byte (Rust regex) en offset points de code (contrat).
-    let byte_to_char = |byte_off: usize| -> usize {
-        text[..byte_off].chars().count()
-    };
+    let byte_to_char = |byte_off: usize| -> usize { text[..byte_off].chars().count() };
 
     let out: Vec<serde_json::Value> = spans
         .iter()

@@ -41,10 +41,7 @@ pub trait LedgerStore: Send + Sync {
 
     /// Nombre d'entrées (défaut : `head.seq + 1`).
     fn len(&self) -> LedgerResult<usize> {
-        Ok(self
-            .head()?
-            .map(|h| h.seq as usize + 1)
-            .unwrap_or(0))
+        Ok(self.head()?.map(|h| h.seq as usize + 1).unwrap_or(0))
     }
 
     /// Vrai si le store ne contient aucune entrée.
@@ -189,7 +186,10 @@ impl AppendOnlyFileLedger {
 
 impl LedgerStore for AppendOnlyFileLedger {
     fn append(&self, entry: &LedgerEntry) -> LedgerResult<()> {
-        let mut entries = self.entries.write().expect("file ledger cache lock poisoned");
+        let mut entries = self
+            .entries
+            .write()
+            .expect("file ledger cache lock poisoned");
         check_terminal(&entries, entry)?;
         let line = serde_json::to_string(entry)?;
         let mut file = self.file.lock().expect("file ledger lock poisoned");
@@ -291,7 +291,10 @@ mod tests {
         let bogus = LedgerEntry { seq: 5, ..bogus };
         assert!(matches!(
             store.append(&bogus),
-            Err(LedgerError::SeqMismatch { expected: 3, got: 5 })
+            Err(LedgerError::SeqMismatch {
+                expected: 3,
+                got: 5
+            })
         ));
     }
 
@@ -346,7 +349,10 @@ mod tests {
             let path = dir.path().join("ledger.jsonl");
             let _store = AppendOnlyFileLedger::open(&path).unwrap();
             let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
-            assert_eq!(mode, 0o644, "ledger file must be created 0644 (public transparency)");
+            assert_eq!(
+                mode, 0o644,
+                "ledger file must be created 0644 (public transparency)"
+            );
         }
         #[cfg(not(unix))]
         {

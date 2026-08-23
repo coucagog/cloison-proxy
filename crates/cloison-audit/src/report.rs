@@ -123,7 +123,9 @@ impl ConformanceReport {
         let Ok(sig) = Signature::from_slice(sig_bytes) else {
             return false;
         };
-        verifying_key.verify_strict(&self.signing_bytes(), &sig).is_ok()
+        verifying_key
+            .verify_strict(&self.signing_bytes(), &sig)
+            .is_ok()
     }
 }
 
@@ -191,7 +193,11 @@ mod tests {
         assert!(!report.publishable);
         assert_eq!(report.redacted.get("Email"), Some(&6));
         assert_eq!(report.redacted.get("PhoneSn"), Some(&5));
-        assert_eq!(report.redacted.get("CniSn"), Some(&0), "cell < k must be redacted");
+        assert_eq!(
+            report.redacted.get("CniSn"),
+            Some(&0),
+            "cell < k must be redacted"
+        );
     }
 
     #[test]
@@ -259,9 +265,15 @@ mod tests {
         let report = ConformanceReport::from_receipts(&receipts, 100, 501, 5).unwrap();
         let json = serde_json::to_string(&report).unwrap();
         // P0-1 : le champ brut `aggregated` ne doit JAMAIS être sérialisé.
-        assert!(!json.contains("aggregated"), "raw aggregated counters must never be serialized");
+        assert!(
+            !json.contains("aggregated"),
+            "raw aggregated counters must never be serialized"
+        );
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        assert!(parsed.get("aggregated").is_none(), "served JSON must not expose aggregated");
+        assert!(
+            parsed.get("aggregated").is_none(),
+            "served JSON must not expose aggregated"
+        );
         // Seules les métadonnées + redacted sont publiques.
         assert_eq!(parsed["period_start"].as_u64(), Some(100));
         assert_eq!(parsed["period_end"].as_u64(), Some(501));
@@ -269,7 +281,11 @@ mod tests {
         assert_eq!(parsed["k"].as_u64(), Some(5));
         assert_eq!(parsed["publishable"].as_bool(), Some(false));
         assert_eq!(parsed["redacted"]["Email"].as_u64(), Some(10));
-        assert_eq!(parsed["redacted"]["CniSn"].as_u64(), Some(0), "CniSn=4 < k=5 redacted");
+        assert_eq!(
+            parsed["redacted"]["CniSn"].as_u64(),
+            Some(0),
+            "CniSn=4 < k=5 redacted"
+        );
     }
 
     #[test]
@@ -289,11 +305,17 @@ mod tests {
         report.sign_report(&signing_key);
         let verifying_key = signing_key.verifying_key();
         assert_eq!(report.sig_report.as_ref().unwrap().len(), 64);
-        assert!(report.verify_signature(&verifying_key), "signed report must verify");
+        assert!(
+            report.verify_signature(&verifying_key),
+            "signed report must verify"
+        );
 
         // Altération d'une cellule publiée (redacted) → signature invalide.
         report.redacted.insert("Email".to_string(), 999);
-        assert!(!report.verify_signature(&verifying_key), "tampered redacted must fail");
+        assert!(
+            !report.verify_signature(&verifying_key),
+            "tampered redacted must fail"
+        );
 
         // Clé différente → invalide.
         let other = SigningKey::generate(&mut rand::rngs::OsRng);

@@ -68,7 +68,12 @@ impl Checkpoint {
 
     /// `digest = SHA-256(header_bytes(...))` — le lien porté par `prev_cp_hash`.
     pub fn digest(&self) -> [u8; 32] {
-        sha256(&Self::header_bytes(self.seq, &self.entry_hash, &self.prev_cp_hash, self.ts_unix))
+        sha256(&Self::header_bytes(
+            self.seq,
+            &self.entry_hash,
+            &self.prev_cp_hash,
+            self.ts_unix,
+        ))
     }
 
     /// `prev_cp_hash` attendu pour un checkpoint suivant `prev` : la genèse des checkpoints
@@ -115,7 +120,8 @@ impl Checkpoint {
         if self.prev_cp_hash != Self::prev_hash_of(prev) {
             return false;
         }
-        let header = Self::header_bytes(self.seq, &self.entry_hash, &self.prev_cp_hash, self.ts_unix);
+        let header =
+            Self::header_bytes(self.seq, &self.entry_hash, &self.prev_cp_hash, self.ts_unix);
         let Ok(sig_bytes) = <[u8; SIGNATURE_LEN]>::try_from(self.sig.as_slice()) else {
             return false;
         };

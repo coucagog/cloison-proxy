@@ -170,7 +170,9 @@ impl Receipt {
         let Ok(sig) = Signature::from_slice(&self.sig_agent) else {
             return false;
         };
-        verify_key.verify_strict(&self.signing_bytes(), &sig).is_ok()
+        verify_key
+            .verify_strict(&self.signing_bytes(), &sig)
+            .is_ok()
     }
 
     /// Encode le reçu en `base64url(canonical_json(receipt))` — valeur du

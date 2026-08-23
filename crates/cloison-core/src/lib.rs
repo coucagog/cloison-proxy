@@ -29,11 +29,13 @@ pub mod vault;
 pub mod wasm;
 
 // Public re-exports
-pub use detection::{Detector, DetectorKind, Gazetteer, Span, validate_luhn};
-pub use engine::{Engine, RestoreCounters, RestoreResult, TokenizeResult, TokenRef};
+pub use detection::{validate_luhn, Detector, DetectorKind, Gazetteer, Span};
+pub use engine::{Engine, RestoreCounters, RestoreResult, TokenRef, TokenizeResult};
 pub use error::{CloisonError, CloisonResult};
-pub use generalize::{GeneralizeRule, Generalizer, generalize_age, generalize_date, suppress};
+pub use generalize::{generalize_age, generalize_date, suppress, GeneralizeRule, Generalizer};
 pub use policy::{DetectorPolicy, Policy, SubstitutionMode};
 pub use registry::{IssuanceRegistry, RegistrySnapshot};
-pub use token::{Sentinel, SessionKeys, Token, TokenBody, canonicalize, compute_mac, token_body, verify_body};
+pub use token::{
+    canonicalize, compute_mac, token_body, verify_body, Sentinel, SessionKeys, Token, TokenBody,
+};
 pub use vault::{Vault, VaultConfig};

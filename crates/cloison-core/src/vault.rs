@@ -6,7 +6,6 @@
 //! Each entry is encrypted with a derived session encryption key.
 //! TTL-based expiration with garbage collection.
 
-
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
 use serde::{Deserialize, Serialize};
 
@@ -102,7 +101,12 @@ impl Vault {
     /// Encrypts with AES-256-GCM using a random 12-byte nonce.
     /// Silently overwrites if the key already exists.
     #[cfg(feature = "native")]
-    pub fn put(&self, token_body_b32: &str, plain_value: &str, kind_tag: &str) -> CloisonResult<()> {
+    pub fn put(
+        &self,
+        token_body_b32: &str,
+        plain_value: &str,
+        kind_tag: &str,
+    ) -> CloisonResult<()> {
         let entry_data = VaultEntryData {
             plain_value: plain_value.to_string(),
             kind_tag: kind_tag.to_string(),
@@ -133,7 +137,12 @@ impl Vault {
 
     /// Store an entry (in-memory, WASM).
     #[cfg(not(feature = "native"))]
-    pub fn put(&self, token_body_b32: &str, plain_value: &str, kind_tag: &str) -> CloisonResult<()> {
+    pub fn put(
+        &self,
+        token_body_b32: &str,
+        plain_value: &str,
+        kind_tag: &str,
+    ) -> CloisonResult<()> {
         let entry_data = VaultEntryData {
             plain_value: plain_value.to_string(),
             kind_tag: kind_tag.to_string(),
@@ -151,8 +160,8 @@ impl Vault {
         unsafe {
             // This is a known limitation of the no-redb path.
             // In production, wrap Vault in Arc<Mutex<Vault>>.
-            let entries = &self.entries as *const HashMap<String, Vec<u8>>
-                as *mut HashMap<String, Vec<u8>>;
+            let entries =
+                &self.entries as *const HashMap<String, Vec<u8>> as *mut HashMap<String, Vec<u8>>;
             (*entries).insert(token_body_b32.to_string(), ciphertext);
         }
 
@@ -239,8 +248,8 @@ impl Vault {
     pub fn delete(&self, token_body_b32: &str) -> CloisonResult<()> {
         #[allow(unused_unsafe)]
         unsafe {
-            let entries = &self.entries as *const HashMap<String, Vec<u8>>
-                as *mut HashMap<String, Vec<u8>>;
+            let entries =
+                &self.entries as *const HashMap<String, Vec<u8>> as *mut HashMap<String, Vec<u8>>;
             (*entries).remove(token_body_b32);
         }
         Ok(())
@@ -262,12 +271,12 @@ impl Vault {
                 .open_table(VAULT_TABLE)
                 .map_err(|e| CloisonError::Vault(format!("gc: open_table: {}", e)))?;
 
-            for result in table.iter().map_err(|e| {
-                CloisonError::Vault(format!("gc: iter: {}", e))
-            })? {
-                let (key, value) = result.map_err(|e| {
-                    CloisonError::Vault(format!("gc: iter item: {}", e))
-                })?;
+            for result in table
+                .iter()
+                .map_err(|e| CloisonError::Vault(format!("gc: iter: {}", e)))?
+            {
+                let (key, value) =
+                    result.map_err(|e| CloisonError::Vault(format!("gc: iter item: {}", e)))?;
 
                 if let Ok(plaintext) = self.decrypt(value.value()) {
                     if let Ok(entry) = serde_json::from_slice::<VaultEntryData>(&plaintext) {
@@ -290,9 +299,9 @@ impl Vault {
                     .open_table(VAULT_TABLE)
                     .map_err(|e| CloisonError::Vault(format!("gc: open_table: {}", e)))?;
                 for key in expired_keys {
-                    table.remove(key.as_str()).map_err(|e| {
-                        CloisonError::Vault(format!("gc: remove: {}", e))
-                    })?;
+                    table
+                        .remove(key.as_str())
+                        .map_err(|e| CloisonError::Vault(format!("gc: remove: {}", e)))?;
                 }
             }
             write_txn
@@ -322,8 +331,8 @@ impl Vault {
         let count = expired_keys.len();
         #[allow(unused_unsafe)]
         unsafe {
-            let entries = &self.entries as *const HashMap<String, Vec<u8>>
-                as *mut HashMap<String, Vec<u8>>;
+            let entries =
+                &self.entries as *const HashMap<String, Vec<u8>> as *mut HashMap<String, Vec<u8>>;
             for key in &expired_keys {
                 (*entries).remove(key);
             }

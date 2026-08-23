@@ -81,7 +81,10 @@ impl Ledger {
     ///
     /// Si le fichier est vide, la genèse y est ensemencée ; sinon les entrées existantes
     /// sont rechargées telles quelles (la validation se fait par `verify_chain`).
-    pub fn open_file(path: impl AsRef<Path>, control_verify_key: VerifyingKey) -> LedgerResult<Ledger> {
+    pub fn open_file(
+        path: impl AsRef<Path>,
+        control_verify_key: VerifyingKey,
+    ) -> LedgerResult<Ledger> {
         let store: Box<dyn LedgerStore> = Box::new(AppendOnlyFileLedger::open(path)?);
         let entries = store.range(0, u64::MAX)?;
         let mut ledger = Ledger {
@@ -128,10 +131,7 @@ impl Ledger {
                 got: entry.seq,
             });
         }
-        let head = self
-            .entries
-            .last()
-            .ok_or(LedgerError::EmptyLedger)?;
+        let head = self.entries.last().ok_or(LedgerError::EmptyLedger)?;
         if entry.prev_hash != head.entry_hash {
             return Err(LedgerError::BrokenChain(entry.seq));
         }
@@ -235,11 +235,14 @@ impl Ledger {
     /// Produit un [`Checkpoint`] signé ancré sur la tête actuelle (`seq`, `entry_hash`).
     /// La clé signe le header canonique du checkpoint (Ed25519, `verify_strict`).
     pub fn checkpoint(&self, ts_unix: u64, key: &SigningKey) -> Checkpoint {
-        let head = self
-            .entries
-            .last()
-            .expect("genesis is always present");
-        Checkpoint::sign(head.seq, head.entry_hash, &Checkpoint::genesis(), ts_unix, key)
+        let head = self.entries.last().expect("genesis is always present");
+        Checkpoint::sign(
+            head.seq,
+            head.entry_hash,
+            &Checkpoint::genesis(),
+            ts_unix,
+            key,
+        )
     }
 
     /// Preuve d'inclusion d'un payload par hash : vrai si une entrée réelle
@@ -323,7 +326,11 @@ mod tests {
         let mut ledger = Ledger::with_verify_key(key.verifying_key());
         let mut head = ledger.head().cloned().unwrap();
         for i in 1..=5u64 {
-            let entry = head.next(payload_hash(&sample_payload("t", i)), 1_700_000_000 + i, &key);
+            let entry = head.next(
+                payload_hash(&sample_payload("t", i)),
+                1_700_000_000 + i,
+                &key,
+            );
             ledger.append(entry.clone()).unwrap();
             head = entry;
         }
@@ -339,10 +346,7 @@ mod tests {
         let head = ledger.head().cloned().unwrap();
         let entry = head.next(payload_hash(&sample_payload("t", 1)), 1_700_000_001, &key);
         // On force seq = 3 alors que la position terminale attendue est 1.
-        let bogus = LedgerEntry {
-            seq: 3,
-            ..entry
-        };
+        let bogus = LedgerEntry { seq: 3, ..entry };
         match ledger.append(bogus) {
             Err(LedgerError::SeqMismatch { expected, got }) => {
                 assert_eq!(expected, 1);
@@ -359,7 +363,10 @@ mod tests {
         let head = ledger.head().cloned().unwrap();
         let mut entry = head.next(payload_hash(&sample_payload("t", 1)), 1_700_000_001, &key);
         entry.prev_hash = [0xAA; 32];
-        assert!(matches!(ledger.append(entry), Err(LedgerError::BrokenChain(1))));
+        assert!(matches!(
+            ledger.append(entry),
+            Err(LedgerError::BrokenChain(1))
+        ));
     }
 
     #[test]
@@ -369,8 +376,15 @@ mod tests {
         let mut ledger = Ledger::with_verify_key(control.verifying_key());
         let head = ledger.head().cloned().unwrap();
         // Signé par une clé différente de celle du ledger.
-        let entry = head.next(payload_hash(&sample_payload("t", 1)), 1_700_000_001, &attacker);
-        assert!(matches!(ledger.append(entry), Err(LedgerError::BadSignature(1))));
+        let entry = head.next(
+            payload_hash(&sample_payload("t", 1)),
+            1_700_000_001,
+            &attacker,
+        );
+        assert!(matches!(
+            ledger.append(entry),
+            Err(LedgerError::BadSignature(1))
+        ));
     }
 
     #[test]
@@ -379,7 +393,11 @@ mod tests {
         let mut ledger = Ledger::with_verify_key(key.verifying_key());
         let mut head = ledger.head().cloned().unwrap();
         for i in 1..=4u64 {
-            let entry = head.next(payload_hash(&sample_payload("t", i)), 1_700_000_000 + i, &key);
+            let entry = head.next(
+                payload_hash(&sample_payload("t", i)),
+                1_700_000_000 + i,
+                &key,
+            );
             ledger.append(entry.clone()).unwrap();
             head = entry;
         }
@@ -469,8 +487,12 @@ mod tests {
 
         // Un miroir tronque les 2 dernières entrées : la chaîne reste auto-cohérente
         // (verify_chain passe) mais le checkpoint révèle la troncature.
-        let truncated = Ledger::from_entries(ledger.entries()[..4].to_vec(), Some(key.verifying_key()));
-        assert!(truncated.verify_chain(), "la chaîne tronquée reste cohérente");
+        let truncated =
+            Ledger::from_entries(ledger.entries()[..4].to_vec(), Some(key.verifying_key()));
+        assert!(
+            truncated.verify_chain(),
+            "la chaîne tronquée reste cohérente"
+        );
         assert!(
             !truncated.verify_chain_with_checkpoint(&cp, &key.verifying_key()),
             "checkpoint seq 5 > head 2 → troncature détectée"
@@ -547,6 +569,9 @@ mod tests {
         let head = ledger.head().cloned().unwrap();
         let dup = head.next(payload_hash(&sample_payload("t", 99)), 1_700_000_099, &key);
         let dup = LedgerEntry { seq: 1, ..dup };
-        assert!(matches!(ledger.append(dup), Err(LedgerError::SeqMismatch { .. })));
+        assert!(matches!(
+            ledger.append(dup),
+            Err(LedgerError::SeqMismatch { .. })
+        ));
     }
 }

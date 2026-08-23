@@ -231,10 +231,7 @@ mod tests {
                 label: "[VILLE_SN]".to_string(),
             },
         );
-        let result = gen.generalize(
-            &DetectorKind::Gazetteer("ville_sn".to_string()),
-            "Dakar",
-        );
+        let result = gen.generalize(&DetectorKind::Gazetteer("ville_sn".to_string()), "Dakar");
         assert_eq!(result, "[VILLE_SN]");
     }
 

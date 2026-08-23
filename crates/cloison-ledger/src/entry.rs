@@ -86,8 +86,7 @@ impl LedgerEntry {
     /// La genèse ancre la chaîne : sa présence et son intégrité sont vérifiées par
     /// [`crate::ledger::Ledger::verify_chain`] et par `cloison-verify`.
     pub fn genesis() -> LedgerEntry {
-        let entry_hash =
-            Self::compute_entry_hash(0, &GENESIS_PREV_HASH, &GENESIS_PREV_HASH, 0);
+        let entry_hash = Self::compute_entry_hash(0, &GENESIS_PREV_HASH, &GENESIS_PREV_HASH, 0);
         LedgerEntry {
             seq: 0,
             prev_hash: GENESIS_PREV_HASH,

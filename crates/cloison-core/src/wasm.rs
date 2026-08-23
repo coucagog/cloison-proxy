@@ -11,9 +11,9 @@ use wasm_bindgen::prelude::*;
 use std::collections::HashMap;
 
 use crate::engine::Engine;
-use base64::Engine as _;  // trait pour encode/decode
 use crate::policy::Policy;
 use crate::token::SessionKeys;
+use base64::Engine as _; // trait pour encode/decode
 
 /// Global session store (simplified: single-process WASM).
 static mut SESSIONS: Option<HashMap<u32, WasmSession>> = None;
@@ -56,10 +56,10 @@ pub fn init_session(tenant_key_b64: &str) -> Result<u32, JsValue> {
         }
         let session_id = NEXT_SESSION_ID;
         NEXT_SESSION_ID += 1;
-        SESSIONS.as_mut().unwrap().insert(
-            session_id,
-            WasmSession { engine },
-        );
+        SESSIONS
+            .as_mut()
+            .unwrap()
+            .insert(session_id, WasmSession { engine });
         Ok(session_id)
     }
 }
@@ -74,14 +74,20 @@ pub fn tokenize(session_id: u32, text: &str) -> Result<String, JsValue> {
 
 /// Tokenize text with a custom policy (JSON).
 #[wasm_bindgen(js_name = "cloisonTokenizeWithPolicy")]
-pub fn tokenize_with_policy(session_id: u32, text: &str, policy_json: &str) -> Result<String, JsValue> {
+pub fn tokenize_with_policy(
+    session_id: u32,
+    text: &str,
+    policy_json: &str,
+) -> Result<String, JsValue> {
     let policy: Policy = serde_json::from_str(policy_json)
         .map_err(|e| JsValue::from_str(&format!("invalid policy JSON: {}", e)))?;
 
     // SAFETY: WASM is single-threaded.
     #[allow(unused_unsafe)]
     unsafe {
-        let sessions = SESSIONS.as_mut().ok_or_else(|| JsValue::from_str("no sessions"))?;
+        let sessions = SESSIONS
+            .as_mut()
+            .ok_or_else(|| JsValue::from_str("no sessions"))?;
         let session = sessions
             .get_mut(&session_id)
             .ok_or_else(|| JsValue::from_str(&format!("session {} not found", session_id)))?;
@@ -114,7 +120,9 @@ pub fn restore(session_id: u32, text: &str) -> Result<String, JsValue> {
     // SAFETY: WASM is single-threaded.
     #[allow(unused_unsafe)]
     unsafe {
-        let sessions = SESSIONS.as_mut().ok_or_else(|| JsValue::from_str("no sessions"))?;
+        let sessions = SESSIONS
+            .as_mut()
+            .ok_or_else(|| JsValue::from_str("no sessions"))?;
         let session = sessions
             .get(&session_id)
             .ok_or_else(|| JsValue::from_str(&format!("session {} not found", session_id)))?;
@@ -134,7 +142,9 @@ pub fn destroy_session(session_id: u32) -> Result<(), JsValue> {
     // SAFETY: WASM is single-threaded.
     #[allow(unused_unsafe)]
     unsafe {
-        let sessions = SESSIONS.as_mut().ok_or_else(|| JsValue::from_str("no sessions"))?;
+        let sessions = SESSIONS
+            .as_mut()
+            .ok_or_else(|| JsValue::from_str("no sessions"))?;
         sessions.remove(&session_id);
         Ok(())
     }
@@ -144,8 +154,8 @@ pub fn destroy_session(session_id: u32) -> Result<(), JsValue> {
 /// Returns JSON array of detected spans.
 #[wasm_bindgen(js_name = "cloisonDetect")]
 pub fn detect(text: &str) -> Result<String, JsValue> {
-    let detector = crate::detection::Detector::new()
-        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let detector =
+        crate::detection::Detector::new().map_err(|e| JsValue::from_str(&e.to_string()))?;
     let policy = Policy::default();
     let spans = detector.detect_with_policy(text, &policy.detection);
     serde_json::to_string(&spans).map_err(|e| JsValue::from_str(&e.to_string()))
@@ -154,8 +164,8 @@ pub fn detect(text: &str) -> Result<String, JsValue> {
 /// Detect PII with a custom policy (JSON).
 #[wasm_bindgen(js_name = "cloisonDetectWithPolicy")]
 pub fn detect_with_policy(text: &str, policy_json: &str) -> Result<String, JsValue> {
-    let detector = crate::detection::Detector::new()
-        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let detector =
+        crate::detection::Detector::new().map_err(|e| JsValue::from_str(&e.to_string()))?;
     let policy: Policy = serde_json::from_str(policy_json)
         .map_err(|e| JsValue::from_str(&format!("invalid policy JSON: {}", e)))?;
     let spans = detector.detect_with_policy(text, &policy.detection);
@@ -168,7 +178,9 @@ pub fn validate_sentinel(session_id: u32, sentinel_str: &str) -> Result<bool, Js
     // SAFETY: WASM is single-threaded.
     #[allow(unused_unsafe)]
     unsafe {
-        let sessions = SESSIONS.as_mut().ok_or_else(|| JsValue::from_str("no sessions"))?;
+        let sessions = SESSIONS
+            .as_mut()
+            .ok_or_else(|| JsValue::from_str("no sessions"))?;
         let session = sessions
             .get(&session_id)
             .ok_or_else(|| JsValue::from_str(&format!("session {} not found", session_id)))?;

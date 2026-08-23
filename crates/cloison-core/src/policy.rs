@@ -48,8 +48,12 @@ impl DetectorPolicy {
         // Gazetteers embarqués (noms/toponymes sénégalais) : masqués par
         // défaut — la doc (DATA-MODEL §1, THREAT-MODEL) annonce des
         // sentinelles GZ* ; sans eux, les noms passaient en clair.
-        enabled.insert(DetectorKind::Gazetteer(crate::detection::GAZETTEER_NOM_SN.to_string()));
-        enabled.insert(DetectorKind::Gazetteer(crate::detection::GAZETTEER_VILLE_SN.to_string()));
+        enabled.insert(DetectorKind::Gazetteer(
+            crate::detection::GAZETTEER_NOM_SN.to_string(),
+        ));
+        enabled.insert(DetectorKind::Gazetteer(
+            crate::detection::GAZETTEER_VILLE_SN.to_string(),
+        ));
 
         Self {
             enabled,
@@ -82,10 +86,7 @@ impl DetectorPolicy {
 
     /// Get the substitution mode for a detector.
     pub fn substitution_mode(&self, kind: &DetectorKind) -> SubstitutionMode {
-        self.mode
-            .get(kind)
-            .cloned()
-            .unwrap_or_default()
+        self.mode.get(kind).cloned().unwrap_or_default()
     }
 }
 

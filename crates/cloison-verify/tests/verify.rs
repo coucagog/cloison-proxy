@@ -29,7 +29,11 @@ fn build_entries(count: u64) -> Vec<LedgerEntry> {
     let mut entries = vec![Ledger::genesis()];
     for i in 1..=count {
         let prev = entries.last().unwrap();
-        entries.push(prev.next(payload_hash(&sample_payload("t", i)), 1_700_000_000 + i, &key));
+        entries.push(prev.next(
+            payload_hash(&sample_payload("t", i)),
+            1_700_000_000 + i,
+            &key,
+        ));
     }
     entries
 }
@@ -43,7 +47,10 @@ fn valid_chain_passes() {
     assert!(verdict.ok);
     assert_eq!(verdict.entries_checked, 11);
     assert_eq!(verdict.head_seq, 10);
-    assert_eq!(verdict.head_entry_hash, entries.last().map(|e| e.entry_hash));
+    assert_eq!(
+        verdict.head_entry_hash,
+        entries.last().map(|e| e.entry_hash)
+    );
     assert_eq!(verdict.failure, None);
 }
 
@@ -145,10 +152,17 @@ fn bad_signature_is_detected() {
     let mut entries = vec![Ledger::genesis()];
     for i in 1..=3u64 {
         let prev = entries.last().unwrap();
-        entries.push(prev.next(payload_hash(&sample_payload("t", i)), 1_700_000_000 + i, &attacker));
+        entries.push(prev.next(
+            payload_hash(&sample_payload("t", i)),
+            1_700_000_000 + i,
+            &attacker,
+        ));
     }
     let key = control_key().verifying_key();
-    assert_eq!(verify_chain(&entries, &key), Err(VerifyError::BadSignature { seq: 1 }));
+    assert_eq!(
+        verify_chain(&entries, &key),
+        Err(VerifyError::BadSignature { seq: 1 })
+    );
 }
 
 #[test]
@@ -185,7 +199,10 @@ fn timestamp_regression_is_detected() {
 fn verify_entry_isolated() {
     let entries = build_entries(3);
     let key = control_key().verifying_key();
-    assert_eq!(verify_entry(&entries[1], &entries[0].entry_hash, &key), Ok(()));
+    assert_eq!(
+        verify_entry(&entries[1], &entries[0].entry_hash, &key),
+        Ok(())
+    );
     assert_eq!(
         verify_entry(&entries[2], &entries[1].entry_hash, &key),
         Ok(())
@@ -255,12 +272,7 @@ fn checkpoint_valid_chain_passes() {
     let key = control_key();
     let cp = checkpoint_at(&entries, &key);
     assert_eq!(
-        verify_chain_with_checkpoint(
-            &entries,
-            &cp,
-            &key.verifying_key(),
-            &key.verifying_key()
-        ),
+        verify_chain_with_checkpoint(&entries, &cp, &key.verifying_key(), &key.verifying_key()),
         Ok(())
     );
 }
@@ -276,12 +288,7 @@ fn checkpoint_detects_truncated_chain() {
     let truncated = entries[..4].to_vec();
     assert_eq!(verify_chain(&truncated, &key.verifying_key()), Ok(()));
     assert_eq!(
-        verify_chain_with_checkpoint(
-            &truncated,
-            &cp,
-            &key.verifying_key(),
-            &key.verifying_key()
-        ),
+        verify_chain_with_checkpoint(&truncated, &cp, &key.verifying_key(), &key.verifying_key()),
         Err(VerifyError::TruncatedChain {
             checkpoint_seq: 6,
             head_seq: 3
@@ -309,12 +316,7 @@ fn checkpoint_detects_divergent_head() {
     entries[5] = head;
     assert_eq!(verify_chain(&entries, &key.verifying_key()), Ok(()));
     assert_eq!(
-        verify_chain_with_checkpoint(
-            &entries,
-            &cp,
-            &key.verifying_key(),
-            &key.verifying_key()
-        ),
+        verify_chain_with_checkpoint(&entries, &cp, &key.verifying_key(), &key.verifying_key()),
         Err(VerifyError::CheckpointMismatch { seq: 5 })
     );
 }
@@ -326,23 +328,13 @@ fn checkpoint_bad_signature_is_rejected() {
     let mut cp = checkpoint_at(&entries, &key);
     cp.sig[3] ^= 0x01;
     assert_eq!(
-        verify_chain_with_checkpoint(
-            &entries,
-            &cp,
-            &key.verifying_key(),
-            &key.verifying_key()
-        ),
+        verify_chain_with_checkpoint(&entries, &cp, &key.verifying_key(), &key.verifying_key()),
         Err(VerifyError::CheckpointInvalid { seq: 4 })
     );
     // Checkpoint signé par une AUTRE clé → CheckpointInvalid aussi.
     let cp = checkpoint_at(&entries, &attacker_key());
     assert_eq!(
-        verify_chain_with_checkpoint(
-            &entries,
-            &cp,
-            &key.verifying_key(),
-            &key.verifying_key()
-        ),
+        verify_chain_with_checkpoint(&entries, &cp, &key.verifying_key(), &key.verifying_key()),
         Err(VerifyError::CheckpointInvalid { seq: 4 })
     );
 }
@@ -354,12 +346,7 @@ fn checkpoint_requires_valid_chain_first() {
     let cp = checkpoint_at(&entries, &key);
     entries[2].payload_hash[0] ^= 0x01; // chaîne corrompue
     assert_eq!(
-        verify_chain_with_checkpoint(
-            &entries,
-            &cp,
-            &key.verifying_key(),
-            &key.verifying_key()
-        ),
+        verify_chain_with_checkpoint(&entries, &cp, &key.verifying_key(), &key.verifying_key()),
         Err(VerifyError::EntryHashMismatch { seq: 2 })
     );
 }

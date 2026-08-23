@@ -61,8 +61,14 @@ fn verify_fails_on_tampered_counters() {
     let (sk, vk) = keys();
     let mut signed = Receipt::build(message()).sign(&sk);
     // Altération d'un compteur → signature invalide.
-    signed.counters.masked_by_type.insert("Email".to_string(), 999);
-    assert!(!signed.verify(&vk), "tampered counters must fail verification");
+    signed
+        .counters
+        .masked_by_type
+        .insert("Email".to_string(), 999);
+    assert!(
+        !signed.verify(&vk),
+        "tampered counters must fail verification"
+    );
 }
 
 #[test]
@@ -91,7 +97,10 @@ fn verify_fails_on_wrong_key() {
     let other_sk = SigningKey::from_bytes(&[9u8; 32]);
     let other_vk = other_sk.verifying_key();
     let signed = Receipt::build(message()).sign(&sk);
-    assert!(!signed.verify(&other_vk), "wrong key must fail verification");
+    assert!(
+        !signed.verify(&other_vk),
+        "wrong key must fail verification"
+    );
 }
 
 #[test]
@@ -186,17 +195,26 @@ fn k_anonymity_publishable_threshold() {
     let mut low = BTreeMap::new();
     low.insert("Email".to_string(), 5);
     low.insert("CniSn".to_string(), 1); // < k
-    assert!(!k.is_publishable(5, &low), "cell < k must block publication");
+    assert!(
+        !k.is_publishable(5, &low),
+        "cell < k must block publication"
+    );
 
     let mut low = BTreeMap::new();
     low.insert("CniSn".to_string(), 4);
-    assert!(!k.is_publishable(5, &low), "cell == k-1 must block publication");
+    assert!(
+        !k.is_publishable(5, &low),
+        "cell == k-1 must block publication"
+    );
 
     // P0-2 : 1 requête x 6 emails → jamais publiable (requêtes < k), même
     // si la cellule Email=6 >= k.
     let mut single = BTreeMap::new();
     single.insert("Email".to_string(), 6);
-    assert!(!k.is_publishable(1, &single), "1 requête < k=5 must block publication");
+    assert!(
+        !k.is_publishable(1, &single),
+        "1 requête < k=5 must block publication"
+    );
 }
 
 #[test]
@@ -257,7 +275,8 @@ fn report_from_receipts_aggregates_and_redacts() {
         };
         receipts.push(Receipt::build(m));
     }
-    let report = ConformanceReport::from_receipts(&receipts, 1_710_000_000, 1_710_000_005, 5).unwrap();
+    let report =
+        ConformanceReport::from_receipts(&receipts, 1_710_000_000, 1_710_000_005, 5).unwrap();
     assert_eq!(report.total_requests, 5);
     assert_eq!(report.aggregated.masked_by_type.get("Email"), Some(&5));
     // PhoneSn: 1 par requête × 5 = 5 ; CniSn: 1 × 5 = 5.
@@ -280,12 +299,17 @@ fn report_redacts_low_cell() {
         policy_hash: "abc".to_string(),
         counters: c,
     })];
-    let report = ConformanceReport::from_receipts(&receipts, 1_710_000_000, 1_710_000_001, 5).unwrap();
+    let report =
+        ConformanceReport::from_receipts(&receipts, 1_710_000_000, 1_710_000_001, 5).unwrap();
     assert_eq!(report.total_requests, 1);
     assert!(!report.publishable, "cell CniSn=1 < k=5");
     assert_eq!(report.redacted.get("CniSn"), Some(&0));
     assert_eq!(report.redacted.get("Email"), Some(&0), "2 < 5 redacted too");
-    assert_eq!(report.redacted.get("PhoneSn"), Some(&0), "1 < 5 redacted too");
+    assert_eq!(
+        report.redacted.get("PhoneSn"),
+        Some(&0),
+        "1 < 5 redacted too"
+    );
 }
 
 #[test]
@@ -304,7 +328,8 @@ fn report_json_has_no_pii_text() {
         };
         receipts.push(Receipt::build(m));
     }
-    let report = ConformanceReport::from_receipts(&receipts, 1_710_000_000, 1_710_000_006, 5).unwrap();
+    let report =
+        ConformanceReport::from_receipts(&receipts, 1_710_000_000, 1_710_000_006, 5).unwrap();
     let json = serde_json::to_string(&report).unwrap();
     assert!(!json.contains("user@example.com"));
     assert!(!json.contains("+221"));

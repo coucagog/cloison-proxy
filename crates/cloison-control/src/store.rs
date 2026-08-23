@@ -112,13 +112,21 @@ impl Store for InMemoryStore {
     }
 
     fn get_tenant(&self, id: &str) -> ControlResult<Option<Tenant>> {
-        Ok(self.tenants.read().expect("tenants lock poisoned").get(id).cloned())
+        Ok(self
+            .tenants
+            .read()
+            .expect("tenants lock poisoned")
+            .get(id)
+            .cloned())
     }
 
     fn create_token(&self, token: &ApiToken) -> ControlResult<()> {
         // Ordre global : tokens puis tokens_by_hash.
         let mut tokens = self.tokens.write().expect("tokens lock poisoned");
-        let mut by_hash = self.tokens_by_hash.write().expect("hash index lock poisoned");
+        let mut by_hash = self
+            .tokens_by_hash
+            .write()
+            .expect("hash index lock poisoned");
         if tokens.contains_key(&token.id) || by_hash.contains_key(&token.token_hash) {
             return Err(ControlError::TokenConflict);
         }
@@ -128,7 +136,12 @@ impl Store for InMemoryStore {
     }
 
     fn get_token(&self, token_id: &str) -> ControlResult<Option<ApiToken>> {
-        Ok(self.tokens.read().expect("tokens lock poisoned").get(token_id).cloned())
+        Ok(self
+            .tokens
+            .read()
+            .expect("tokens lock poisoned")
+            .get(token_id)
+            .cloned())
     }
 
     fn validate_token(&self, token_clair: &str) -> ControlResult<Option<ApiToken>> {
@@ -136,7 +149,10 @@ impl Store for InMemoryStore {
         // Ordre global : tokens puis tokens_by_hash (le lock par_hash seul peut
         // attendre un create_token qui tient tokens — ordre identique ⇒ pas de cycle).
         let tokens = self.tokens.read().expect("tokens lock poisoned");
-        let by_hash = self.tokens_by_hash.read().expect("hash index lock poisoned");
+        let by_hash = self
+            .tokens_by_hash
+            .read()
+            .expect("hash index lock poisoned");
         let Some(id) = by_hash.get(&digest) else {
             return Ok(None);
         };
@@ -161,7 +177,10 @@ impl Store for InMemoryStore {
         // Ordre global : tenants < tokens < tokens_by_hash.
         let mut tenants = self.tenants.write().expect("tenants lock poisoned");
         let mut tokens = self.tokens.write().expect("tokens lock poisoned");
-        let mut by_hash = self.tokens_by_hash.write().expect("hash index lock poisoned");
+        let mut by_hash = self
+            .tokens_by_hash
+            .write()
+            .expect("hash index lock poisoned");
         let now = crate::now_unix();
 
         let Some(old) = tokens.get_mut(old_id) else {
@@ -224,7 +243,12 @@ impl Store for InMemoryStore {
     }
 
     fn get_policy(&self, tenant_id: &str) -> ControlResult<Option<Policy>> {
-        Ok(self.policies.read().expect("policies lock poisoned").get(tenant_id).cloned())
+        Ok(self
+            .policies
+            .read()
+            .expect("policies lock poisoned")
+            .get(tenant_id)
+            .cloned())
     }
 
     fn add_license(&self, license: &License) -> ControlResult<()> {
@@ -235,6 +259,11 @@ impl Store for InMemoryStore {
     }
 
     fn get_license(&self, tenant_id: &str) -> ControlResult<Option<License>> {
-        Ok(self.licenses.read().expect("licenses lock poisoned").get(tenant_id).cloned())
+        Ok(self
+            .licenses
+            .read()
+            .expect("licenses lock poisoned")
+            .get(tenant_id)
+            .cloned())
     }
 }

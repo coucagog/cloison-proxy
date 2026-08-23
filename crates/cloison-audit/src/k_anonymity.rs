@@ -47,9 +47,7 @@ impl KAnonymity {
         if request_count < self.k as u64 {
             return false;
         }
-        counts
-            .values()
-            .all(|&v| v == 0 || v >= self.k as u64)
+        counts.values().all(|&v| v == 0 || v >= self.k as u64)
     }
 
     /// Agrège (somme champ à champ) plusieurs jeux de compteurs — par exemple
@@ -79,10 +77,7 @@ mod tests {
     use super::*;
 
     fn counts(entries: &[(&str, u64)]) -> BTreeMap<String, u64> {
-        entries
-            .iter()
-            .map(|(k, v)| (k.to_string(), *v))
-            .collect()
+        entries.iter().map(|(k, v)| (k.to_string(), *v)).collect()
     }
 
     #[test]
@@ -124,7 +119,12 @@ mod tests {
     #[test]
     fn redacts_below_k_only() {
         let k = KAnonymity::new(5).unwrap();
-        let out = k.redact_below_k(&counts(&[("Email", 7), ("PhoneSn", 5), ("CniSn", 1), ("Ip", 0)]));
+        let out = k.redact_below_k(&counts(&[
+            ("Email", 7),
+            ("PhoneSn", 5),
+            ("CniSn", 1),
+            ("Ip", 0),
+        ]));
         assert_eq!(out.get("Email"), Some(&7));
         assert_eq!(out.get("PhoneSn"), Some(&5));
         assert_eq!(out.get("CniSn"), Some(&0), "counter < k must be zeroed");

@@ -50,22 +50,20 @@ async fn main() -> ControlResult<()> {
     let agent_verify_key = match std::env::var("CLOISON_AGENT_VERIFY_KEY").ok() {
         Some(h) => {
             let bytes = hex_bytes(&h, "agent verify key")?;
-            let arr: [u8; 32] = bytes
-                .try_into()
-                .map_err(|_| ControlError::TokenInvalid)?;
+            let arr: [u8; 32] = bytes.try_into().map_err(|_| ControlError::TokenInvalid)?;
             VerifyingKey::from_bytes(&arr).map_err(|_| ControlError::TokenInvalid)?
         }
         None => {
-            tracing::warn!("CLOISON_AGENT_VERIFY_KEY absent : génération d'une paire éphémère (dev)");
+            tracing::warn!(
+                "CLOISON_AGENT_VERIFY_KEY absent : génération d'une paire éphémère (dev)"
+            );
             SigningKey::generate(&mut rand::rngs::OsRng).verifying_key()
         }
     };
     let control_signing_key = match std::env::var("CLOISON_CONTROL_SIGNING_KEY").ok() {
         Some(h) => {
             let bytes = hex_bytes(&h, "control signing key")?;
-            let arr: [u8; 32] = bytes
-                .try_into()
-                .map_err(|_| ControlError::TokenInvalid)?;
+            let arr: [u8; 32] = bytes.try_into().map_err(|_| ControlError::TokenInvalid)?;
             SigningKey::from_bytes(&arr)
         }
         None => {
@@ -84,7 +82,9 @@ async fn main() -> ControlResult<()> {
             let tmp = dir.join("control_pubkey.hex.tmp");
             let final_path = dir.join("control_pubkey.hex");
             let pub_hex = to_hex(control_signing_key.verifying_key().to_bytes().as_slice());
-            match std::fs::write(&tmp, pub_hex.as_bytes()).and_then(|_| std::fs::rename(&tmp, &final_path)) {
+            match std::fs::write(&tmp, pub_hex.as_bytes())
+                .and_then(|_| std::fs::rename(&tmp, &final_path))
+            {
                 Ok(()) => tracing::info!(
                     path = %final_path.display(),
                     "clé publique du contrôle écrite (vérification publique du journal)"
@@ -99,7 +99,8 @@ async fn main() -> ControlResult<()> {
     }
 
     // Store : PostgreSQL si CLOISON_DATABASE_URL (feature `pg`), sinon mémoire.
-    let store: Arc<dyn cloison_control::store::Store> = match std::env::var("CLOISON_DATABASE_URL") {
+    let store: Arc<dyn cloison_control::store::Store> = match std::env::var("CLOISON_DATABASE_URL")
+    {
         #[cfg(feature = "pg")]
         Ok(url) => {
             let pool = cloison_control::postgres::PostgresStore::connect(&url, 5).await?;
@@ -120,11 +121,7 @@ async fn main() -> ControlResult<()> {
         }
     };
 
-    let state = AppState::from_env(
-        store,
-        agent_verify_key,
-        control_signing_key,
-    )?;
+    let state = AppState::from_env(store, agent_verify_key, control_signing_key)?;
     let app = router(state);
 
     let listener = TcpListener::bind(addr)

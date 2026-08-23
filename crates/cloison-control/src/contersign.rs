@@ -79,12 +79,16 @@ pub fn verifier_contresignature(
     if !receipt.verify(agent_verify_key) {
         return false;
     }
-    let Ok(sig_control_bytes) = <[u8; SIGNATURE_LEN]>::try_from(contresignature.sig_control.as_slice())
+    let Ok(sig_control_bytes) =
+        <[u8; SIGNATURE_LEN]>::try_from(contresignature.sig_control.as_slice())
     else {
         return false;
     };
     control_verify_key
-        .verify_strict(&receipt.signing_bytes(), &Signature::from_bytes(&sig_control_bytes))
+        .verify_strict(
+            &receipt.signing_bytes(),
+            &Signature::from_bytes(&sig_control_bytes),
+        )
         .is_ok()
 }
 

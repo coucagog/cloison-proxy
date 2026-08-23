@@ -13,7 +13,9 @@
 #![cfg(feature = "pg")]
 
 use cloison_control::error::ControlError;
-use cloison_control::model::{ApiToken, License, LicenseLimites, Plan, Policy, Tenant, TenantStatut};
+use cloison_control::model::{
+    ApiToken, License, LicenseLimites, Plan, Policy, Tenant, TenantStatut,
+};
 use cloison_control::postgres::PostgresStore;
 use cloison_control::store::Store;
 
@@ -40,7 +42,9 @@ fn token(tenant_id: &str, id: &str, clair: &str) -> ApiToken {
 async fn connect() -> PostgresStore {
     let url = std::env::var("CLOISON_DATABASE_URL")
         .expect("CLOISON_DATABASE_URL requis pour les tests PostgresStore");
-    PostgresStore::connect(&url, 2).await.expect("connexion + schéma")
+    PostgresStore::connect(&url, 2)
+        .await
+        .expect("connexion + schéma")
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -65,7 +69,10 @@ async fn tenant_token_license_policy_roundtrip() {
     assert_ne!(fetched.token_hash, "mn_cleartext-test");
 
     // Validation par le clair (temps constant sur le digest).
-    let valid = store.validate_token("mn_cleartext-test").unwrap().expect("jeton valide");
+    let valid = store
+        .validate_token("mn_cleartext-test")
+        .unwrap()
+        .expect("jeton valide");
     assert_eq!(valid.id, "tok-1");
     assert!(store.validate_token("mn_mauvais-clair").unwrap().is_none());
 
@@ -84,7 +91,10 @@ async fn tenant_token_license_policy_roundtrip() {
     let lic = License {
         tenant_id: "t1".into(),
         plan: Plan::Pro,
-        limites: LicenseLimites { max_requests_per_day: 5000, max_tokens: 32 },
+        limites: LicenseLimites {
+            max_requests_per_day: 5000,
+            max_tokens: 32,
+        },
         expires_at: Some(1_800_000_000),
         created_at: 1_700_000_300,
     };
@@ -110,14 +120,22 @@ async fn rotate_and_revoke_with_idor() {
     ));
 
     // Rotation avec grâce : l'ancien reste valide pendant la grâce.
-    store.rotate_token("t2", "tok-a", &token("t2", "tok-c", "mn_new"), 300).unwrap();
-    assert!(store.validate_token("mn_old").unwrap().is_some(), "grâce en cours");
+    store
+        .rotate_token("t2", "tok-a", &token("t2", "tok-c", "mn_new"), 300)
+        .unwrap();
+    assert!(
+        store.validate_token("mn_old").unwrap().is_some(),
+        "grâce en cours"
+    );
     assert!(store.validate_token("mn_new").unwrap().is_some());
     let v = store.tokens_version("t2").unwrap();
     assert_eq!(v, 1, "rotation incrémente tokens_version");
 
     // Révocation immédiate.
     store.revoke_token("t2", "tok-c").unwrap();
-    assert!(store.validate_token("mn_new").unwrap().is_none(), "révoqué = invalide");
+    assert!(
+        store.validate_token("mn_new").unwrap().is_none(),
+        "révoqué = invalide"
+    );
     assert_eq!(store.tokens_version("t2").unwrap(), 2);
 }

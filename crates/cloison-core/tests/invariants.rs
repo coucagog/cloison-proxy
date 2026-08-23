@@ -8,8 +8,8 @@
 //! 5. Rotation: same value + different session → different token
 //! 6. Luhn: valid CNI detected, invalid CNI rejected
 
+use base32::{encode as b32_encode, Alphabet};
 use cloison_core::*;
-use base32::{Alphabet, encode as b32_encode};
 
 fn make_keys(salt_byte: u8) -> SessionKeys {
     let tenant_key = [0xABu8; 32];
@@ -25,7 +25,7 @@ fn make_policy() -> Policy {
 fn luhn_check_digit(base: &str) -> u32 {
     let digits: Vec<u32> = base.chars().filter_map(|c| c.to_digit(10)).collect();
     let mut sum = 0u32;
-    let mut double = true;  // parite alignee : la base de 12 est decalee
+    let mut double = true; // parite alignee : la base de 12 est decalee
     for &d in digits.iter().rev() {
         if double {
             let doubled = d * 2;
@@ -102,10 +102,7 @@ fn invariant_roundtrip_multiple_pii() {
     let base = "123456789012";
     let check = luhn_check_digit(base);
     let cni = format!("{}{}", base, check);
-    let original = format!(
-        "Email: user@test.com, Tel: +221 77 123 45 67, CNI: {}",
-        cni
-    );
+    let original = format!("Email: user@test.com, Tel: +221 77 123 45 67, CNI: {}", cni);
 
     let tokenized = engine.tokenize(&original, &policy, "req-rt-4").unwrap();
     let restored = engine.restore(&tokenized.text_out, "req-rt-4").unwrap();
@@ -176,7 +173,9 @@ fn invariant_anti_collision_forged_mac() {
     let policy = make_policy();
 
     // Tokenize something to populate the registry
-    let _ = engine.tokenize("user@example.com", &policy, "req-ac-1").unwrap();
+    let _ = engine
+        .tokenize("user@example.com", &policy, "req-ac-1")
+        .unwrap();
 
     // Forge a sentinel with a random body (wrong MAC)
     let forged_body = [0xFFu8; 16];
@@ -211,7 +210,9 @@ fn invariant_anti_collision_cross_session() {
     let policy = make_policy();
 
     // Tokenize with engine1
-    let r1 = engine1.tokenize("user@example.com", &policy, "req-ac-2").unwrap();
+    let r1 = engine1
+        .tokenize("user@example.com", &policy, "req-ac-2")
+        .unwrap();
 
     // Try to restore the sentinel from engine1 using engine2 (different session)
     let restored = engine2.restore(&r1.text_out, "req-ac-2b").unwrap();
@@ -231,8 +232,12 @@ fn invariant_determinism_same_session() {
     let mut engine2 = Engine::new(keys).unwrap();
     let policy = make_policy();
 
-    let r1 = engine1.tokenize("user@example.com", &policy, "req-det-1").unwrap();
-    let r2 = engine2.tokenize("user@example.com", &policy, "req-det-2").unwrap();
+    let r1 = engine1
+        .tokenize("user@example.com", &policy, "req-det-1")
+        .unwrap();
+    let r2 = engine2
+        .tokenize("user@example.com", &policy, "req-det-2")
+        .unwrap();
 
     assert_eq!(
         r1.emitted[0].body_b32, r2.emitted[0].body_b32,
@@ -271,8 +276,12 @@ fn invariant_rotation_different_salt() {
     let mut engine2 = Engine::new(keys2).unwrap();
     let policy = make_policy();
 
-    let r1 = engine1.tokenize("user@example.com", &policy, "req-rot-1").unwrap();
-    let r2 = engine2.tokenize("user@example.com", &policy, "req-rot-2").unwrap();
+    let r1 = engine1
+        .tokenize("user@example.com", &policy, "req-rot-1")
+        .unwrap();
+    let r2 = engine2
+        .tokenize("user@example.com", &policy, "req-rot-2")
+        .unwrap();
 
     assert_ne!(
         r1.emitted[0].body_b32, r2.emitted[0].body_b32,
@@ -288,8 +297,12 @@ fn invariant_rotation_different_tenant_key() {
     let mut engine2 = Engine::new(keys2).unwrap();
     let policy = make_policy();
 
-    let r1 = engine1.tokenize("user@example.com", &policy, "req-rot-3").unwrap();
-    let r2 = engine2.tokenize("user@example.com", &policy, "req-rot-4").unwrap();
+    let r1 = engine1
+        .tokenize("user@example.com", &policy, "req-rot-3")
+        .unwrap();
+    let r2 = engine2
+        .tokenize("user@example.com", &policy, "req-rot-4")
+        .unwrap();
 
     assert_ne!(
         r1.emitted[0].body_b32, r2.emitted[0].body_b32,
@@ -314,12 +327,11 @@ fn invariant_luhn_valid_cni_detected() {
     let policy = make_policy();
     let spans = detector.detect_with_policy(&format!("CNI: {}", cni), &policy.detection);
 
-    let cni_spans: Vec<_> = spans.iter().filter(|s| s.entity_type == DetectorKind::CniSn).collect();
-    assert_eq!(
-        cni_spans.len(),
-        1,
-        "INVIOLABLE: valid CNI must be detected"
-    );
+    let cni_spans: Vec<_> = spans
+        .iter()
+        .filter(|s| s.entity_type == DetectorKind::CniSn)
+        .collect();
+    assert_eq!(cni_spans.len(), 1, "INVIOLABLE: valid CNI must be detected");
 }
 
 #[test]
@@ -336,7 +348,10 @@ fn invariant_luhn_invalid_cni_rejected() {
     let policy = make_policy();
     let spans = detector.detect_with_policy(&format!("CNI: {}", invalid_cni), &policy.detection);
 
-    let cni_spans: Vec<_> = spans.iter().filter(|s| s.entity_type == DetectorKind::CniSn).collect();
+    let cni_spans: Vec<_> = spans
+        .iter()
+        .filter(|s| s.entity_type == DetectorKind::CniSn)
+        .collect();
     assert!(
         cni_spans.is_empty(),
         "INVIOLABLE: CNI with invalid Luhn must NOT be detected"
@@ -353,5 +368,8 @@ fn invariant_luhn_known_valid() {
 #[test]
 fn invariant_luhn_known_invalid() {
     assert!(!validate_luhn("79927398714"), "known invalid Luhn number");
-    assert!(!validate_luhn("4242424242424243"), "altered Visa test number");
+    assert!(
+        !validate_luhn("4242424242424243"),
+        "altered Visa test number"
+    );
 }

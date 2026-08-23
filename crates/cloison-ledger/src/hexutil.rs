@@ -37,9 +37,7 @@ pub fn decode(s: &str) -> Result<Vec<u8>, HexError> {
 /// Décode une chaîne hexadécimale de longueur exacte `N` (ex. 32 octets pour un hash).
 pub fn decode_array<const N: usize>(s: &str) -> Result<[u8; N], HexError> {
     let bytes = decode(s)?;
-    bytes
-        .try_into()
-        .map_err(|_| HexError)
+    bytes.try_into().map_err(|_| HexError)
 }
 
 #[inline]

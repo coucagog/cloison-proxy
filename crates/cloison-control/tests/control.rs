@@ -5,6 +5,7 @@
 
 use axum::extract::{Path, Query, State};
 use axum::Json;
+use cloison_audit::{Counters, Receipt, ReceiptMessage};
 use cloison_control::api::{
     self, AddLicenseReq, AppState, CreateTenantReq, IngestRequest, IssueTokenReq, PutPolicyReq,
     RotateTokenReq, VersionQuery,
@@ -16,7 +17,6 @@ use cloison_control::model::{
 };
 use cloison_control::token;
 use cloison_control::{InMemoryStore, Store};
-use cloison_audit::{Counters, Receipt, ReceiptMessage};
 use cloison_ledger::{hexutil, payload_hash, Ledger, LedgerPayload};
 use ed25519_dalek::SigningKey;
 use std::collections::BTreeMap;
@@ -136,7 +136,10 @@ fn token_hash_never_stored_in_plain() {
     assert_eq!(stored.token_hash.len(), 64);
     // 3. Le clair n'apparaît nulle part dans la représentation persistée.
     let serialized = serde_json::to_string(&stored).unwrap();
-    assert!(!serialized.contains(&clair), "le clair ne doit jamais être persisté");
+    assert!(
+        !serialized.contains(&clair),
+        "le clair ne doit jamais être persisté"
+    );
     // 4. La validation se fait par le clair présenté → digest comparé en temps constant.
     let found = store.validate_token(&clair).unwrap().expect("jeton valide");
     assert_eq!(found.id, stored.id);
@@ -150,7 +153,13 @@ fn validation_rejects_revoked_and_rotated() {
     let store = InMemoryStore::new();
     store.create_tenant(&sample_tenant("tenant-a")).unwrap();
     let clair = token::generate_token();
-    let t = ApiToken::issue("tok-1".to_string(), "tenant-a".to_string(), &clair, vec![], 100);
+    let t = ApiToken::issue(
+        "tok-1".to_string(),
+        "tenant-a".to_string(),
+        &clair,
+        vec![],
+        100,
+    );
     store.create_token(&t).unwrap();
     assert!(store.validate_token(&clair).unwrap().is_some());
 
@@ -192,10 +201,15 @@ fn rotation_with_zero_grace_invalidates_old_token() {
     let old_after = store.validate_token(&old_clair).unwrap();
     assert!(old_after.is_none());
     // Le nouveau est actif et a hérité des scopes de l'ancien.
-    let new_after = store.validate_token(&new_clair).unwrap().expect("nouveau jeton actif");
+    let new_after = store
+        .validate_token(&new_clair)
+        .unwrap()
+        .expect("nouveau jeton actif");
     assert_eq!(new_after.scopes, vec!["audit".to_string()]);
     // Rotation d'un jeton inexistant → erreur.
-    assert!(store.rotate_token("tenant-a", "tok-inconnu", &new, 0).is_err());
+    assert!(store
+        .rotate_token("tenant-a", "tok-inconnu", &new, 0)
+        .is_err());
 }
 
 #[test]
@@ -218,7 +232,9 @@ fn rotation_grace_keeps_old_token_valid_until_expiry() {
 
     // Déterministe via grace_until : valide jusqu'à grace_until - 1, invalide à partir de grace_until.
     let stored_old = store.get_token(&old.id).unwrap().unwrap();
-    let grace_until = stored_old.grace_until.expect("grace_until posé par la rotation");
+    let grace_until = stored_old
+        .grace_until
+        .expect("grace_until posé par la rotation");
     assert!(stored_old.is_active_at(grace_until - 1));
     assert!(!stored_old.is_active_at(grace_until));
 }
@@ -264,14 +280,32 @@ fn tokens_version_increments_on_rotate_and_revoke() {
     let clair = token::generate_token();
     let t = ApiToken::issue("tok-1".into(), "tenant-a".into(), &clair, vec![], 100);
     store.create_token(&t).unwrap();
-    assert_eq!(store.tokens_version("tenant-a").unwrap(), 0, "l'émission ne change pas la version");
+    assert_eq!(
+        store.tokens_version("tenant-a").unwrap(),
+        0,
+        "l'émission ne change pas la version"
+    );
 
-    let new = ApiToken::issue("tok-2".into(), "tenant-a".into(), &token::generate_token(), vec![], 200);
+    let new = ApiToken::issue(
+        "tok-2".into(),
+        "tenant-a".into(),
+        &token::generate_token(),
+        vec![],
+        200,
+    );
     store.rotate_token("tenant-a", &t.id, &new, 0).unwrap();
-    assert_eq!(store.tokens_version("tenant-a").unwrap(), 1, "rotation → version+1");
+    assert_eq!(
+        store.tokens_version("tenant-a").unwrap(),
+        1,
+        "rotation → version+1"
+    );
 
     store.revoke_token("tenant-a", &new.id).unwrap();
-    assert_eq!(store.tokens_version("tenant-a").unwrap(), 2, "révocation → version+1");
+    assert_eq!(
+        store.tokens_version("tenant-a").unwrap(),
+        2,
+        "révocation → version+1"
+    );
 
     // Tenant inexistant → erreur.
     assert!(matches!(
@@ -297,7 +331,10 @@ fn policy_publish_and_version_increment() {
             updated_at: 1_700_000_200,
         })
         .unwrap();
-    let p1 = store.get_policy("tenant-a").unwrap().expect("politique publiée");
+    let p1 = store
+        .get_policy("tenant-a")
+        .unwrap()
+        .expect("politique publiée");
     assert_eq!(p1.version, 1);
 
     // Seconde publication → version 2.
@@ -332,7 +369,10 @@ fn license_add_and_get() {
             created_at: 1_700_000_000,
         })
         .unwrap();
-    let lic = store.get_license("tenant-a").unwrap().expect("licence active");
+    let lic = store
+        .get_license("tenant-a")
+        .unwrap()
+        .expect("licence active");
     assert_eq!(lic.plan, Plan::Pro);
     assert_eq!(lic.limites.max_requests_per_day, 50_000);
 
@@ -346,7 +386,10 @@ fn license_add_and_get() {
             created_at: 1_700_000_100,
         })
         .unwrap();
-    let upgraded = store.get_license("tenant-a").unwrap().expect("licence remplacée");
+    let upgraded = store
+        .get_license("tenant-a")
+        .unwrap()
+        .expect("licence remplacée");
     assert_eq!(upgraded.plan, Plan::Enterprise);
 }
 
@@ -499,7 +542,9 @@ async fn ingest_redacts_counters_below_k() {
 
     // 5 requêtes : Email=1 partout (total 5 ≥ k) ; CniSn=1 sur 2 requêtes seulement
     // (total 2 < k=5 → cell redactée à 0 dans le journal).
-    let receipts = signed_receipts("tenant-a", &agent, 5, |i| counters_with(1, if i < 2 { 1 } else { 0 }));
+    let receipts = signed_receipts("tenant-a", &agent, 5, |i| {
+        counters_with(1, if i < 2 { 1 } else { 0 })
+    });
     let resp = api::ingest(
         State(state.clone()),
         Json(IngestRequest {
@@ -560,7 +605,11 @@ async fn ingest_rejects_bad_agent_signature() {
     .await
     .is_err());
     let lg = ledger.lock().unwrap();
-    assert_eq!(lg.len(), 1, "genèse seulement — aucune entrée rejetée n'est appendée");
+    assert_eq!(
+        lg.len(),
+        1,
+        "genèse seulement — aucune entrée rejetée n'est appendée"
+    );
 }
 
 #[tokio::test]
@@ -615,7 +664,13 @@ async fn ingest_persists_to_file_ledger_when_configured() {
     let ledger = Arc::new(Mutex::new(
         Ledger::open_file(&path, control.verifying_key()).unwrap(),
     ));
-    let state = AppState::new(store, ledger.clone(), agent.verifying_key(), control.clone(), 0);
+    let state = AppState::new(
+        store,
+        ledger.clone(),
+        agent.verifying_key(),
+        control.clone(),
+        0,
+    );
 
     let receipts = signed_receipts("tenant-a", &agent, 5, |_| counters_with(1, 0));
     let resp = api::ingest(
@@ -638,7 +693,11 @@ async fn ingest_persists_to_file_ledger_when_configured() {
     drop(state);
     drop(ledger);
     let reloaded = Ledger::open_file(&path, control.verifying_key()).unwrap();
-    assert_eq!(reloaded.len(), 2, "genèse + entrée ingest, rechargées au boot");
+    assert_eq!(
+        reloaded.len(),
+        2,
+        "genèse + entrée ingest, rechargées au boot"
+    );
     assert!(reloaded.verify_chain());
     assert!(reloaded.verify_inclusion(&payload_hash(&{
         let mut expected = LedgerPayload::empty("tenant-a");
@@ -693,9 +752,12 @@ async fn api_root_and_version_endpoints() {
     assert_ne!(root0["root_hash"], root1["root_hash"]);
 
     // Version de propagation : 0 puis incrémentée par rotation.
-    let v0 = api::tokens_version(State(state.clone()), Query(VersionQuery {
-        tenant_id: "tenant-a".to_string(),
-    }))
+    let v0 = api::tokens_version(
+        State(state.clone()),
+        Query(VersionQuery {
+            tenant_id: "tenant-a".to_string(),
+        }),
+    )
     .await
     .unwrap()
     .0;
@@ -704,11 +766,23 @@ async fn api_root_and_version_endpoints() {
     let clair = token::generate_token();
     let t = ApiToken::issue("tok-1".into(), "tenant-a".into(), &clair, vec![], 100);
     state.store.create_token(&t).unwrap();
-    let new = ApiToken::issue("tok-2".into(), "tenant-a".into(), &token::generate_token(), vec![], 200);
-    state.store.rotate_token("tenant-a", &t.id, &new, 300).unwrap();
-    let v1 = api::tokens_version(State(state.clone()), Query(VersionQuery {
-        tenant_id: "tenant-a".to_string(),
-    }))
+    let new = ApiToken::issue(
+        "tok-2".into(),
+        "tenant-a".into(),
+        &token::generate_token(),
+        vec![],
+        200,
+    );
+    state
+        .store
+        .rotate_token("tenant-a", &t.id, &new, 300)
+        .unwrap();
+    let v1 = api::tokens_version(
+        State(state.clone()),
+        Query(VersionQuery {
+            tenant_id: "tenant-a".to_string(),
+        }),
+    )
     .await
     .unwrap()
     .0;
@@ -743,12 +817,16 @@ async fn api_tenant_and_token_flow() {
     let issued = api::issue_token(
         State(state.clone()),
         Path("tenant-42".to_string()),
-        Json(IssueTokenReq { scopes: vec!["audit".to_string()] }),
+        Json(IssueTokenReq {
+            scopes: vec!["audit".to_string()],
+        }),
     )
     .await
     .unwrap()
     .0;
-    let issued_clair = issued["token"].as_str().expect("clair dans la réponse d'émission");
+    let issued_clair = issued["token"]
+        .as_str()
+        .expect("clair dans la réponse d'émission");
     assert!(issued_clair.starts_with("mn_"));
     assert_eq!(issued_clair.len(), 46);
 
@@ -757,7 +835,10 @@ async fn api_tenant_and_token_flow() {
         .validate_token(issued_clair)
         .unwrap()
         .expect("jeton actif après émission");
-    assert_ne!(stored.token_hash, issued_clair, "le store ne contient que le hash");
+    assert_ne!(
+        stored.token_hash, issued_clair,
+        "le store ne contient que le hash"
+    );
     assert_eq!(stored.token_hash, token::token_hash(issued_clair));
     assert_eq!(stored.scopes, vec!["audit".to_string()]);
 
@@ -766,12 +847,16 @@ async fn api_tenant_and_token_flow() {
     let rotated = api::rotate_token(
         State(state.clone()),
         Path("tenant-42".to_string()),
-        Json(RotateTokenReq { token_id: stored.id.clone() }),
+        Json(RotateTokenReq {
+            token_id: stored.id.clone(),
+        }),
     )
     .await
     .unwrap()
     .0;
-    let rotated_clair = rotated["token"].as_str().expect("clair dans la réponse de rotation");
+    let rotated_clair = rotated["token"]
+        .as_str()
+        .expect("clair dans la réponse de rotation");
     assert_ne!(rotated_clair, issued_clair);
     assert!(state.store.validate_token(issued_clair).unwrap().is_none());
     let new_stored = state
@@ -829,7 +914,9 @@ async fn api_idor_cross_tenant_rotate_and_revoke_are_rejected() {
     assert!(api::rotate_token(
         State(state.clone()),
         Path("tenant-a".to_string()),
-        Json(RotateTokenReq { token_id: b_stored.id.clone() }),
+        Json(RotateTokenReq {
+            token_id: b_stored.id.clone()
+        }),
     )
     .await
     .is_err());
@@ -863,7 +950,9 @@ async fn api_policy_and_license() {
     let p1 = api::put_policy(
         State(state.clone()),
         Path("tenant-7".to_string()),
-        Json(PutPolicyReq { json_policy: r#"{"k":2}"#.to_string() }),
+        Json(PutPolicyReq {
+            json_policy: r#"{"k":2}"#.to_string(),
+        }),
     )
     .await
     .unwrap()
@@ -872,7 +961,9 @@ async fn api_policy_and_license() {
     let p2 = api::put_policy(
         State(state.clone()),
         Path("tenant-7".to_string()),
-        Json(PutPolicyReq { json_policy: r#"{"k":5,"mode":"audit"}"#.to_string() }),
+        Json(PutPolicyReq {
+            json_policy: r#"{"k":5,"mode":"audit"}"#.to_string(),
+        }),
     )
     .await
     .unwrap()
@@ -883,13 +974,20 @@ async fn api_policy_and_license() {
     let lic = api::add_license(
         State(state.clone()),
         Path("tenant-7".to_string()),
-        Json(AddLicenseReq { plan: Plan::Enterprise, expires_at: Some(1_900_000_000) }),
+        Json(AddLicenseReq {
+            plan: Plan::Enterprise,
+            expires_at: Some(1_900_000_000),
+        }),
     )
     .await
     .unwrap()
     .0;
     assert_eq!(lic.plan, Plan::Enterprise);
-    let stored_lic = state.store.get_license("tenant-7").unwrap().expect("licence stockée");
+    let stored_lic = state
+        .store
+        .get_license("tenant-7")
+        .unwrap()
+        .expect("licence stockée");
     assert_eq!(stored_lic.expires_at, Some(1_900_000_000));
 
     // GET /healthz.
@@ -918,12 +1016,18 @@ fn token_issued_debug_and_serialize_mask_the_clear() {
 
     // Debug masqué.
     let debug = format!("{issued:?}");
-    assert!(!debug.contains("mn_secret_value"), "Debug ne doit jamais révéler le clair");
+    assert!(
+        !debug.contains("mn_secret_value"),
+        "Debug ne doit jamais révéler le clair"
+    );
     assert!(debug.contains("<redacted>"));
 
     // Sérialisation générique : JAMAIS le clair, seulement le hash.
     let json = serde_json::to_string(&issued).unwrap();
-    assert!(!json.contains("mn_secret_value"), "Serialize ne doit jamais révéler le clair");
+    assert!(
+        !json.contains("mn_secret_value"),
+        "Serialize ne doit jamais révéler le clair"
+    );
     assert!(json.contains("\"token_hash\""));
     assert!(json.contains(&token::token_hash("mn_secret_value")));
 
@@ -942,7 +1046,13 @@ fn stored_models_contain_no_client_text() {
     let store = InMemoryStore::new();
     store.create_tenant(&sample_tenant("tenant-a")).unwrap();
     let clair = token::generate_token();
-    let t = ApiToken::issue("tok-1".to_string(), "tenant-a".to_string(), &clair, vec![], 100);
+    let t = ApiToken::issue(
+        "tok-1".to_string(),
+        "tenant-a".to_string(),
+        &clair,
+        vec![],
+        100,
+    );
     store.create_token(&t).unwrap();
     store
         .set_policy(&Policy {

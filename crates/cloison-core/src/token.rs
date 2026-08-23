@@ -3,8 +3,8 @@
 //! HMAC-BLAKE3 token body generation, sentinel formatting/parsing,
 //! session key derivation via HKDF, and canonicalization.
 
-use hmac::Mac;
 use hkdf::Hkdf;
+use hmac::Mac;
 use serde::{Deserialize, Serialize};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -207,8 +207,7 @@ impl Sentinel {
             self.token_body_b32,
             Self::L_SEP,
             self.kind_tag,
-        )
-        + &Self::L_CLOSE.to_string()
+        ) + &Self::L_CLOSE.to_string()
     }
 
     /// Parse a sentinel from a string.
@@ -281,9 +280,10 @@ impl Sentinel {
             "LO" => Ok(DetectorKind::Location),
             "GZA" => Ok(DetectorKind::Gazetteer("nom_sn".to_string())),
             "GZV" => Ok(DetectorKind::Gazetteer("ville_sn".to_string())),
-            other if other.starts_with("GZ") => {
-                Ok(DetectorKind::Gazetteer(format!("gz_{}", other.to_lowercase())))
-            }
+            other if other.starts_with("GZ") => Ok(DetectorKind::Gazetteer(format!(
+                "gz_{}",
+                other.to_lowercase()
+            ))),
             _ => Err(CloisonError::SentinelFormat(format!(
                 "unknown kind_tag: {}",
                 tag
@@ -314,7 +314,11 @@ impl Sentinel {
 ///   3. value_id = BLAKE3(canonical_value)
 ///   4. value_part = value_id[0..M]
 ///   5. body = mac_part || value_part
-pub fn token_body(keys: &SessionKeys, canonical_value: &str, kind: &DetectorKind) -> CloisonResult<TokenBody> {
+pub fn token_body(
+    keys: &SessionKeys,
+    canonical_value: &str,
+    kind: &DetectorKind,
+) -> CloisonResult<TokenBody> {
     let kind_tag = Sentinel::tag_from_kind(kind);
     let mac_input = [canonical_value.as_bytes(), kind_tag.as_bytes()].concat();
 
@@ -458,15 +462,28 @@ mod tests {
         let keys2 = SessionKeys::derive([0xFFu8; 32], [0x00u8; 16]).unwrap();
         let t1 = Token::emit("user@example.com", &DetectorKind::Email, &keys1).unwrap();
         let t2 = Token::emit("user@example.com", &DetectorKind::Email, &keys2).unwrap();
-        assert_ne!(t1.body, t2.body, "Different sessions must produce different tokens");
+        assert_ne!(
+            t1.body, t2.body,
+            "Different sessions must produce different tokens"
+        );
     }
 
     #[test]
     fn test_verify_body() {
         let keys = test_keys();
         let token = Token::emit("user@example.com", &DetectorKind::Email, &keys).unwrap();
-        assert!(Token::verify_body(&token.body, "user@example.com", &DetectorKind::Email, &keys));
-        assert!(!Token::verify_body(&token.body, "other@example.com", &DetectorKind::Email, &keys));
+        assert!(Token::verify_body(
+            &token.body,
+            "user@example.com",
+            &DetectorKind::Email,
+            &keys
+        ));
+        assert!(!Token::verify_body(
+            &token.body,
+            "other@example.com",
+            &DetectorKind::Email,
+            &keys
+        ));
     }
 
     #[test]

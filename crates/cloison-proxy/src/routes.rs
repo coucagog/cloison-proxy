@@ -19,7 +19,10 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/completions", post(handlers::completions_legacy))
         .route("/v1/models", get(handlers::models))
         .route("/v1/audit/report", get(handlers::audit_report))
-        .layer(axum::middleware::from_fn_with_state(state.clone(), auth::auth_middleware))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            auth::auth_middleware,
+        ))
         .layer(RequestBodyLimitLayer::new(max_body_bytes))
         .with_state(state)
 }

@@ -52,8 +52,7 @@ pub fn verify_token_constant_time(presented: &str, stored_hash: &str) -> bool {
 /// Encodage base64url sans padding (RFC 4648 §5) — implémentation locale, pas de
 /// dépendance externe.
 pub(crate) fn base64url(bytes: &[u8]) -> String {
-    const ALPHABET: &[u8; 64] =
-        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
     let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
     for chunk in bytes.chunks(3) {
         let b0 = chunk[0] as u32;
