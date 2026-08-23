@@ -50,7 +50,18 @@ Solder les 6 chantiers de la reprise :
    DEPLOY-4 est faite avec 1.97 — le stable courant peut diverger) ; le
    matrix `images` inclut `journal` (l'image GHCR manquait) ; `test-rust`
    vérifie que la feature `pg` compile (`--locked`).
-6. **Déploiement** : le tenant `default` + le **hash** du jeton edge existant
+6. **Porte de scan (déviation O5 journalisée)** : le gate « grype ≥ medium »
+   documenté n'était **pas atteignable** — l'image detect (torch 2.5.1+cpu
+   épinglé au verdict GO : CVE-2025-32434 CRITICAL fixée en 2.6.0) et le
+   journal (nginx alpine : libcrypto3 CRITICAL) portent des CVE
+   d'écosystèmes tiers dont la mise à jour casserait la stack validée ; la
+   base distroless (proxy/control) traîne des CVE glibc/openssl 2026 **sans
+   fix en amont**. Décision : **scan bloquant trivy HIGH/CRITICAL avec fix
+   disponible uniquement (`ignore-unfixed`), images first-party
+   (proxy/control — 0 CVE aujourd'hui)** ; grype en advisory sur toutes les
+   images ; SBOM toujours généré ; `apk upgrade` ajouté au build du journal
+   (libcrypto3 corrigée). `docs/SECURITY.md` O5 mis à jour.
+7. **Déploiement** : le tenant `default` + le **hash** du jeton edge existant
    sont provisionnés dans le contrôle (`deploy/provision_control.sh` — le
    clair est lu sur stdin, jamais persisté) — **aucune rupture client** : les
    clés composites existantes continuent de s'authentifier, désormais

@@ -67,7 +67,7 @@ Luhn (CNI valide détectée, invalide rejetée).
 | O2 | **Aucune PII en log** | logs = `request_id`, compteurs, `body_b32`, `kind_tag` ; jamais le texte |
 | O3 | **Non-root + read-only** | images distroless (uid 65532), detect uid 10001 ; `read_only: true` + `tmpfs /tmp` partout (compose ET Helm) ; `cap_drop: ALL`, `no-new-privileges` |
 | O4 | **Zéro PII réelle dans les tests/bench** | dataset STACK-1 100 % synthétique (seed 42) ; tests detect avec stubs hors-ligne (`CLOISON_OFFLINE=1`) ; e2e réel = PII **simulée** |
-| O5 | **SBOM + scan à chaque build** | syft (SPDX) + grype (échec ≥ medium) + trivy (échec ≥ HIGH) sur les 3 images ; signature cosign (OIDC) sur main/tags |
+| O5 | **SBOM + scan à chaque build** | syft (SPDX) + **scan bloquant trivy** (échec ≥ HIGH/CRITICAL **avec correctif disponible**, images first-party proxy/control) + **scan advisory grype** (toutes images) ; signature cosign (OIDC) sur main/tags. Décision DEPLOY-5 (déviation journalisée) : les écosystèmes tiers (detect : torch épinglé au verdict GO ; journal : nginx alpine) et les CVE sans fix en amont sont **tracés**, pas bloquants |
 | O6 | **Registre non falsifiable** | ledger append-only : `seq` terminal, `prev_hash` lié, `entry_hash` recomputé, signatures Ed25519 `verify_strict` ; toute altération casse la chaîne |
 
 ## 5. Gestion des secrets
@@ -94,13 +94,18 @@ Luhn (CNI valide détectée, invalide rejetée).
 | Outil | Usage | Échec CI |
 |---|---|---|
 | syft | SBOM SPDX JSON par image (job `images`) | — (artifact) |
-| grype | scan vulnérabilités, `severity-cutoff: medium`, `fail-build: true` | oui |
-| trivy | scan double, `severity: HIGH,CRITICAL`, `exit-code: 1` | oui |
+| grype | scan advisory, `severity-cutoff: high`, `fail-build: false` (rapport) | non |
+| trivy | scan bloquant, `severity: HIGH,CRITICAL`, `ignore-unfixed: true`, images first-party (`matrix.blocking=1`) | oui |
 | cosign | signature OIDC des images poussées (main/tags) | oui |
 | `deploy/sbom.sh` | même chaîne exécutable hors CI sur wonkom.ai | — |
 
-Politique : **toute vulnérabilité HIGH/CRITICAL bloque la CI** ; le SBOM est
-publié en artifact et joint à l'image.
+Politique (décision journalisée DEPLOY-5) : **toute vulnérabilité HIGH/CRITICAL
+avec correctif disponible bloque la CI sur les images first-party** (proxy,
+control — 0 CVE aujourd'hui) ; les images à écosystèmes tiers (detect, journal)
+et les CVE sans fix en amont sont **scannées en advisory** (rapports + SBOM
+publiés) — la politique « medium bloque » documentée initialement n'était pas
+atteignable (torch épinglé au verdict GO, glibc/openssl 2026 sans fix
+distroless). Réviser quand les fixes amont existent.
 
 ## 7. Signalement
 

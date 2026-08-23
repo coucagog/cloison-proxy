@@ -40,6 +40,11 @@ RUN cargo build -p cloison-verify --features wasm --target wasm32-unknown-unknow
 # --- Stage 2 : nginx statique (alpine, non-root) ------------------------------
 FROM nginx:1.27-alpine
 
+# Durcissement base (scan trivy/grype) : l'alpine du tag peut traîner des
+# CVE (ex. libcrypto3 CRITICAL) — `apk upgrade` au BUILD applique les
+# correctifs disponibles des dépôts alpine (constat DEPLOY-5, porte de scan).
+RUN apk upgrade --no-cache
+
 # Page de vérification + glue WASM (contexte de build = racine du dépôt).
 COPY deploy/journal-html/ /usr/share/nginx/html/
 COPY --from=wasm /out/ /usr/share/nginx/html/verify/
