@@ -5,6 +5,11 @@ edition.workspace = true
 license.workspace = true
 description = "Verificateur public d'attestation CLOISON : recompose la chaine du journal, valide les signatures Ed25519 et les inclusions par hash. Buildable WASM (feature `wasm`)."
 
+# cdylib requis pour produire un artefact .wasm sur wasm32-unknown-unknown
+# (étape C — journal public) ; rlib pour l'usage natif (tests, CI).
+[lib]
+crate-type = ["rlib", "cdylib"]
+
 [dependencies]
 cloison-ledger = { path = "../cloison-ledger" }
 ed25519-dalek.workspace = true
