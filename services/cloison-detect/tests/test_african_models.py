@@ -222,3 +222,56 @@ def test_model_status_reports_african_models():
     for name in ("serengeti", "afroxlmr", "masakha"):
         assert name in status
         assert status[name]["available"] is False
+
+
+# ---------------------------------------------------------------------------
+# Régression DEPLOY-6 : `offset_mapping` ne doit jamais atteindre forward()
+# ---------------------------------------------------------------------------
+
+
+def test_african_detect_never_passes_offset_mapping_to_model():
+    """Le tokenizer renvoie `offset_mapping` (return_offsets_mapping=True),
+    mais `XLMRobertaForTokenClassification.forward()` n'accepte PAS ce kwarg
+    (signature sans **kwargs) : le passer levait une TypeError silencieuse et
+    le détecteur africain renvoyait [] (bug DEPLOY-6 — venv non-pinné STACK-8
+    tolérait le kwarg, transformers 4.46.3 épinglé non)."""
+    import torch
+
+    class FakeTokenizer:
+        def __call__(self, text, **kwargs):  # noqa: ARG002
+            # Même shape que le vrai tokenizer avec return_offsets_mapping=True.
+            return {
+                "input_ids": torch.tensor([[0, 5, 9, 2]]),
+                "attention_mask": torch.tensor([[1, 1, 1, 1]]),
+                "offset_mapping": torch.tensor([[(0, 0), (0, 5), (5, 9), (0, 0)]]),
+            }
+
+    class FakeLogits:
+        # [1, 4, 3] : tokens 1-2 → label 2 (LOC), tokens 0/3 spéciaux.
+        logits = torch.tensor([
+            [[0.1, 0.1, 0.8], [0.1, 0.1, 0.8], [0.1, 0.1, 0.8], [0.9, 0.05, 0.05]]
+        ])
+
+    class FakeModel:
+        class Config:
+            id2label = {0: "O", 1: "PER", 2: "LOC"}
+
+        config = Config()
+
+        def __call__(self, **kwargs):
+            assert "offset_mapping" not in kwargs, (
+                "offset_mapping ne doit jamais atteindre forward()"
+            )
+            return FakeLogits()
+
+    det = african_mod.AfricanModelDetector(
+        Config(african=AfricanConfig(model_name="afroxlmr"))
+    )
+    det._tokenizer = FakeTokenizer()
+    det._model = FakeModel()
+    det._load_attempted = True  # contourne le chargement réel
+
+    spans = det.detect("Bonjour Aminata Diop à Dakar", locale="fr", policy=None)
+    assert spans, "le détecteur africain doit produire des spans (plus de [] silencieux)"
+    assert spans[0].type is SpanType.LOC
+    assert spans[0].score >= 0.50, "score au-dessus du seuil interne african"

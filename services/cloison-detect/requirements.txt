@@ -29,12 +29,13 @@ gliner==0.2.12             # GLiNER zéro-shot : labels custom PERSON/LOC/ORG
 # transformers 5.x, incompatibles avec gliner 0.2.12 — `_from_pretrained`
 # sans `proxies`/`resume_download` → GLiNER inactif). Ce trio est la version
 # validée au verdict GO (STACK-8) ; le downgrader uniquement avec tests.
-# torch==2.5.1+cpu : CPU-only (pas de GPU sur wonkom.ai). Le bundle CUDA de
+# torch==2.6.0+cpu : CPU-only (pas de GPU sur wonkom.ai). Le bundle CUDA de
 # PyPI (~6 Go avec nccl/cuDNN) est inutile et a fait exploser le disque du VPS
 # (constat DEPLOY-2). Le suffixe +cpu est fourni par l'index PyTorch CPU
 # (https://download.pytorch.org/whl/cpu) ajouté en --extra-index-url par le
-# Dockerfile — PyPI ne l'héberge pas.
-torch==2.5.1+cpu
+# Dockerfile — PyPI ne l'héberge pas. DEPLOY-6 : upgrade 2.5.1 → 2.6.0
+# (fix CVE-2025-32434 CRITICAL — re-validation GO effectuée, non-régression).
+torch==2.6.0+cpu
 transformers==4.46.3       # AutoModelForTokenClassification (afroxlmr, NER)
 huggingface-hub==0.26.3    # cache HF + HubMixin compatible gliner 0.2.12
 

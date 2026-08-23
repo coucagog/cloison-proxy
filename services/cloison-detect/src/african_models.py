@@ -141,11 +141,17 @@ class AfricanModelDetector:
                 truncation=True,
                 max_length=512,
             )
+            # `offset_mapping` n'est PAS un argument de `forward()` (signature
+            # sans **kwargs) : le passer au modèle levait une TypeError — le
+            # détecteur africain renvoyait [] EN SILENCE avec transformers
+            # 4.46.3 épinglé (correction DEPLOY-6 ; le venv non-pinné du
+            # STACK-8 tolérait le kwarg — d'où le verdict GO mesuré).
+            offsets = encoded.pop("offset_mapping")
             with torch.no_grad():
                 logits = self._model(**encoded).logits
             pred_ids = logits.argmax(dim=-1)[0].tolist()
             probs = torch.softmax(logits, dim=-1)
-            spans = self._align_spans(encoded, pred_ids, probs)
+            spans = self._align_spans(offsets, pred_ids, probs)
         except Exception as exc:
             logger.warning("african: prédiction échouée (%s) — spans ignorés", exc)
             self._quarantine_until = time.monotonic() + self._config.quarantine_seconds
@@ -154,14 +160,14 @@ class AfricanModelDetector:
 
     def _align_spans(
         self,
-        encoded,
+        offsets,
         pred_ids: list[int],
         probs,
     ) -> list[Span]:
         """Aligne tokens -> offsets caractères ; regroupe les tokens contigus
         de même type en spans (gère les préfixes BIO)."""
         id2label: dict[int, str] = getattr(self._model.config, "id2label", {}) or {}
-        offsets = encoded["offset_mapping"][0].tolist()
+        offsets = offsets[0].tolist()
 
         spans: list[Span] = []
         current_type: SpanType | None = None
