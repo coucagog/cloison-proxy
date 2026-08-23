@@ -66,21 +66,19 @@ COPY services/cloison-detect/requirements.txt .
 # grpcio, grpcio-tools, protobuf, presidio-analyzer, presidio-anonymizer,
 # spacy, numpy, pydantic, pytest) est installé tel quel.
 ARG CLOISON_LITE=1
-# torch CPU-only (constat DEPLOY-2) : l'index PyPI sert le bundle CUDA (~6 Go
-# avec nccl/cuDNN) — inutile sur wonkom.ai (pas de GPU) et il a fait exploser
-# le disque du VPS au premier rebuild. L'index PyTorch CPU (~200 Mo) est
-# installé AVANT requirements.txt : PIP_TARGET=/opt/deps fait que pip le voit
-# déjà satisfait (gliner/transformers ne re-téléchargent pas le bundle CUDA).
-RUN if [ "$CLOISON_LITE" != "1" ]; then \
-      pip install --target /opt/deps --index-url https://download.pytorch.org/whl/cpu \
-        torch==2.5.1; \
-    fi
+# torch CPU-only (constat DEPLOY-2) : `--extra-index-url` vers l'index PyTorch
+# CPU + pin `torch==2.5.1+cpu` dans requirements.txt → pip résout torch sur
+# l'index CPU (~200 Mo) au lieu du bundle CUDA PyPI (~6 Go, nccl/cuDNN, inutile
+# sans GPU — il a rempli le disque du VPS au premier rebuild). Les autres
+# paquets restent servis par PyPI.
 RUN if [ "$CLOISON_LITE" = "1" ]; then \
       grep -vE '^[[:space:]]*(gliner|torch|transformers)([#=].*)?$' requirements.txt \
         > requirements-lite.txt \
-      && pip install --target /opt/deps -r requirements-lite.txt; \
+      && pip install --target /opt/deps --extra-index-url https://download.pytorch.org/whl/cpu \
+        -r requirements-lite.txt; \
     else \
-      pip install --target /opt/deps -r requirements.txt; \
+      pip install --target /opt/deps --extra-index-url https://download.pytorch.org/whl/cpu \
+        -r requirements.txt; \
     fi
 
 # Modèle spaCy de l'oracle Presidio (une seule fois ; hors-ligne ensuite).
