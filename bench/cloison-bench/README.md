@@ -22,10 +22,10 @@ confidentialité PII compatible OpenAI.
 > **Attribution TEL (confirmée — plan national ITU T02020000B8, soumission
 > ARTP, posté 2023-11-29, + sources 2026)** : mobile 70 Expresso · 7211
 > CSU/Hayo · 754-756 MVNO Promobile · 757 MVNO Origines · 76 Free/Yas
-> (ex-Tigo) · 77/78 Orange · 790 ADIE ; fixe 30 Expresso · 32 Free · 338/339
-> Orange · 3611 CSU/Hayo. **75 n'est PAS Free** (correction DEPLOY-9) ; le
-> préfixe **71** (signalé pilote 08/2026) n'apparaît pas au plan ITU 2023 —
-> conservé en couverture (invariant I1), attribution à confirmer ARTP.
+> (ex-Tigo) · 77/78 Orange · 790 ADIE · **71 Orange (depuis 2026, confirmé
+> pilote)** ; fixe 30 Expresso · 32 Free · 338/339 Orange · 3611 CSU/Hayo.
+> **75 n'est PAS Free** (correction DEPLOY-9) : c'est la plage des MVNO
+> (Promobile/Origines) et d'Expresso.
 >
 > **Matricule État/IPRES (format confirmé sur listes officielles
 > fonctionpublique.gouv.sn)** : 6 chiffres + 1 lettre de contrôle (A-Z sans

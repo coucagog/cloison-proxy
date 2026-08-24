@@ -118,16 +118,20 @@ attrapé le bug que les 70 tests ne voyaient pas).
 > documentée). GO re-validé (torch 0.9573 / onnx 0.9560 vs baseline
 > officielle 0.7501 — 5/5 PASS sur les DEUX chemins). Détails :
 > `journal/DEPLOY-10.md`.
-> **Prochaine session = N0** (kit moteur léger Rust seul, design §6bis) ;
+> **Prochaine session = N0** (kit moteur léger Rust seul — **préparation :
+> `journal/N0-PREP.md`**, design §6bis posé) ;
 > **GPU toujours en attente** (aucun GPU disponible — décision reportée ;
 > baseline ONNX de DEPLOY-8 comme référence).
 
-### ① Dette 71/75 — ✅ RÉSOLUE (DEPLOY-9)
+### ① Dette 71/75 — ✅ RÉSOLUE (DEPLOY-9 + DEPLOY-10)
 
 Inventaire corrigé : `detection.rs` (71 ajouté au format local), `presidio_baseline.py`
 (5 regex), `generator.py` (71/75, attribution opérateur à confirmer ARTP — commenté),
 README bench, test_benchmark. GO re-validé (torch 0.9550 / onnx 0.9556 vs baseline
 officielle 0.7501), edge redéployé, preuve e2e 71/75 mock + réel, open-core v0.2.0.
+**DEPLOY-10 (addendum pilote)** : **71 = Orange (Sonatel), attribué depuis 2026**
+(confirmé pilote — absent du plan ITU 2023 ; couverture déjà conservée) ; 72/79
+ajoutés (plan ITU) ; attribution corrigée (générateur/core/baseline/docs).
 
 ### ③ N3+ — couverture PII étendue (✅ LIVRÉE — DEPLOY-9)
 

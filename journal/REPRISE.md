@@ -170,14 +170,16 @@ de conformité k-anonyme, journal public restylé (design system de référence)
 - **N0 (prochaine session)** : le plus léger possible — moteur **Rust
   seul** (core, sans sidecar NER Python), kit portable (natif desktop/mobile +
   WASM), déclinaisons daemon desktop (v1) / mobile embarqué / navigateur. Coffre
-  persistant, auth 100 % locale, limites honnêtes documentées. Décisions et
-  questions ouvertes : `REPRISE-DEPLOIEMENT.md` §6bis.
+  persistant, auth 100 % locale, limites honnêtes documentées. **Préparation
+  prête : `journal/N0-PREP.md`** ; décisions et questions ouvertes :
+  `REPRISE-DEPLOIEMENT.md` §6bis.
 - **GPU (dette ②)** : en attente (aucun GPU disponible, décision reportée —
   baseline ONNX de DEPLOY-8 comme référence).
 - **✅ RESOLUES (DEPLOY-10)** : **dette documentaire** (attribution TEL
   confirmée plan ITU/ARTP — 75 = MVNO pas Free, 72/79 ajoutés, matricule
   officiel 6 chiffres+lettre, PP/DL documentés — GO re-validé torch
-  0.9573 / onnx 0.9560, 5/5 PASS) ; **dettes secondaires** (deps bench
+  0.9573 / onnx 0.9560, 5/5 PASS ; **addendum : 71 = Orange depuis 2026**,
+  confirmé pilote) ; **dettes secondaires** (deps bench
   épinglées, `CLOISON_ONNX=1` déployé en prod, `CLOISON_DETECT_CONCURRENCY`,
   `CLOISON_ROLE` lu au boot) ; **DNS mort `dsh.wonkom.ai`** : suppression
   record = **action opérateur** (zone anycast.me, instruction DEPLOY-10 §①).

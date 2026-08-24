@@ -258,12 +258,37 @@ commenté.
 
 ## Dette / suite
 
-- Attribution opérateur **71** : à confirmer ARTP (couverture conservatrice
-  maintenue, documentée).
+- ~~Attribution opérateur **71**~~ → **RÉSOLU (addendum pilote)** : **71 =
+  Orange (Sonatel), attribué depuis 2026** — confirmation directe du pilote
+  (la recherche publique ne l'avait pas trouvé : absent du plan ITU 2023 et
+  des sources 2026 ; la couverture était déjà conservée, l'attribution est
+  désormais corrigée dans le générateur, le core, la baseline et les docs).
+  GO re-validé après cette correction (voir §Addendum).
 - Formats **passeport / permis** : à confirmer auprès de sources normatives
   (structure observée, détection contextuelle conservée).
 - GPU (dette ②) : toujours en attente (baseline ONNX chiffrée).
-- N0 (kit léger Rust seul) : prochaine session (design §6bis posé).
+- N0 (kit léger Rust seul) : **PROCHAINE SESSION — préparation
+  `journal/N0-PREP.md`** (design §6bis posé).
+
+## ADDENDUM — 71 confirmé Orange (réaction pilote)
+
+**Constat pilote (24/08/2026)** : « le 71 existe bel et bien depuis cette
+année, chez Orange ». La recherche publique de cette campagne (plan ITU
+2023-11-29, sources 2026) ne listait pas 71 — l'hypothèse de couverture
+conservatrice était maintenue, l'attribution restait « à confirmer ARTP ».
+
+**Corrections appliquées** (le préfixe était déjà détecté — invariant I1
+préservé ; seule l'ATTRIBUTION change) :
+- `generator.py` : `PREFIXES_TEL` — « 71 » déplacé dans `Orange (Sonatel)`
+  (`["77","78","71"]`), clé « 71 (signalé pilote…) » supprimée ;
+- `detection.rs` (core) : commentaire de la regex téléphone — 71 Orange ;
+- `presidio_baseline.py` + `README.md` bench : attribution mise à jour ;
+- `REPRISE.md`/`REPRISE-DEPLOIEMENT.md` : dette documentaire 71 soldée.
+
+**Re-validation GO (règle §5 — le générateur change → jeu régénéré)** :
+[REMPLIR après le run : torch / onnx vs baseline officielle 0.7501].
+Artefacts : `results/go_nogo_final.deploy10-71orange-{torch,onnx}.json`.
+Re-publication open-core bench + core (v0.2.2 re-pointé) si le run est vert.
 
 ## Porte de sortie
 

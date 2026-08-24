@@ -130,8 +130,9 @@ class SenegalPhoneRecognizer(PatternRecognizer):
     - 7X XXX XX XX (formats locaux)
     - (+221) 7X XXX XX XX
     
-    Préfixes opérateurs: 70, 71, 72, 75, 76, 77, 78, 79 (mobiles — plan ITU
-    2023 : 72 CSU/Hayo, 79 ADIE ; 71 signalé pilote) ;
+    Préfixes opérateurs: 70, 71, 72, 75, 76, 77, 78, 79 (mobiles —
+    plan ITU 2023 : 72 CSU/Hayo, 79 ADIE ; **71 Orange depuis 2026**,
+    confirmé pilote DEPLOY-10) ;
     fixes : 30, 32, 33, 36 (zone 8/9) — N3+.
     """
     

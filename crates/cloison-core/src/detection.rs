@@ -216,7 +216,8 @@ impl Detector {
 
         // Mobile : 70 Expresso · 72 (7211) CSU/Hayo · 75 MVNO/Expresso ·
         // 76 Free/Yas (ex-Tigo) · 77/78 Sonatel (Orange) · 79 (790) ADIE ·
-        // 71 (signalé pilote, hors plan ITU 2023 — couverture conservatrice).
+        // 71 Orange (Sonatel) — attribué depuis 2026 (absent du plan ITU
+        // 2023 ; confirmé par le pilote, DEPLOY-10 addendum).
         // Fixe : 30 Expresso · 32 Free · 33 Sonatel · 36 CSU/Hayo (zone 8/9).
         let phone_sn_re = Regex::new(
             r"(?:\+221|00221)\s?(?:7[0-9]|3[0-9])\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2}|(?:70|71|72|75|76|77|78|79)(?:[0-9]{7}|\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2})|(?:30|32|33|36)(?:[89][0-9]{6}|\s?[89]\s?[0-9]{2}\s?[0-9]{2}\s?[0-9]{2})"

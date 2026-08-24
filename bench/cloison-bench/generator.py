@@ -114,19 +114,18 @@ DOMAINS_GENERIC = [
 # NB :
 #   - 75 N'EST PAS Free (correction de l'hypothèse DEPLOY-9 « Free 75 ») :
 #     c'est la plage des MVNO (Promobile/Origines) et d'Expresso.
-#   - 71 n'apparaît PAS au plan ITU 2023 (signalé par le pilote 08/2026) :
-#     conservé en couverture (invariant I1 — un mobile non détecté part en
-#     clair), attribution opérateur à confirmer ARTP.
+#   - 71 (absent du plan ITU 2023) : **attribué à Orange (Sonatel) depuis
+#     2026 — confirmé par le pilote (DEPLOY-10, addendum)**. Couverture
+#     effective (invariant I1).
 #   - 72 (CSU/Hayo, NDC 7211) et 79 (ADIE, NDC 790) : NDC mobiles officiels
 #     du plan ITU 2023 — ajoutés à la couverture (DEPLOY-10, recherche ARTP).
 PREFIXES_TEL = {
-    "Orange (Sonatel)": ["77", "78"],
+    "Orange (Sonatel)": ["77", "78", "71"],
     "Free/Yas (ex-Tigo)": ["76"],
     "Expresso": ["70"],
     "CSU/Hayo": ["72"],
     "MVNO (75) / Expresso": ["75"],
     "ADIE": ["79"],
-    "71 (signalé pilote, hors plan ITU 2023)": ["71"],
 }
 
 # Préfixes téléphoniques FIXES sénégalais (N3+) : 33 Sonatel/Orange,
