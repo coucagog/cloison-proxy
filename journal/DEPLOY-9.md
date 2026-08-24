@@ -276,7 +276,9 @@ positifs massifs tout en couvrant les cas réels.
 - [x] e2e réel : **voir Résultats** (OpenRouter, clé du fichier SERVEUR).
 - [x] **N3+** : fixes 30/32/33/36 + passeport + permis + matricules détectés
       (core + bench + tests), GO torch re-validé (voir §③).
-- [ ] Décisions pilote : dsh.wonkom.ai, mode audit public (documentées).
+- [x] Décisions pilote : dsh.wonkom.ai, mode audit public (documentées —
+      **SOLDÉES 25/08/2026** : retrait DNS validé / audit interne validé,
+      voir `journal/REPRISE.md` §5).
 
 ## Invariants de sécurité vérifiés
 

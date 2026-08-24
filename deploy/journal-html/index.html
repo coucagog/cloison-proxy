@@ -297,11 +297,16 @@ window.checkInclusion = function () {
   }
 };
 
-// Bascule de thème (sans stockage — suit l'OS par défaut).
+// Bascule de thème (sans stockage — suit l'OS par défaut, puis bascule manuelle).
 const themeBtn = document.getElementById('themeBtn');
+function currentTheme() {
+  const t = document.documentElement.getAttribute('data-theme');
+  if (t === 'dark' || t === 'light') return t;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
 themeBtn.addEventListener('click', () => {
   const root = document.documentElement;
-  const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  const next = currentTheme() === 'dark' ? 'light' : 'dark';
   root.setAttribute('data-theme', next);
   themeBtn.setAttribute('aria-pressed', next === 'dark');
 });

@@ -183,9 +183,17 @@ de conformité k-anonyme, journal public restylé (design system de référence)
   épinglées, `CLOISON_ONNX=1` déployé en prod, `CLOISON_DETECT_CONCURRENCY`,
   `CLOISON_ROLE` lu au boot) ; **DNS mort `dsh.wonkom.ai`** : suppression
   record = **action opérateur** (zone anycast.me, instruction DEPLOY-10 §①).
-- **2 décisions pilote en attente** : ~~`dsh.wonkom.ai`~~ (retrait validé —
-  action opérateur) ; mode audit public vs interne (choix actuel : interne,
-  rapport par tenant en observe-only).
+- **Décisions pilote — SOLDÉES (25/08/2026)** :
+  1. ~~`dsh.wonkom.ai`~~ : **retrait du record A VALIDÉ** (recommandation
+     DEPLOY-9 actée). Constat 25/08/2026 : le record résout encore
+     (144.217.81.251, zone anycast.me — vérifié via résolveurs publics) →
+     **action opérateur toujours en attente d'exécution** (instruction
+     DEPLOY-10 §« Décision pilote requise ») ; rien ne sert ce sous-domaine.
+  2. ~~Mode audit public vs interne~~ : **interne par défaut VALIDÉ** —
+     `CLOISON_AUDIT_MODE=0` en prod (masquage actif), rapport de conformité
+     k-anonyme disponible par tenant en mode observe-only (opt-in), voie de
+     transparence publique = `journal.wonkom.ai` (pas de rapport public
+     supplémentaire par client).
 
 ## 6. Infos pratiques pour reprendre
 

@@ -115,9 +115,13 @@ attrapé le bug que les 70 tests ne voyaient pas).
 > **dettes secondaires** (deps bench épinglées, CLOISON_ONNX=1 déployé,
 > CLOISON_DETECT_CONCURRENCY, CLOISON_ROLE lu au boot), **DNS mort**
 > (dsh.wonkom.ai — suppression record = action opérateur anycast.me
-> documentée). GO re-validé (torch 0.9573 / onnx 0.9560 vs baseline
+> documentée, **décision pilote soldée 25/08/2026 : retrait validé**).
+> GO re-validé (torch 0.9573 / onnx 0.9560 vs baseline
 > officielle 0.7501 — 5/5 PASS sur les DEUX chemins). Détails :
 > `journal/DEPLOY-10.md`.
+> **✅ DÉCISIONS PILOTE SOLDÉES (25/08/2026)** : `dsh.wonkom.ai` (retrait DNS
+> validé, action opérateur en attente) ; mode audit public vs interne
+> (**interne par défaut validé**).
 > **Prochaine session = N0** (kit moteur léger Rust seul — **préparation :
 > `journal/N0-PREP.md`**, design §6bis posé) ;
 > **GPU toujours en attente** (aucun GPU disponible — décision reportée ;
@@ -162,19 +166,22 @@ acheter » :
 4. **Métriques / rapport client** : rapport de conformité k-anonyme
    (`GET /v1/audit/report`, mode audit observe-only) présentable au client —
    le ledger comme source de vérité.
-5. **Décisions en attente (DEPLOY-1)** : `dsh.wonkom.ai` (DNS mort — retirer
-   l'enregistrement ou le documenter) ; mode audit public vs interne.
+5. **Décisions pilote (25/08/2026 — SOLDÉES)** : `dsh.wonkom.ai` → **retrait
+   du record A validé** (action opérateur anycast.me, en attente
+   d'exécution) ; mode audit → **interne par défaut validé** (rapport
+   k-anonyme par tenant en observe-only ; transparence publique = journal).
 6. **Vérifications finales N3** : ledger alimenté par du trafic réel, memwatch
    0 OOM, certs J-14, e2e réel, stack stable.
 
 **Porte de sortie N3 — ✅ ATTEINTE (DEPLOY-9)** : onboarding client possible
 de bout en bout (tenant → clé composite → requête réelle → journal alimenté) ·
 71/75 réglé avec GO re-validé · docs client publiées · `cloison-cli` livré ·
-dettes à jour. Reste **2 décisions pilote** (documentées DEPLOY-9, non
-tranchées) : `dsh.wonkom.ai` (DNS mort — recommandation : retirer
-l'enregistrement) ; mode audit public vs interne (choix actuel : interne par
-défaut, rapport k-anonyme par tenant en observe-only — la voie de transparence
-publique reste le journal).
+dettes à jour. **2 décisions pilote — SOLDÉES (25/08/2026)** :
+`dsh.wonkom.ai` (retrait du record A **validé** — action opérateur zone
+anycast.me toujours en attente d'exécution, record encore présent vérifié
+25/08/2026) ; mode audit public vs interne (**interne par défaut validé** —
+rapport k-anonyme par tenant en observe-only, voie de transparence publique
+= le journal).
 
 ### Dettes résolues (référence)
 
@@ -250,7 +257,9 @@ Décisions pilote posées (23/08/2026) :
   + `CLOISON_ONNX_INT8=1` dans le `.env` du VPS (backend `onnx-int8`
   vérifié au boot).
 - **DNS mort `dsh.wonkom.ai`** — décision pilote : **supprimer le record A**
-  (zone anycast.me — action opérateur préparée, DEPLOY-10 §①).
+  (zone anycast.me — action opérateur préparée, DEPLOY-10 §①). **SOLDÉE
+  (25/08/2026)** : retrait validé, action opérateur toujours en attente
+  (record encore présent, vérifié 25/08/2026).
 - **CI** — le run `cf2d0c6` est vert ; surveiller le prochain push (le push
   DEPLOY-10 va déclencher un run complet) ; secrets GitHub e2e posés.
 

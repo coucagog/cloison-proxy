@@ -323,4 +323,6 @@ préservé ; seule l'ATTRIBUTION change) :
 - [ ] **DNS `dsh.wonkom.ai`** : suppression du record A = **action
       opérateur** (zone anycast.me — aucun accès de gestion disponible ;
       instruction complète §« Décision pilote requise » ; vérifié : rien ne
-      sert le sous-domaine, Caddy sans bloc).
+      sert le sous-domaine, Caddy sans bloc). **Décision pilote SOLDÉE
+      (25/08/2026)** : retrait validé — l'action opérateur reste en attente
+      (record toujours présent, vérifié 25/08/2026 via résolveurs publics).
