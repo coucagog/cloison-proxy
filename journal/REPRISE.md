@@ -144,6 +144,24 @@ existent désormais. Corrigé (core + bench, re-validation GO grille v1.1
 torch/onnx vs baseline officielle, edge redéployé, preuve e2e mock + réel,
 open-core core/bench v0.2.0) — voir `journal/DEPLOY-9.md` §①.
 
+### ✅ PRIORITÉ 7 — RÉSOLUE (DEPLOY-9 §③, N3+) : couverture PII étendue
+
+Demande pilote en session : couvrir aussi les **téléphones FIXES** (30/32/33/36,
+zone 8/9 — confirmé par Wikipedia), les **numéros de passeport**, les **permis
+de conduire** et les **matricules des fonctionnaires de l'État / IPRES**
+(actifs et retraités). Corrigé :
+- **Fixes** intégrés à TEL (core regex + baseline + générateur + tests) — le
+  jeu couvre désormais les 10 préfixes (30/32/33/36/70/71/75/76/77/78).
+- **Passeport (PP), permis (DL), matricule (MA)** : nouveaux `DetectorKind`
+  **contextuels** (mot-clé + numéro) — les formats exacts ne sont pas
+  documentés publiquement (charte §11 : honnêteté), masqués par défaut,
+  **hors grille GO** (la grille v1.1 reste FIGÉE sur PERSON/LOC/CNI/MAIL/TEL).
+- **GO re-validé** (grille v1.1, baseline officielle 0.7501) : torch macro
+  0.9542 · onnx 0.9520 · 5/5 PASS · detect 77/77 · core 50 · bench 36.
+- Edge **redéployé** (preuve e2e fixe 33 + détection passeport/matricule via
+  detect_cli), open-core **re-publié v0.2.1** (core + bench, README à jour).
+- Détails : `journal/DEPLOY-9.md` §③.
+
 ### PRIORITÉ 6 — stratégie : N3 ✅ LIVRÉ, N0 = PROCHAINE session
 
 **N3 (couche commerciale) est livré (DEPLOY-9)** : `cloison-cli` ops complet,

@@ -99,16 +99,19 @@ impose de re-valider avec les VRAIS modèles** (pytest ne couvre pas le chemin
 réel) : `bench/cloison-bench` + `measure_clusters.py` sur le VPS (le GO run a
 attrapé le bug que les 70 tests ne voyaient pas).
 
-## 6. Prochaine session — FINALISER N3 + dette 71/75 (ordre validé par le pilote, 23/08/2026)
+## 6. Prochaine session — FINALISER N3 + dette 71/75 + couverture étendue (ordre validé par le pilote, 23/08/2026)
 
 > **✅ TERMINÉ (DEPLOY-9, 24/08/2026)** : dette 71/75 réglée (fix core+bench,
 > GO re-validé grille v1.1 torch/onnx vs baseline officielle, edge redéployé,
-> preuve e2e mock + réel avec 71, open-core core+bench v0.2.0 republiés) et
+> preuve e2e mock + réel avec 71, open-core core+bench v0.2.0 republiés) ;
 > **N3 livré** (`cloison-cli` ops complet, onboarding scripté + documenté,
-> docs client, rapport de conformité, journal public restylé design system).
-> Détails : `journal/DEPLOY-9.md`. **Prochaine session = N0** (kit moteur
-> léger Rust seul, design §6bis) ; **GPU toujours en attente** (aucun GPU
-> disponible — décision reportée ; baseline ONNX de DEPLOY-8 comme référence).
+> docs client, rapport de conformité, journal public restylé design system) ;
+> **N3+ couverture étendue** (fixes 30/32/33/36, passeport PP, permis DL,
+> matricules État/IPRES MA — GO re-validé torch 0.9542 / onnx 0.9520,
+> open-core v0.2.1). Détails : `journal/DEPLOY-9.md`.
+> **Prochaine session = N0** (kit moteur léger Rust seul, design §6bis) ;
+> **GPU toujours en attente** (aucun GPU disponible — décision reportée ;
+> baseline ONNX de DEPLOY-8 comme référence).
 
 ### ① Dette 71/75 — ✅ RÉSOLUE (DEPLOY-9)
 
@@ -116,6 +119,17 @@ Inventaire corrigé : `detection.rs` (71 ajouté au format local), `presidio_bas
 (5 regex), `generator.py` (71/75, attribution opérateur à confirmer ARTP — commenté),
 README bench, test_benchmark. GO re-validé (torch 0.9550 / onnx 0.9556 vs baseline
 officielle 0.7501), edge redéployé, preuve e2e 71/75 mock + réel, open-core v0.2.0.
+
+### ③ N3+ — couverture PII étendue (✅ LIVRÉE — DEPLOY-9)
+
+- **Téléphones FIXES** : 30/32/33/36 (zone 8/9) intégrés à TEL (core regex +
+  baseline + générateur + tests) — le jeu couvre les 10 préfixes.
+- **Passeport (PP) / permis (DL) / matricules État-IPRES (MA)** : détection
+  **contextuelle** (formats à confirmer — charte §11), masqués par défaut,
+  **hors grille GO** (la grille v1.1 reste FIGÉE).
+- GO re-validé (torch 0.9542 / onnx 0.9520, 5/5 PASS), edge redéployé
+  (e2e fixe 33 PASS, preuve PP/MA via detect_cli), open-core **v0.2.1**
+  (core + bench, README à jour). Détails : `journal/DEPLOY-9.md` §③.
 
 ### ② N3 — couche commerciale (✅ LIVRÉE — DEPLOY-9)
 
@@ -161,6 +175,12 @@ publique reste le journal).
   re-validé (torch 0.9550 / onnx 0.9556 vs baseline officielle 0.7501),
   edge redéployé, preuve e2e mock + réel (71), `cloison-core`/`cloison-bench`
   re-publiés **v0.2.0**. Détails : `journal/DEPLOY-9.md`.
+- **Couverture PII étendue (N3+)** : **RÉSOLUE** (DEPLOY-9 §③) — téléphones
+  **fixes 30/32/33/36** (zone 8/9) intégrés à TEL ; **passeport (PP)**,
+  **permis (DL)**, **matricules État/IPRES (MA)** en détection **contextuelle**
+  (formats à confirmer, masqués par défaut, hors grille). GO re-validé
+  (torch 0.9542 / onnx 0.9520), edge redéployé (e2e fixe 33 PASS), open-core
+  **v0.2.1** (core + bench, README à jour). Détails : `journal/DEPLOY-9.md` §③.
 - **`cloison-cli` (squelette DEPLOY-7)** : **RÉSOLU** (DEPLOY-9) — ops N3
   complet (provision, token issue/rotate/revoke/verify par hash, policy,
   license, ledger root/check, stats). Re-publication du dépôt public
