@@ -1,9 +1,10 @@
-# CLOISON — DEPLOY-9 / N3 : Couche commerciale + dette 71/75 (session de finalisation)
+# CLOISON — DEPLOY-9 / N3 : Couche commerciale + dette 71/75 + couverture PII étendue
 
 > Journal de campagne — exécution de `journal/REPRISE-DEPLOIEMENT.md` §6
 > (décision pilote 23/08/2026 : finir **N3**, régler **71/75** au passage,
 > GPU/N0 en sessions ultérieures). Session du 23-24 août 2026.
-> Ordre : **① dette 71/75 → ② N3 (couche commerciale)**.
+> Ordre : **① dette 71/75 → ② N3 (couche commerciale) → ③ N3+ (couverture
+> PII sénégalaise étendue : fixes, passeport, permis, matricules)**.
 
 ## Objectif
 
@@ -14,6 +15,10 @@
 2. **② N3** : rendre le produit **achetable** — `cloison-cli` (ops),
    onboarding locataire bout en bout, docs client, rapport de conformité,
    design system des pages.
+3. **③ N3+** (demande pilote en cours de session) : couvrir aussi les
+   **téléphones fixes (30/32/33/36)**, les **numéros de passeport**, les
+   **permis de conduire** et les **matricules des fonctionnaires de l'État
+   et de l'IPRES** (actifs et retraités).
 
 ## ① — DETTE 71/75 (correctif de couverture)
 
@@ -118,6 +123,13 @@ Sécurité : zéro secret en log, zéro PII, `CLOISON_CONTROL_URL` (défaut
 127.0.0.1:8788), hash `cloison-mn-token-v1:` identique au contrôle et au
 proxy (testé). Compilation/test/clippy/fmt **verts** (rust 1.97, VPS).
 
+**Rodage réel (preuve onboarding contre le contrôle DÉPLOYÉ)** — la preuve a
+révélé un bug clap : `ledger` était dérivé en `ledger-root`/`ledger-check`
+(variantes plates). Corrigé : sous-commande imbriquée
+`#[command(subcommand)] Ledger(LedgerCmd)` → `cloison-cli ledger root|check`.
+Re-prouvé : provision (tenant créé + jeton `mn_` émis UNE fois) → `ledger
+root` (`{root_hash, seq:2}`) → `stats` — **flux N3 bout en bout validé**.
+
 ### Onboarding locataire (documenté + scripté)
 
 - `docs/ONBOARDING.md` : flux complet (provision → émission → vérification
@@ -171,6 +183,83 @@ La page du journal public est restylée avec le **design system de référence**
    **déjà** la voie de transparence — un rapport public supplémentaire par
    client n'est pas requis pour la promesse. En attente de validation pilote.
 
+## ③ — N3+ : COUVERTURE PII SÉNÉGALAISE ÉTENDUE (demande pilote en session)
+
+> Nouveaux identifiants à couvrir (une valeur non détectée partirait en clair,
+> invariant I1) : **téléphones fixes**, **passeports**, **permis de conduire**,
+> **matricules État/IPRES**.
+
+### Formats (recherche publique, 24/08/2026)
+
+- **Téléphones FIXES** (confirmé — Wikipedia « Telephone numbers in
+  Senegal ») : préfixes **30** (Expresso), **32** (Tigo/Sentel), **33**
+  (Sonatel/Orange), **36** (Hayo/CSU) ; code de zone **8** (Dakar) ou **9**
+  (hors Dakar) ; NSN 8 chiffres. Le format international `+221 3X …` était
+  déjà couvert (branche `3[0-9]`) ; le format local manquait.
+- **Passeport** (CEDEAO/ICAO observé) : 1-2 lettres + 7-8 chiffres —
+  structure exacte **non documentée publiquement** → détection
+  **contextuelle** (« passeport »/« passport » + numéro).
+- **Permis de conduire** : 7-10 chiffres observés — **à confirmer** →
+  contextuelle (« permis de conduire » + numéro).
+- **Matricule État/IPRES** : 8-11 chiffres observés (fiches de notation du
+  ministère de l'Éducation, listes CAP de la Fonction publique) — **à
+  confirmer** → contextuelle (« matricule »/« IPRES » + numéro).
+
+Honnêteté (charte §11) : les formats passeport/permis/matricule ne sont pas
+confirmés par une source normative publique → la détection est volontairement
+**conservatrice** (mot-clé obligatoire à proximité), ce qui évite les faux
+positifs massifs tout en couvrant les cas réels.
+
+### Implémentation
+
+- `crates/cloison-core/src/detection.rs` :
+  - regex `phone_sn_re` étendue : branche locale fixes
+    `(?:30|32|33|36)(?:[89]\d{6}|\s?[89]\s?\d{2}\s?\d{2}\s?\d{2})` ;
+  - nouveaux `DetectorKind::Passport` / `DriverLicense` / `Matricule` avec
+    regex contextuelles (capture du numéro seul, pas du mot-clé) ;
+  - `detect_all`/`detect_with_policy` branchés ;
+  - **+5 tests** : fixes 33/30 (7 variantes + anti-faux-positif), passeport
+    (span numéro seul + anti-faux-positif), permis, matricule.
+- `token.rs` : tags `PP` (passeport), `DL` (permis), `MA` (matricule) —
+  mapping aller/retour complet.
+- `policy.rs` : les trois nouveaux types **masqués par défaut** (invariant I1).
+- `bench/cloison-bench/` :
+  - `generator.py` : `PREFIXES_TEL_FIXE` + `ZONES_TEL_FIXE` (25 % de fixes
+    dans `generate_tel`) ; `generate_passport`/`generate_permis`/
+    `generate_matricule` ; templates contextuels simples + `_fill_template`
+    étendu ;
+  - `presidio_baseline.py` : regex fixes (international/00/local/espacé/
+    parenthèses) + `SenegalContextualIDRecognizer` (passeport/permis/
+    matricule, **hors grille**) ;
+  - `run_detect_target.py` : mapping core → PASSPORT/PERMIS/MATRICULE
+    (hors `ENTITY_WEIGHTS` — la grille v1.1 reste **FIGÉE**) ;
+  - `test_benchmark.py` : tests fixes (local 8 chiffres, zone 8/9) +
+    passeport/permis/matricule ; README à jour.
+- `docs/DATA-MODEL.md` : tags PP/DL/MA + note fixes.
+
+### Résultats
+
+- Core : **50 tests verts** (45 existants + 5 nouveaux) + 17 invariants.
+- Bench : **32 tests verts** (fixes + PP/DL/MA générés).
+- Jeu régénéré (seed 42, 500 docs) : préfixes TEL gold = {30:18, 32:24,
+  33:25, 36:21, 70:53, 71:50, 75:51, 76:55, 77:43, 78:63} — **les 10
+  préfixes couverts** ; types gold incluent PASSPORT/PERMIS/MATRICULE
+  (hors grille, non scorés).
+- **GO/NO-GO re-validé** (grille v1.1, baseline officielle 0.7501) :
+  torch macro 0.9542 · PERSON 0.9387 · LOC 0.8320 · CNI/MAIL/TEL 1.000 ·
+  spécificité 76 % — **5/5 PASS** (les nouveaux types hors grille ne
+  dégradent pas la grille, la spécificité reste ≥ 60 %).
+- Onnx-int8 : voir résultats ci-dessous (run en cours au moment de l'écriture).
+
+### Porte de sortie N3+
+
+- [x] Fixes 30/32/33/36 détectés (core + baseline + jeu).
+- [x] Passeport/permis/matricule détectés (contextuels, masqués par défaut).
+- [x] GO re-validé (grille v1.1, baseline officielle) — torch PASS.
+- [x] Tests : core 50 + bench 32 + detect 77 (non-régression).
+- [ ] Onnx-int8 + redéploiement edge + e2e + re-publication open-core
+      (v0.2.1 si applicable) + CI.
+
 ## Vérifications finales (porte de sortie N3)
 
 - [x] 71/75 corrigé (core + bench + tests) et **GO re-validé** (grille v1.1,
@@ -185,6 +274,8 @@ La page du journal public est restylée avec le **design system de référence**
 - [x] Stack prod saine (detect healthy, afroxlmr chargé, 401 sans auth,
       ledger 3 lignes, memwatch 0 OOM, certs J-14).
 - [x] e2e réel : **voir Résultats** (OpenRouter, clé du fichier SERVEUR).
+- [x] **N3+** : fixes 30/32/33/36 + passeport + permis + matricules détectés
+      (core + bench + tests), GO torch re-validé (voir §③).
 - [ ] Décisions pilote : dsh.wonkom.ai, mode audit public (documentées).
 
 ## Invariants de sécurité vérifiés
@@ -196,11 +287,17 @@ La page du journal public est restylée avec le **design system de référence**
 - I2 : le CLI `verify` ne transmet que le digest ; le stockage ne contient
   que des hash.
 - I9/O2 : journal public = compteurs k-anonymes contresignés, jamais de texte.
-- La grille v1.1 n'a pas été modifiée (baseline_ref restaurée, critères intacts).
+- La grille v1.1 n'a pas été modifiée (baseline_ref restaurée, critères intacts ;
+  les nouvelles entités N3+ sont mesurées, non scorées — hors `ENTITY_WEIGHTS`).
+- Les formats passeport/permis/matricule sont documentés « à confirmer » et
+  détectés de façon **contextuelle** (charte §11 : périmètre honnête).
 
 ## Dette / suite
 
 - Attribution opérateur 71/75 : à confirmer (ARTP) — documentation.
+- Formats passeport / permis / matricule État-IPRES : **à confirmer auprès
+  de sources normatives** (structure observée, détection contextuelle) —
+  re-valider la couverture quand les formats officiels seront disponibles.
 - Deps bench non-épinglées (dérive baseline) : à pinner pour la
   reproductibilité (dette secondaire REPRISE-DEPLOIEMENT §6bis).
 - GPU (dette ②) : en attente (aucun GPU ; baseline ONNX de DEPLOY-8 comme
@@ -209,3 +306,5 @@ La page du journal public est restylée avec le **design system de référence**
   design posé (§6bis) — prérequis 71/75 réglé ✅.
 - `cloison-cli` : re-publication open-core v0.2.0 à prévoir (le dépôt public
   est un squelette depuis DEPLOY-7) — mécanique identique à cette session.
+- Re-publication open-core N3+ (core/bench v0.2.1 si applicable) : à
+  exécuter après la validation complète (même mécanique que v0.2.0).
