@@ -108,6 +108,40 @@ pub struct Config {
     pub control: ControlConfig,
     /// Coffre persistant local (N0) : `CLOISON_VAULT_PATH` posé = mode N0.
     pub vault: N0VaultConfig,
+    /// Configuration de la session (N0 v1.1) : alias intra-session + jauge
+    /// quasi-id **in-core**. Actifs en mode N0 uniquement (le serveur garde
+    /// son comportement bit-identique — jamais d'alias/jauge hors N0).
+    pub session: SessionConfig,
+}
+
+/// Configuration de la session N0 v1.1 (alias intra-session R1–R7 + jauge
+/// quasi-id, in-core — charte §6.1 couches 4 et 6).
+///
+/// Variables : `CLOISON_ALIAS_EXPANSION` (défaut `1`), `CLOISON_QUASI_ID_GAUGE`
+/// (défaut `0` — opt-in), `CLOISON_QUASI_ID_THRESHOLD` (défaut `0.5` ; `1.0` =
+/// désactivée de fait), `CLOISON_ALIAS_MAX_MENTIONS` (défaut 200, borne
+/// documentaire de la session — miroir de `session_mentions_max` du sidecar).
+#[derive(Debug, Clone)]
+pub struct SessionConfig {
+    /// Expansion d'alias intra-session (jamais les pronoms, scores plafonnés).
+    pub enable_alias_expansion: bool,
+    /// Jauge de quasi-identifiants (signal, jamais de résolution) — opt-in.
+    pub enable_quasiid_gauge: bool,
+    /// Seuil de la jauge (`score > seuil` strict).
+    pub quasiid_threshold: f64,
+    /// Borne du nombre de mentions canoniques en session (FIFO).
+    pub mentions_max: usize,
+}
+
+impl Default for SessionConfig {
+    fn default() -> Self {
+        Self {
+            enable_alias_expansion: true,
+            enable_quasiid_gauge: false,
+            quasiid_threshold: 0.50,
+            mentions_max: 200,
+        }
+    }
 }
 
 /// Configuration du coffre persistant local (N0 — daemon desktop).
@@ -246,6 +280,7 @@ impl std::fmt::Debug for Config {
                     .as_ref()
                     .map(|p| p.display().to_string()),
             )
+            .field("session", &self.session)
             .finish_non_exhaustive()
     }
 }
@@ -472,6 +507,16 @@ pub fn load() -> Result<Config, ProxyError> {
         tenant_id: env("CLOISON_TENANT_ID", DEFAULT_TENANT_ID),
     };
 
+    // N0 v1.1 — session (alias intra-session + jauge quasi-id, in-core).
+    // Valeurs par défaut = miroir de la politique du sidecar (alias on,
+    // jauge off) ; actives en mode N0 uniquement (handlers).
+    let session = SessionConfig {
+        enable_alias_expansion: env_bool("CLOISON_ALIAS_EXPANSION")?,
+        enable_quasiid_gauge: env_bool("CLOISON_QUASI_ID_GAUGE")?,
+        quasiid_threshold: env_f64("CLOISON_QUASI_ID_THRESHOLD", 0.50)?.clamp(0.0, 1.0),
+        mentions_max: env_usize("CLOISON_ALIAS_MAX_MENTIONS", 200)?.max(1),
+    };
+
     Ok(Config {
         listen_addr,
         upstream,
@@ -487,6 +532,7 @@ pub fn load() -> Result<Config, ProxyError> {
         detect,
         control,
         vault,
+        session,
     })
 }
 
@@ -618,6 +664,19 @@ fn env_u64(name: &str, default: u64) -> Result<u64, ProxyError> {
             ProxyError::new(
                 ErrorKind::Internal,
                 format!("invalid integer for {name}: {v}"),
+            )
+            .with_field("detail", e.to_string())
+        }),
+        Err(_) => Ok(default),
+    }
+}
+
+fn env_f64(name: &str, default: f64) -> Result<f64, ProxyError> {
+    match std::env::var(name) {
+        Ok(v) => v.parse::<f64>().map_err(|e| {
+            ProxyError::new(
+                ErrorKind::Internal,
+                format!("invalid float for {name}: {v}"),
             )
             .with_field("detail", e.to_string())
         }),
