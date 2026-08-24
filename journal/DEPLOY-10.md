@@ -286,9 +286,18 @@ préservé ; seule l'ATTRIBUTION change) :
 - `REPRISE.md`/`REPRISE-DEPLOIEMENT.md` : dette documentaire 71 soldée.
 
 **Re-validation GO (règle §5 — le générateur change → jeu régénéré)** :
-[REMPLIR après le run : torch / onnx vs baseline officielle 0.7501].
-Artefacts : `results/go_nogo_final.deploy10-71orange-{torch,onnx}.json`.
-Re-publication open-core bench + core (v0.2.2 re-pointé) si le run est vert.
+- Jeu régénéré (seed 42, 500 docs) : les **12 préfixes couverts**, 71
+  présent dans le gold (30:24, 32:23, 33:24, 36:24, 70:50, **71:17**, 72:43,
+  75:49, 76:49, 77:21, 78:16, 79:59).
+- **GO TORCH — VERDICT GO (5/5 PASS)** : macro **0.9564** · PERSON
+  **0.9486** · LOC **0.8346** · CNI 1.0000 · spécificité **83 %** ·
+  MAIL/TEL 1.0000/0.9987.
+- **GO ONNX int8 — VERDICT GO (5/5 PASS)** : macro **0.9556** · PERSON
+  **0.9541** · LOC **0.8249** · CNI 1.0000 · spécificité **83 %**.
+- **VERDICT FINAL : GO sur les DEUX chemins** (grille v1.1, baseline
+  officielle 0.7501). Artefacts : `results/go_nogo_final.deploy10-71orange-
+  {torch,onnx}.json` (versionnés). La correction d'attribution (71 →
+  Orange) ne dégrade rien — spécificité 83 % (vs 81 % avant).
 
 ## Porte de sortie
 

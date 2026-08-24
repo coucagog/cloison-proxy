@@ -3,74 +3,74 @@
 ## Summary
 
 - **Total Documents**: 500
-- **Total Gold Entities**: 2302
-- **Total Predicted Entities**: 3437
-- **Non-PII Specificity**: 50.00%
+- **Total Gold Entities**: 2324
+- **Total Predicted Entities**: 3465
+- **Non-PII Specificity**: 55.00%
 
 ## Global Metrics
 
-- **Macro F1**: 0.7743 (IC 95%: [0.7651, 0.7835])
-- **Weighted F1**: 0.7618 (IC 95%: [0.7532, 0.7702])
+- **Macro F1**: 0.7668 (IC 95%: [0.7571, 0.7754])
+- **Weighted F1**: 0.7572 (IC 95%: [0.7484, 0.7654])
 
 ## Per-Entity Metrics
 
 | Entity | TP | FP | FN | Precision | Recall | F1 | F1 IC 95% | Weight |
 |--------|----|----|----|-----------|--------|----|-----------|--------|
-| PERSON | 541 | 615 | 191 | 0.4680 | 0.7391 | 0.5731 | [0.5486, 0.5976] | 0.3 |
-| LOC | 611 | 778 | 0 | 0.4399 | 1.0000 | 0.6110 | [0.5947, 0.6285] | 0.2 |
-| CNI | 179 | 0 | 0 | 1.0000 | 1.0000 | 1.0000 | [1.0000, 1.0000] | 0.25 |
-| MAIL | 331 | 0 | 14 | 1.0000 | 0.9594 | 0.9793 | [0.9679, 0.9886] | 0.15 |
-| TEL | 278 | 104 | 125 | 0.7277 | 0.6898 | 0.7083 | [0.6762, 0.7429] | 0.1 |
+| PERSON | 540 | 619 | 202 | 0.4659 | 0.7278 | 0.5681 | [0.5430, 0.5921] | 0.3 |
+| LOC | 647 | 803 | 0 | 0.4462 | 1.0000 | 0.6171 | [0.6020, 0.6306] | 0.2 |
+| CNI | 177 | 0 | 0 | 1.0000 | 1.0000 | 1.0000 | [1.0000, 1.0000] | 0.25 |
+| MAIL | 314 | 0 | 19 | 1.0000 | 0.9429 | 0.9706 | [0.9564, 0.9832] | 0.15 |
+| TEL | 259 | 106 | 140 | 0.7096 | 0.6491 | 0.6780 | [0.6428, 0.7098] | 0.1 |
 
 ## Per-Difficulty Metrics
-
-### contextual
-
-- Documents: 160
-- Gold entities: 686
-- Predicted entities: 981
-
-| Entity | Precision | Recall | F1 |
-|--------|-----------|--------|----|
-| PERSON | 0.4143 | 0.7250 | 0.5273 |
-| LOC | 0.4897 | 1.0000 | 0.6574 |
-| CNI | 1.0000 | 1.0000 | 1.0000 |
-| MAIL | 1.0000 | 0.9350 | 0.9664 |
-| TEL | 0.7448 | 0.6750 | 0.7082 |
-
-### adversarial
-
-- Documents: 80
-- Gold entities: 1224
-- Predicted entities: 1829
-
-| Entity | Precision | Recall | F1 |
-|--------|-----------|--------|----|
-| PERSON | 0.4544 | 0.6893 | 0.5477 |
-| LOC | 0.4520 | 1.0000 | 0.6226 |
-| CNI | 1.0000 | 1.0000 | 1.0000 |
-| MAIL | 1.0000 | 0.9785 | 0.9891 |
-| TEL | 0.7288 | 0.6935 | 0.7107 |
 
 ### simple
 
 - Documents: 160
-- Gold entities: 392
-- Predicted entities: 516
+- Gold entities: 399
+- Predicted entities: 530
 
 | Entity | Precision | Recall | F1 |
 |--------|-----------|--------|----|
-| PERSON | 0.6409 | 0.8812 | 0.7421 |
-| LOC | 0.4780 | 1.0000 | 0.6468 |
+| PERSON | 0.6278 | 0.8750 | 0.7311 |
+| LOC | 0.4819 | 1.0000 | 0.6503 |
 | CNI | 1.0000 | 1.0000 | 1.0000 |
-| MAIL | 1.0000 | 0.9444 | 0.9714 |
-| TEL | 0.6833 | 0.7193 | 0.7009 |
+| MAIL | 1.0000 | 0.9189 | 0.9577 |
+| TEL | 0.7119 | 0.6774 | 0.6942 |
+
+### contextual
+
+- Documents: 160
+- Gold entities: 681
+- Predicted entities: 958
+
+| Entity | Precision | Recall | F1 |
+|--------|-----------|--------|----|
+| PERSON | 0.4624 | 0.7688 | 0.5775 |
+| LOC | 0.4880 | 1.0000 | 0.6559 |
+| CNI | 1.0000 | 1.0000 | 1.0000 |
+| MAIL | 1.0000 | 0.9244 | 0.9607 |
+| TEL | 0.7432 | 0.6875 | 0.7143 |
+
+### adversarial
+
+- Documents: 80
+- Gold entities: 1244
+- Predicted entities: 1878
+
+| Entity | Precision | Recall | F1 |
+|--------|-----------|--------|----|
+| PERSON | 0.4315 | 0.6564 | 0.5207 |
+| LOC | 0.4575 | 1.0000 | 0.6277 |
+| CNI | 1.0000 | 1.0000 | 1.0000 |
+| MAIL | 1.0000 | 0.9605 | 0.9798 |
+| TEL | 0.6772 | 0.6045 | 0.6388 |
 
 ### non_pii
 
 - Documents: 100
 - Gold entities: 0
-- Predicted entities: 111
+- Predicted entities: 99
 
 | Entity | Precision | Recall | F1 |
 |--------|-----------|--------|----|

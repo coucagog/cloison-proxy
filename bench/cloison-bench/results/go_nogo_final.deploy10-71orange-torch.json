@@ -1,0 +1,35 @@
+{
+  "verdict": "GO",
+  "checks": {
+    "macro_improvement": true,
+    "person_improvement": true,
+    "loc_improvement": true,
+    "cni_no_regression": true,
+    "specificity_min": true
+  },
+  "metrics": {
+    "PERSON": 0.9486324216144096,
+    "LOC": 0.834575260804769,
+    "CNI": 1.0,
+    "MAIL": 1.0,
+    "TEL": 0.9987484355444306
+  },
+  "macro_f1": 0.9563912235927218,
+  "specificity": 0.83,
+  "baseline_ref": {
+    "macro_f1": 0.7501492411695704,
+    "f1_person": 0.5180818126624932,
+    "f1_loc": 0.5957672811646945,
+    "f1_cni": 1.0,
+    "specificity": 0.42,
+    "grille_version": "1.1.0",
+    "criteria": {
+      "macro_improvement": 0.1,
+      "person_improvement": 0.12,
+      "loc_improvement": 0.15,
+      "cni_no_regression": true,
+      "specificity_min": 0.6
+    }
+  },
+  "note": "OFFLINE · africain=afroxlmr · torch"
+}

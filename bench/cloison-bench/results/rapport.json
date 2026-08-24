@@ -1,50 +1,50 @@
 {
   "summary": {
-    "macro_f1": 0.7743326831888911,
+    "macro_f1": 0.7667676427674703,
     "macro_f1_ci_95": [
-      0.7650568034016259,
-      0.7835344570953466
+      0.7570934958048905,
+      0.7754039884162723
     ],
-    "weighted_f1": 0.7618494827036623,
+    "weighted_f1": 0.7572471150515461,
     "weighted_f1_ci_95": [
-      0.7531738298654931,
-      0.7702241330278647
+      0.7484155365985348,
+      0.7654431737706902
     ],
     "total_documents": 500,
-    "total_gold_entities": 2302,
-    "total_pred_entities": 3437,
-    "non_pii_specificity": 0.5,
+    "total_gold_entities": 2324,
+    "total_pred_entities": 3465,
+    "non_pii_specificity": 0.55,
     "go_criteria_met": false
   },
   "per_entity": {
     "PERSON": {
-      "true_positives": 541,
-      "false_positives": 615,
-      "false_negatives": 191,
-      "precision": 0.4679930795847751,
-      "recall": 0.7390710382513661,
-      "f1": 0.5730932203389831,
+      "true_positives": 540,
+      "false_positives": 619,
+      "false_negatives": 202,
+      "precision": 0.4659188955996549,
+      "recall": 0.7277628032345014,
+      "f1": 0.5681220410310363,
       "f1_ci_95": [
-        0.5486294996368947,
-        0.5976369107557988
+        0.5430212384029761,
+        0.592064802189181
       ],
       "weight": 0.3
     },
     "LOC": {
-      "true_positives": 611,
-      "false_positives": 778,
+      "true_positives": 647,
+      "false_positives": 803,
       "false_negatives": 0,
-      "precision": 0.4398848092152628,
+      "precision": 0.44620689655172413,
       "recall": 1.0,
-      "f1": 0.611,
+      "f1": 0.6170720076299475,
       "f1_ci_95": [
-        0.5946926075252925,
-        0.6284691418833767
+        0.6020397959183673,
+        0.630576552052224
       ],
       "weight": 0.2
     },
     "CNI": {
-      "true_positives": 179,
+      "true_positives": 177,
       "false_positives": 0,
       "false_negatives": 0,
       "precision": 1.0,
@@ -57,47 +57,47 @@
       "weight": 0.25
     },
     "MAIL": {
-      "true_positives": 331,
+      "true_positives": 314,
       "false_positives": 0,
-      "false_negatives": 14,
+      "false_negatives": 19,
       "precision": 1.0,
-      "recall": 0.9594202898550724,
-      "f1": 0.9792899408284023,
+      "recall": 0.9429429429429429,
+      "f1": 0.9706336939721794,
       "f1_ci_95": [
-        0.9679265045268951,
-        0.9886206354817172
+        0.956386292834891,
+        0.9832134129443478
       ],
       "weight": 0.15
     },
     "TEL": {
-      "true_positives": 278,
-      "false_positives": 104,
-      "false_negatives": 125,
-      "precision": 0.7277486910994765,
-      "recall": 0.6898263027295285,
-      "f1": 0.7082802547770701,
+      "true_positives": 259,
+      "false_positives": 106,
+      "false_negatives": 140,
+      "precision": 0.7095890410958904,
+      "recall": 0.6491228070175439,
+      "f1": 0.6780104712041886,
       "f1_ci_95": [
-        0.6761965235140162,
-        0.7428590655643146
+        0.6427662958384838,
+        0.7097665612600454
       ],
       "weight": 0.1
     }
   },
   "per_difficulty": {
-    "contextual": {
+    "simple": {
       "total_docs": 160,
-      "total_gold": 686,
-      "total_pred": 981,
+      "total_gold": 399,
+      "total_pred": 530,
       "per_entity": {
         "PERSON": {
-          "precision": 0.4142857142857143,
-          "recall": 0.725,
-          "f1": 0.5272727272727273
+          "precision": 0.6278026905829597,
+          "recall": 0.875,
+          "f1": 0.7310704960835509
         },
         "LOC": {
-          "precision": 0.4896907216494845,
+          "precision": 0.48186528497409326,
           "recall": 1.0,
-          "f1": 0.657439446366782
+          "f1": 0.6503496503496504
         },
         "CNI": {
           "precision": 1.0,
@@ -106,30 +106,62 @@
         },
         "MAIL": {
           "precision": 1.0,
-          "recall": 0.9349593495934959,
-          "f1": 0.9663865546218486
+          "recall": 0.918918918918919,
+          "f1": 0.9577464788732395
         },
         "TEL": {
-          "precision": 0.7448275862068966,
-          "recall": 0.675,
-          "f1": 0.7081967213114756
+          "precision": 0.711864406779661,
+          "recall": 0.6774193548387096,
+          "f1": 0.6942148760330579
+        }
+      }
+    },
+    "contextual": {
+      "total_docs": 160,
+      "total_gold": 681,
+      "total_pred": 958,
+      "per_entity": {
+        "PERSON": {
+          "precision": 0.462406015037594,
+          "recall": 0.76875,
+          "f1": 0.5774647887323944
+        },
+        "LOC": {
+          "precision": 0.488,
+          "recall": 1.0,
+          "f1": 0.6559139784946236
+        },
+        "CNI": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "MAIL": {
+          "precision": 1.0,
+          "recall": 0.9243697478991597,
+          "f1": 0.9606986899563319
+        },
+        "TEL": {
+          "precision": 0.7432432432432432,
+          "recall": 0.6875,
+          "f1": 0.7142857142857143
         }
       }
     },
     "adversarial": {
       "total_docs": 80,
-      "total_gold": 1224,
-      "total_pred": 1829,
+      "total_gold": 1244,
+      "total_pred": 1878,
       "per_entity": {
         "PERSON": {
-          "precision": 0.4544,
-          "recall": 0.6893203883495146,
-          "f1": 0.5477338476374156
+          "precision": 0.43146417445482865,
+          "recall": 0.6563981042654028,
+          "f1": 0.5206766917293233
         },
         "LOC": {
-          "precision": 0.4519621109607578,
+          "precision": 0.45745992601726265,
           "recall": 1.0,
-          "f1": 0.6225535880708294
+          "f1": 0.6277495769881557
         },
         "CNI": {
           "precision": 1.0,
@@ -138,52 +170,20 @@
         },
         "MAIL": {
           "precision": 1.0,
-          "recall": 0.978494623655914,
-          "f1": 0.9891304347826088
+          "recall": 0.96045197740113,
+          "f1": 0.9798270893371758
         },
         "TEL": {
-          "precision": 0.7288135593220338,
-          "recall": 0.6935483870967742,
-          "f1": 0.7107438016528926
-        }
-      }
-    },
-    "simple": {
-      "total_docs": 160,
-      "total_gold": 392,
-      "total_pred": 516,
-      "per_entity": {
-        "PERSON": {
-          "precision": 0.6409090909090909,
-          "recall": 0.88125,
-          "f1": 0.7421052631578947
-        },
-        "LOC": {
-          "precision": 0.47802197802197804,
-          "recall": 1.0,
-          "f1": 0.6468401486988847
-        },
-        "CNI": {
-          "precision": 1.0,
-          "recall": 1.0,
-          "f1": 1.0
-        },
-        "MAIL": {
-          "precision": 1.0,
-          "recall": 0.9444444444444444,
-          "f1": 0.9714285714285714
-        },
-        "TEL": {
-          "precision": 0.6833333333333333,
-          "recall": 0.7192982456140351,
-          "f1": 0.7008547008547009
+          "precision": 0.6772151898734177,
+          "recall": 0.6045197740112994,
+          "f1": 0.6388059701492537
         }
       }
     },
     "non_pii": {
       "total_docs": 100,
       "total_gold": 0,
-      "total_pred": 111,
+      "total_pred": 99,
       "per_entity": {
         "PERSON": {
           "precision": 0.0,
@@ -216,10 +216,10 @@
   "criteria": {},
   "metadata": {
     "benchmark_id": "CLOISON-STACK-1-v1.1",
-    "timestamp": "2026-08-24T06:41:33.323199",
+    "timestamp": "2026-08-24T07:48:05.413347",
     "seed": 42,
     "total_documents": 500,
-    "dataset_hash": "218542c0a3aa7bf832d49f0f8e649adc9c38b510573c58be0f7ab77ed3e5620a"
+    "dataset_hash": "87f8e500631f77cb264c0293779e5195a90c5cef4dcf8a466f91d5c5813b21c9"
   },
   "baseline_ref": {
     "macro_f1": 0.7501492411695704,
