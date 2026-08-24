@@ -13,9 +13,13 @@ use axum::http::HeaderValue;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use cloison_audit::receipt::{self, Counters, Receipt};
-use cloison_core::{derive_key_from_passphrase, Policy, SessionKeys, Vault, VaultConfig};
+use cloison_core::{
+    derive_key_from_passphrase, Policy, SessionContext, SessionKeys, SessionOptions, Vault,
+    VaultConfig,
+};
 use futures_util::StreamExt;
 use serde_json::Value;
+use tokio::sync::Mutex as AsyncMutex;
 use zeroize::Zeroizing;
 
 use crate::auth::CompositeKey;
@@ -35,6 +39,9 @@ pub struct Metrics {
     pub auth_failures: AtomicU64,
     pub upstream_errors: AtomicU64,
     pub unresolved_tokens: AtomicU64,
+    /// Jauge quasi-id (N0 v1.1) : requêtes avec densité signalée — compteur
+    /// uniquement, jamais de texte (charte §6.1 couche 6).
+    pub quasi_id_flags: AtomicU64,
 }
 
 /// État global partagé.
@@ -74,6 +81,12 @@ pub struct AppState {
     /// `RequestEngine` de la session l'utilisent (clé dérivée de la passphrase,
     /// fail-loud au boot).
     pub vault: Option<Arc<Vault>>,
+    /// Session N0 v1.1 : mentions canoniques accumulées (alias intra-session
+    /// et jauge quasi-id in-core). Toujours allouée, consultée uniquement en
+    /// mode N0 (vault actif) — le serveur garde son comportement historique.
+    pub session: Arc<AsyncMutex<SessionContext>>,
+    /// Options de session (alias/jauge) — `Some` uniquement en mode N0.
+    pub session_options: Option<SessionOptions>,
 }
 
 impl AppState {
@@ -183,6 +196,21 @@ impl AppState {
             control_cfg: config.control.clone(),
             audit_k: config.audit_k,
             vault,
+            // N0 v1.1 — session (alias + jauge) : allouée au boot, active en
+            // mode N0 uniquement (les options sont `None` hors N0 → le
+            // serveur ne consulte jamais la session).
+            session: Arc::new(AsyncMutex::new(SessionContext::with_max(
+                config.session.mentions_max,
+            ))),
+            session_options: if config.vault.is_active() {
+                Some(SessionOptions {
+                    enable_alias_expansion: config.session.enable_alias_expansion,
+                    enable_quasiid_gauge: config.session.enable_quasiid_gauge,
+                    quasiid_threshold: config.session.quasiid_threshold,
+                })
+            } else {
+                None
+            },
         })
     }
 
@@ -283,13 +311,30 @@ pub async fn chat_completions(
     // Phase aller : tokenisation complète du corps (registre = cette requête).
     // B.1 : le sidecar detect est consulté (dégradation gracieuse s'il est
     // indisponible — jamais d'erreur).
-    engine::tokenize_chat_request(
+    // N0 v1.1 : en mode N0, la session (alias intra-session + jauge quasi-id)
+    // est verrouillée pour la requête — les mentions canoniques persistent
+    // entre les requêtes du daemon (jamais de texte dans les logs).
+    let mut session_guard = match &state.session_options {
+        Some(_) => Some(state.session.lock().await),
+        None => None,
+    };
+    let flags = engine::tokenize_chat_request(
         &mut req,
         &mut req_engine,
         &state.policy,
         state.detect.as_ref(),
+        session_guard.as_deref_mut(),
+        state.session_options.as_ref(),
     )
     .await?;
+    drop(session_guard);
+    if flags.quasi_id_flagged {
+        state.metrics.quasi_id_flags.fetch_add(1, Ordering::Relaxed);
+        tracing::warn!(
+            request_id = %request_id,
+            "jauge quasi-id : densité élevée signalée (compteur, jamais de texte)"
+        );
+    }
     let tokenized = serde_json::to_value(&req).map_err(|e| {
         ProxyError::new(ErrorKind::Internal, "failed to serialize request")
             .with_field("request_id", &request_id)
@@ -383,13 +428,27 @@ pub async fn completions_legacy(
     }
 
     let mut req_engine = RequestEngine::new(&state.keys, &request_id, state.vault.clone())?;
-    engine::tokenize_completion_request(
+    let mut session_guard = match &state.session_options {
+        Some(_) => Some(state.session.lock().await),
+        None => None,
+    };
+    let flags = engine::tokenize_completion_request(
         &mut req,
         &mut req_engine,
         &state.policy,
         state.detect.as_ref(),
+        session_guard.as_deref_mut(),
+        state.session_options.as_ref(),
     )
     .await?;
+    drop(session_guard);
+    if flags.quasi_id_flagged {
+        state.metrics.quasi_id_flags.fetch_add(1, Ordering::Relaxed);
+        tracing::warn!(
+            request_id = %request_id,
+            "jauge quasi-id : densité élevée signalée (compteur, jamais de texte)"
+        );
+    }
     let tokenized = serde_json::to_value(&req).map_err(|e| {
         ProxyError::new(ErrorKind::Internal, "failed to serialize request")
             .with_field("request_id", &request_id)

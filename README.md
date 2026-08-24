@@ -71,14 +71,17 @@ alimenté par le vrai pipeline (DEPLOY-4). E2E prouvé : mock 12/12, LLM réel 8
 (ledger public + vérification WASM) · stack interne control/detect/postgres, 0 OOM (memwatch),
 certs auto-renouvelés (Caddy + sonde J-14).
 
-**N0 (kit moteur léger Rust seul) — ✅ livré (STACK-N0)** : daemon desktop
-`localhost:8787` compatible OpenAI, coffre redb **persistant** chiffré
-AES-256-GCM (clé dérivée d'une passphrase locale, **fail-loud** au boot,
-jamais de clé en clair sur disque), auth 100 % locale, sel de session
+**N0 (kit moteur léger Rust seul) — ✅ livré (STACK-N0, puis v1.1 STACK-N0V11)** :
+daemon desktop `localhost:8787` compatible OpenAI, coffre redb **persistant**
+chiffré AES-256-GCM (clé dérivée d'une passphrase locale, **fail-loud** au
+boot, jamais de clé en clair sur disque), auth 100 % locale, sel de session
 persistant (la session survit aux redémarrages), généralisation des faibles
 cardinalités active, `/v1/embeddings` **bloqué**, limites honnêtes
-documentées (`docs/N0.md`). Preuve e2e locale : roundtrip hors-ligne,
-persistance après redémarrage, fail-loud sur mauvaise passphrase.
+documentées (`docs/N0.md`). **N0 v1.1 : alias intra-session in-core (R1–R7,
+jamais les pronoms) + jauge quasi-id in-core (opt-in, signal sans
+résolution)**. Preuve e2e locale : roundtrip hors-ligne, persistance après
+redémarrage, fail-loud sur mauvaise passphrase, masquage d'un diminutif
+inter-requêtes, drapeau jauge sur densité élevée.
 
 ## Licences (open-core — **publié**, DEPLOY-7)
 

@@ -4,10 +4,12 @@
 //! - `tokenize`: detect PII, generalize low-cardinality, tokenize the rest, replace in text
 //! - `restore`: scan for sentinels, verify registry + MAC, restore from vault
 
+use crate::alias::{AliasConfig, AliasExpander, SessionContext};
 use crate::detection::{Detector, Span};
 use crate::error::{CloisonError, CloisonResult};
 use crate::generalize::Generalizer;
 use crate::policy::Policy;
+use crate::quasi_id::{GaugeConfig, QuasiIdGauge, QuasiIdReport};
 use crate::registry::IssuanceRegistry;
 use crate::token::{Sentinel, SessionKeys, Token, TokenBody};
 use crate::vault::Vault;
@@ -32,6 +34,36 @@ pub struct TokenizeResult {
     pub text_out: String,
     /// Emitted token references.
     pub emitted: Vec<TokenRef>,
+    /// Rapport de la jauge de quasi-identifiants (N0 v1.1, opt-in) ;
+    /// `None` si la jauge est désactivée (`SessionOptions`).
+    pub quasi_id: Option<QuasiIdReport>,
+}
+
+/// Options de la session (alias intra-session + jauge quasi-id) — N0 v1.1.
+///
+/// Passées séparément de la `Policy` : le serveur (mode non-N0) garde un
+/// comportement bit-identique (jamais d'alias/jauge) et `policy_hash`
+/// (reçus d'audit) reste inchangé.
+#[derive(Debug, Clone, Copy)]
+pub struct SessionOptions {
+    /// Expansion d'alias intra-session (charte §6.1 couche 4). Défaut : oui
+    /// (miroir de la politique du sidecar) — no-op sans mentions en session.
+    pub enable_alias_expansion: bool,
+    /// Jauge de quasi-identifiants (charte §6.1 couche 6). Défaut : non
+    /// (opt-in — signal, jamais de résolution).
+    pub enable_quasiid_gauge: bool,
+    /// Seuil de la jauge (`score > seuil` strict) ; 1.0 = désactivée de fait.
+    pub quasiid_threshold: f64,
+}
+
+impl Default for SessionOptions {
+    fn default() -> Self {
+        Self {
+            enable_alias_expansion: true,
+            enable_quasiid_gauge: false,
+            quasiid_threshold: 0.50,
+        }
+    }
 }
 
 /// Counters for restoration operations.
@@ -136,31 +168,70 @@ impl Engine {
         extra: &[Span],
     ) -> CloisonResult<TokenizeResult> {
         let mut spans = self.detector.detect_with_policy(text, &policy.detection);
-        for s in extra {
-            if !policy.detection.is_enabled(&s.entity_type) {
-                continue;
+        merge_extra_spans(text, policy, &mut spans, extra);
+        let result = self.process_spans(text, policy, spans, request_id)?;
+        Ok(result)
+    }
+
+    /// Tokenise avec la **session** (N0 v1.1) : alias intra-session (R1–R7)
+    /// et jauge de quasi-identifiants, en plus de la détection embarquée et
+    /// des spans NER externes validés.
+    ///
+    /// Étapes :
+    ///   1. détection embarquée + spans externes validés (`merge_extra_spans`) ;
+    ///   2. **mentions canoniques** : chaque span PERSON/LOC (gazetteer ou
+    ///      sidecar) est upserté dans `session` (`seen_count`, borne FIFO) ;
+    ///   3. **alias** (si activé) : les formes dérivées (R1–R7) des mentions
+    ///      sont matchées dans le texte (jamais les pronoms, scores plafonnés)
+    ///      et fusionnées par `AliasExpander::expand` ;
+    ///   4. **jauge quasi-id** (si activée) : densité fenêtrée des catégories
+    ///      age/act/date/loc — signal, jamais de résolution ;
+    ///   5. généralisation/tokenisation (`process_spans` — le core reste la
+    ///      source de vérité de la tokenisation).
+    ///
+    /// Les alias sont tokenisés comme PERSON/LOC (jamais généralisés) ; la
+    /// restauration reste bornée au registre de la requête (I3 inchangé).
+    pub fn tokenize_session(
+        &mut self,
+        text: &str,
+        policy: &Policy,
+        request_id: &str,
+        extra: &[Span],
+        session: &mut SessionContext,
+        options: &SessionOptions,
+    ) -> CloisonResult<TokenizeResult> {
+        let mut spans = self.detector.detect_with_policy(text, &policy.detection);
+        merge_extra_spans(text, policy, &mut spans, extra);
+
+        // 2. Mentions canoniques (PERSON/LOC uniquement — jamais MAIL/TEL/…).
+        for s in &spans {
+            if let Some(kind) = crate::alias::mention_kind(&s.entity_type) {
+                if let Some(value) = text.get(s.start..s.end) {
+                    session.upsert(value.to_string(), kind);
+                }
             }
-            // Bornes valides + frontières UTF-8 (les offsets sidecar sont des
-            // octets — un mauvais découpage ne doit jamais paniquer).
-            if s.start >= s.end || s.end > text.len() {
-                continue;
-            }
-            if !text.is_char_boundary(s.start) || !text.is_char_boundary(s.end) {
-                continue;
-            }
-            // Pas de chevauchement avec un span déjà retenu (core ou externe).
-            if spans.iter().any(|c| s.start < c.end && c.start < s.end) {
-                continue;
-            }
-            spans.push(Span {
-                entity_type: s.entity_type.clone(),
-                start: s.start,
-                end: s.end,
-                score: s.score,
-                value: text[s.start..s.end].to_string(),
-            });
         }
-        self.process_spans(text, policy, spans, request_id)
+
+        // 3. Expansion d'alias (formes dérivées des mentions déjà connues).
+        let spans = if options.enable_alias_expansion && !session.is_empty() {
+            let expander = AliasExpander::new(AliasConfig::default());
+            expander.expand(text, &spans, session)
+        } else {
+            spans
+        };
+
+        // 4. Jauge de quasi-identifiants (signal, jamais de résolution).
+        let quasi_id = if options.enable_quasiid_gauge {
+            let gauge = QuasiIdGauge::new(GaugeConfig::default());
+            Some(gauge.evaluate(text, &spans, options.quasiid_threshold))
+        } else {
+            None
+        };
+
+        // 5. Généralisation / tokenisation.
+        let mut result = self.process_spans(text, policy, spans, request_id)?;
+        result.quasi_id = quasi_id;
+        Ok(result)
     }
 
     /// Applique la généralisation/tokenisation sur une liste de spans
@@ -215,7 +286,11 @@ impl Engine {
             text_out = replace_span(&text_out, span.start, span.end, &sentinel_str);
         }
 
-        Ok(TokenizeResult { text_out, emitted })
+        Ok(TokenizeResult {
+            text_out,
+            emitted,
+            quasi_id: None,
+        })
     }
 
     /// Restore a tokenized text to its clear form.
@@ -329,6 +404,45 @@ impl Engine {
     /// Run detection only (no tokenization).
     pub fn detect(&self, text: &str, policy: &Policy) -> Vec<Span> {
         self.detector.detect_with_policy(text, &policy.detection)
+    }
+}
+
+/// Valide et fusionne les spans NER externes (wiring edge→detect, B.1) dans
+/// la liste des spans embarqués. Le cœur reste la **source de vérité** :
+/// chaque span externe est validé avant fusion (jamais de confiance aveugle
+/// au sidecar) :
+///   1. type activé par la politique (`policy.detection.is_enabled`) ;
+///   2. bornes d'octets valides ET sur frontières de caractères UTF-8 ;
+///   3. valeur **re-tranchée du texte** (`text[start..end]`) — la valeur
+///      fournie par le sidecar est ignorée ;
+///   4. aucun chevauchement avec les spans embarqués (ni entre externes).
+///
+/// Un span externe invalide est ignoré (jamais une erreur — le sidecar
+/// est optionnel et dégradable).
+fn merge_extra_spans(text: &str, policy: &Policy, spans: &mut Vec<Span>, extra: &[Span]) {
+    for s in extra {
+        if !policy.detection.is_enabled(&s.entity_type) {
+            continue;
+        }
+        // Bornes valides + frontières UTF-8 (les offsets sidecar sont des
+        // octets — un mauvais découpage ne doit jamais paniquer).
+        if s.start >= s.end || s.end > text.len() {
+            continue;
+        }
+        if !text.is_char_boundary(s.start) || !text.is_char_boundary(s.end) {
+            continue;
+        }
+        // Pas de chevauchement avec un span déjà retenu (core ou externe).
+        if spans.iter().any(|c| s.start < c.end && c.start < s.end) {
+            continue;
+        }
+        spans.push(Span {
+            entity_type: s.entity_type.clone(),
+            start: s.start,
+            end: s.end,
+            score: s.score,
+            value: text[s.start..s.end].to_string(),
+        });
     }
 }
 
@@ -632,5 +746,165 @@ mod tests {
             "un seul jeton (l'email), pas de doublon"
         );
         assert_eq!(result.emitted[0].kind_tag, "EM");
+    }
+
+    // -----------------------------------------------------------------------
+    // N0 v1.1 — alias intra-session + jauge quasi-id in-core
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_tokenize_session_alias_masks_derived_form() {
+        let keys = test_keys();
+        let mut engine = Engine::new(keys).unwrap();
+        let policy = Policy::default();
+        let options = SessionOptions::default();
+        let mut session = SessionContext::new();
+
+        // Message 1 : la mention canonique « Mamadou » (gazetteer) est
+        // détectée et enregistrée dans la session.
+        let r1 = engine
+            .tokenize_session(
+                "Mamadou est arrivé.",
+                &policy,
+                "req-s1",
+                &[],
+                &mut session,
+                &options,
+            )
+            .unwrap();
+        assert!(r1.text_out.contains('⟦'), "Mamadou masqué au msg 1");
+        assert_eq!(session.mentions.len(), 1);
+        assert_eq!(session.mentions[0].key, "Mamadou");
+
+        // Message 2 : « Momo » (diminutif R5) n'est dans aucun gazetteer —
+        // seul l'alias intra-session le masque.
+        let r2 = engine
+            .tokenize_session(
+                "Momo aussi.",
+                &policy,
+                "req-s2",
+                &[],
+                &mut session,
+                &options,
+            )
+            .unwrap();
+        assert!(
+            r2.text_out.contains('⟦'),
+            "diminutif masqué par alias : {}",
+            r2.text_out
+        );
+        assert!(
+            !r2.text_out.contains("Momo"),
+            "aucun clair : {}",
+            r2.text_out
+        );
+
+        // Roundtrip : la restauration rend « Momo » (jeton de cette requête).
+        let restored = engine.restore(&r2.text_out, "req-s2").unwrap();
+        assert_eq!(restored.text_out, "Momo aussi.");
+        assert_eq!(restored.counters.blocked, 0);
+    }
+
+    #[test]
+    fn test_tokenize_session_pronoun_never_masked() {
+        let keys = test_keys();
+        let mut engine = Engine::new(keys).unwrap();
+        let policy = Policy::default();
+        let options = SessionOptions::default();
+        let mut session = SessionContext::new();
+        session.upsert("Marie Dupont".to_string(), DetectorKind::Person);
+
+        let r = engine
+            .tokenize_session(
+                "il est parti. elle aussi.",
+                &policy,
+                "req-pron",
+                &[],
+                &mut session,
+                &options,
+            )
+            .unwrap();
+        assert_eq!(
+            r.text_out, "il est parti. elle aussi.",
+            "les pronoms ne sont JAMAIS masqués"
+        );
+        assert!(r.emitted.is_empty());
+    }
+
+    #[test]
+    fn test_tokenize_session_alias_disabled_noop() {
+        let keys = test_keys();
+        let mut engine = Engine::new(keys).unwrap();
+        let policy = Policy::default();
+        let options = SessionOptions {
+            enable_alias_expansion: false,
+            ..Default::default()
+        };
+        let mut session = SessionContext::new();
+        session.upsert("Mamadou".to_string(), DetectorKind::Person);
+
+        // Alias désactivé : « Momo » n'est pas dans un gazetteer → clair.
+        let r = engine
+            .tokenize_session(
+                "Momo est là.",
+                &policy,
+                "req-noalias",
+                &[],
+                &mut session,
+                &options,
+            )
+            .unwrap();
+        assert_eq!(r.text_out, "Momo est là.", "alias désactivé → no-op");
+        assert!(r.emitted.is_empty());
+    }
+
+    #[test]
+    fn test_tokenize_session_quasi_id_flagged() {
+        let keys = test_keys();
+        let mut engine = Engine::new(keys).unwrap();
+        let policy = Policy::default();
+        let options = SessionOptions {
+            enable_quasiid_gauge: true,
+            quasiid_threshold: 0.5,
+            ..Default::default()
+        };
+        let mut session = SessionContext::new();
+
+        let text = "Il a 42 ans, acte n° 1847, enregistré le 12/03/2021 à Dakar.";
+        let r = engine
+            .tokenize_session(text, &policy, "req-qid", &[], &mut session, &options)
+            .unwrap();
+        let report = r.quasi_id.expect("jauge activée → rapport présent");
+        assert!(report.flagged, "densité age+act+date+loc → flag");
+        assert_eq!(
+            report.signals.len(),
+            4,
+            "les 4 catégories présentes: {:?}",
+            report.signals
+        );
+
+        // Jauge désactivée → aucun rapport, aucun changement de sortie.
+        let mut options_off = options;
+        options_off.enable_quasiid_gauge = false;
+        let r2 = engine
+            .tokenize_session(text, &policy, "req-qid2", &[], &mut session, &options_off)
+            .unwrap();
+        assert!(r2.quasi_id.is_none());
+    }
+
+    #[test]
+    fn test_tokenize_session_server_mode_unchanged() {
+        // Hors session (serveur) : tokenize_with_extra ne touche ni à la
+        // session ni à la jauge — comportement bit-identique au serveur.
+        let keys = test_keys();
+        let mut engine = Engine::new(keys).unwrap();
+        let policy = Policy::default();
+        let text = "Contact: user@example.com, tel +221 77 123 45 67";
+        let r = engine
+            .tokenize_with_extra(text, &policy, "req-srv", &[])
+            .unwrap();
+        assert!(r.quasi_id.is_none());
+        let restored = engine.restore(&r.text_out, "req-srv").unwrap();
+        assert_eq!(restored.text_out, text);
     }
 }

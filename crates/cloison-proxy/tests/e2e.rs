@@ -411,6 +411,8 @@ fn test_config(mock_url: &str) -> Config {
         control: cloison_proxy::config::ControlConfig::default(),
         // N0 : coffre persistant désactivé dans ces tests (comportement historique).
         vault: cloison_proxy::config::N0VaultConfig::default(),
+        // N0 v1.1 : session désactivée (alias/jauge hors mode N0).
+        session: cloison_proxy::config::SessionConfig::default(),
     }
 }
 

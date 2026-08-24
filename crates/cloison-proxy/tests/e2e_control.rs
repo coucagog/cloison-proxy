@@ -248,6 +248,8 @@ fn proxy_config(mock_url: &str, control_url: &str, audit_mode: bool) -> Config {
             tenant_id: TEST_TENANT.to_string(),
         },
         vault: cloison_proxy::config::N0VaultConfig::default(),
+        // N0 v1.1 : session désactivée (alias/jauge hors mode N0).
+        session: cloison_proxy::config::SessionConfig::default(),
     }
 }
 

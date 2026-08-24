@@ -180,9 +180,11 @@ de conformité k-anonyme, journal public restylé (design system de référence)
   quasi-identifiants). Preuve e2e locale (roundtrip, coffre sans clair,
   persistance, fail-loud) + open-core **v0.2.3** (core/audit/proxy).
   Décisions détaillées : `journal/STACK-N0.md` ; préparation `N0-PREP.md`.
-- **Pistes N0 v1.1** (documentées, non livrées) : alias intra-session R1-R7 +
-  jauge quasi-id **in-core**, keychain OS, NER léger embarqué (voie ONNX),
-  déclinaisons `cloison-wasm` (navigateur) / mobile embarqué.
+- **Pistes N0 v1.1** : ① **alias intra-session R1-R7 + jauge quasi-id
+  in-core ✅ LIVRÉS (STACK-N0V11)** — portage Rust du sidecar (jamais les
+  pronoms, scores plafonnés, jauge signal-only opt-in, serveur
+  bit-identique) ; restent documentés : ② keychain OS, ③ `cloison-wasm`
+  (navigateur), ④ NER léger embarqué (voie ONNX, GO/NO-GO à arbitrer).
 - **GPU (dette ②)** : en attente (aucun GPU disponible, décision reportée —
   baseline ONNX de DEPLOY-8 comme référence).
 - **✅ RESOLUES (DEPLOY-10)** : **dette documentaire** (attribution TEL

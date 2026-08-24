@@ -48,6 +48,11 @@ export CLOISON_VAULT_PASSPHRASE='<VOTRE passphrase — choisie par vous, jamais 
 export CLOISON_EXPECTED_ACCESS_TOKEN=<votre jeton mn_ local>
 export CLOISON_TENANT_KEY_HEX=<la clé affichée ci-dessus>
 
+# N0 v1.1 (optionnel — défauts documentés dans docs/N0.md §3) :
+# export CLOISON_ALIAS_EXPANSION=1        # alias intra-session (défaut 1)
+# export CLOISON_QUASI_ID_GAUGE=1         # jauge quasi-id (défaut 0 = off)
+# export CLOISON_QUASI_ID_THRESHOLD=0.5   # seuil de la jauge (défaut 0.5)
+
 Lancement : $PREFIX/cloison-proxy
 EOF
 

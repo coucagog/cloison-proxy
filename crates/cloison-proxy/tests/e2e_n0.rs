@@ -29,7 +29,9 @@ use tower::ServiceExt;
 use url::Url;
 use zeroize::Zeroizing;
 
-use cloison_proxy::config::{Config, DetectConfig, N0VaultConfig, StreamConfig, UpstreamConfig};
+use cloison_proxy::config::{
+    Config, DetectConfig, N0VaultConfig, SessionConfig, StreamConfig, UpstreamConfig,
+};
 use cloison_proxy::handlers::AppState;
 use cloison_proxy::routes::router;
 
@@ -163,6 +165,7 @@ fn n0_config(mock_url: &str, dir: &Path, passphrase: &str) -> Config {
             ttl_secs: 3600,
             session_salt_file: Some(salt_file),
         },
+        session: SessionConfig::default(),
     }
 }
 
@@ -391,5 +394,127 @@ async fn n0_embeddings_blocked() {
         status,
         StatusCode::NOT_FOUND,
         "embeddings bloqué par défaut (404)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// N0 v1.1 — alias intra-session + jauge quasi-id in-core
+// ---------------------------------------------------------------------------
+
+/// Une requête chat avec un contenu utilisateur arbitraire.
+async fn chat_with(app: &Router, content: &str) -> (StatusCode, Value) {
+    let (status, body) = send_json(
+        app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(json!({
+            "model": "mock-echo",
+            "messages": [{"role": "user", "content": content}]
+        })),
+    )
+    .await;
+    let value: Value = serde_json::from_str(&body).unwrap_or(Value::Null);
+    (status, value)
+}
+
+/// N0 v1.1 : l'alias intra-session masque une forme dérivée (R5 — diminutif)
+/// dans une requête POSTÉRIEURE à la mention canonique. La session du daemon
+/// persiste entre les requêtes : « Mamadou » (msg 1, gazetteer) → « Momo »
+/// (msg 2) masqué par alias. Roundtrip : le client récupère « Momo ».
+#[tokio::test]
+async fn n0_alias_across_requests_masks_derived_form() {
+    let mock = MockUpstream::start().await;
+    let dir = tempfile::tempdir().unwrap();
+    let config = n0_config(&mock.url(), dir.path(), TEST_PASSPHRASE);
+    let state = Arc::new(AppState::new(&config).unwrap());
+    let app = router(state.clone());
+
+    // Message 1 : « Mamadou » (gazetteer nom_sn) → mention canonique en session.
+    let (s1, r1) = chat_with(&app, "Mamadou est arrivé.").await;
+    assert_eq!(s1, StatusCode::OK);
+    let text1 = r1["choices"][0]["message"]["content"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(text1.contains("Mamadou"), "roundtrip msg 1: {text1}");
+    let upstream1 = mock.last_body().to_string();
+    assert!(upstream1.contains('\u{27E6}'), "sentinelle amont msg 1");
+    assert!(!upstream1.contains("Mamadou"), "clair amont interdit msg 1");
+
+    // Message 2 : « Momo » n'est dans aucun gazetteer — seul l'alias
+    // intra-session (diminutif R5 de « Mamadou ») le masque.
+    let (s2, r2) = chat_with(&app, "Momo aussi.").await;
+    assert_eq!(s2, StatusCode::OK);
+    let text2 = r2["choices"][0]["message"]["content"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(text2.contains("Momo"), "roundtrip msg 2: {text2}");
+    let upstream2 = mock.last_body().to_string();
+    assert!(
+        upstream2.contains('\u{27E6}'),
+        "« Momo » masqué par alias (sentinelle amont msg 2): {upstream2}"
+    );
+    assert!(
+        !upstream2.contains("Momo"),
+        "« Momo » jamais en clair amont"
+    );
+}
+
+/// N0 v1.1 : la jauge quasi-id signale une densité élevée (age + acte + date
+/// + lieu) — compteur incrémenté, jamais de texte. Opt-in (`CLOISON_QUASI_ID_GAUGE`).
+#[tokio::test]
+async fn n0_quasi_id_gauge_flags_dense_text() {
+    let mock = MockUpstream::start().await;
+    let dir = tempfile::tempdir().unwrap();
+    let mut config = n0_config(&mock.url(), dir.path(), TEST_PASSPHRASE);
+    config.session.enable_quasiid_gauge = true;
+    config.session.quasiid_threshold = 0.5;
+    let state = Arc::new(AppState::new(&config).unwrap());
+    let app = router(state.clone());
+
+    assert_eq!(
+        state
+            .metrics
+            .quasi_id_flags
+            .load(std::sync::atomic::Ordering::Relaxed),
+        0
+    );
+    let (status, _r) = chat_with(
+        &app,
+        "Il a 42 ans, acte n° 1847, enregistré le 12/03/2021 à Dakar.",
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        state
+            .metrics
+            .quasi_id_flags
+            .load(std::sync::atomic::Ordering::Relaxed),
+        1,
+        "densité age+acte+date+lieu → drapeau jauge (compteur, jamais de texte)"
+    );
+
+    // Jauge désactivée → aucun drapeau (répertoire distinct : redb verrouille
+    // le fichier — deux AppState simultanés sur le même coffre échoueraient).
+    let dir_off = tempfile::tempdir().unwrap();
+    let mut config_off = n0_config(&mock.url(), dir_off.path(), TEST_PASSPHRASE);
+    config_off.session.enable_quasiid_gauge = false;
+    let state_off = Arc::new(AppState::new(&config_off).unwrap());
+    let app_off = router(state_off.clone());
+    let (s3, _) = chat_with(
+        &app_off,
+        "Il a 42 ans, acte n° 1847, enregistré le 12/03/2021 à Dakar.",
+    )
+    .await;
+    assert_eq!(s3, StatusCode::OK);
+    assert_eq!(
+        state_off
+            .metrics
+            .quasi_id_flags
+            .load(std::sync::atomic::Ordering::Relaxed),
+        0,
+        "jauge opt-in : désactivée → aucun drapeau"
     );
 }

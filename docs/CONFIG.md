@@ -31,6 +31,10 @@
 | `CLOISON_VAULT_PASSPHRASE` *(N0)* | edge | **oui** | — | passphrase locale → clé du coffre (HKDF, **jamais persistée ni loggée**). **Requis si `CLOISON_VAULT_PATH` est posé** — absent → refus de démarrer (fail-loud) ; mauvaise passphrase sur un coffre existant → refus de démarrer (jamais de recréation silencieuse) |
 | `CLOISON_VAULT_TTL_SECS` *(N0)* | edge | non | `604800` (7 j) | TTL des entrées du coffre (purge par session) |
 | `CLOISON_SESSION_SALT_FILE` *(N0)* | edge | non | `<vault_path>.salt` | chemin explicite du fichier de sel persistant |
+| `CLOISON_ALIAS_EXPANSION` *(N0 v1.1)* | edge | non | `1` | **alias intra-session in-core** (R1–R7 : prénom seul, titre+nom, nom seul hors noms communs, diminutifs, raccourcis de lieux, casse/diacritiques) — jamais les pronoms, scores plafonnés. Actif en mode N0 (`CLOISON_VAULT_PATH` posé) |
+| `CLOISON_QUASI_ID_GAUGE` *(N0 v1.1)* | edge | non | `0` | **jauge quasi-id in-core** (densité âge+acte+date+lieu, fenêtre glissante) — **opt-in** ; signal (compteur + log), jamais de résolution (charte §6.1 couche 6, §11) |
+| `CLOISON_QUASI_ID_THRESHOLD` *(N0 v1.1)* | edge | non | `0.5` | seuil de la jauge (`score > seuil` strict ; `1.0` = désactivée de fait) |
+| `CLOISON_ALIAS_MAX_MENTIONS` *(N0 v1.1)* | edge | non | `200` | borne documentaire du nombre de mentions canoniques en session (FIFO — miroir de `session_mentions_max` du sidecar) |
 | `CLOISON_MOCK_MODE` | edge | non | `0` | `1` = prérequis assouplis (clé de dev) — jamais en prod |
 | `CLOISON_AUDIT_MODE` | edge | non | `0` | `1` = observe-only (reçus signés, rapport k-anonyme) |
 | `CLOISON_AUDIT_KEYS` | edge | **oui** | absent (clé générée 0600) | chemin clé Ed25519 de l'agent (32 o bruts ou 64 hex) |

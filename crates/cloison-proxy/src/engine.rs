@@ -21,7 +21,7 @@ use cloison_audit::receipt::{self, Counters, Receipt, ReceiptMessage};
 use cloison_audit::report::ConformanceReport;
 use cloison_core::{
     CloisonError, CloisonResult, Detector, DetectorKind, Engine, Policy, RestoreResult, Sentinel,
-    SessionKeys, Span, TokenizeResult,
+    SessionContext, SessionKeys, SessionOptions, Span, TokenizeResult,
 };
 
 use crate::detect::DetectClient;
@@ -38,6 +38,14 @@ pub struct RestoreAggregate {
     pub restored: usize,
     /// Jetons non résolus → marqueur neutre.
     pub unresolved: usize,
+}
+
+/// Drapeaux de la session (N0 v1.1) remontés par la tokenisation aller.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SessionFlags {
+    /// La jauge quasi-id a signalé une densité élevée (compteur, jamais de
+    /// texte — charte §6.1 couche 6 : signal, pas résolution).
+    pub quasi_id_flagged: bool,
 }
 
 /// Moteur d'une requête : `tokenize` (aller) / `restore` (retour) sur le même
@@ -94,6 +102,22 @@ impl RequestEngine {
             .tokenize_with_extra(text, policy, &self.request_id, extra)
     }
 
+    /// Tokenise avec la **session** (N0 v1.1) : alias intra-session R1–R7 +
+    /// jauge quasi-id in-core, en plus de la détection embarquée et des spans
+    /// NER externes. La session (mentions canoniques) persiste entre les
+    /// requêtes du daemon — jamais de texte hors du moteur.
+    pub fn tokenize_session(
+        &mut self,
+        text: &str,
+        policy: &Policy,
+        session: &mut SessionContext,
+        extra: &[Span],
+        options: &SessionOptions,
+    ) -> CloisonResult<TokenizeResult> {
+        self.engine
+            .tokenize_session(text, policy, &self.request_id, extra, session, options)
+    }
+
     /// Restaure les jetons émis par cette requête (retour).
     pub fn restore(&self, text: &str) -> CloisonResult<RestoreResult> {
         self.engine.restore(text, &self.request_id)
@@ -107,23 +131,51 @@ impl RequestEngine {
 /// soumis au sidecar NER (appel réseau) puis tokenisé avec les spans
 /// fusionnés. Une panne du sidecar dégrade en détection embarquée seule
 /// (warn, jamais d'erreur) — le proxy ne tombe jamais à cause de detect.
+///
+/// N0 v1.1 : quand `session`/`options` sont fournis (mode N0), la
+/// tokenisation passe par `Engine::tokenize_session` — alias intra-session
+/// et jauge quasi-id in-core ; les drapeaux de session sont collectés sur
+/// tous les champs (une seule occurrence flaggée suffit).
 pub async fn tokenize_chat_request(
     req: &mut ChatCompletionRequest,
     engine: &mut RequestEngine,
     policy: &Policy,
     detect: Option<&DetectClient>,
-) -> Result<(), ProxyError> {
+    mut session: Option<&mut SessionContext>,
+    options: Option<&SessionOptions>,
+) -> Result<SessionFlags, ProxyError> {
+    let mut flags = SessionFlags::default();
     for msg in &mut req.messages {
         if let Some(content) = &mut msg.content {
             match content {
                 Content::Text(s) => {
-                    *s = tokenize_with_detect(engine, s, policy, detect).await?;
+                    let (out, f) = tokenize_with_detect(
+                        engine,
+                        s,
+                        policy,
+                        detect,
+                        session.as_deref_mut(),
+                        options,
+                    )
+                    .await?;
+                    *s = out;
+                    flags.quasi_id_flagged |= f;
                 }
                 Content::Parts(parts) => {
                     for part in parts {
                         if part.type_ == "text" {
                             if let Some(text) = &mut part.text {
-                                *text = tokenize_with_detect(engine, text, policy, detect).await?;
+                                let (out, f) = tokenize_with_detect(
+                                    engine,
+                                    text,
+                                    policy,
+                                    detect,
+                                    session.as_deref_mut(),
+                                    options,
+                                )
+                                .await?;
+                                *text = out;
+                                flags.quasi_id_flagged |= f;
                             }
                         }
                     }
@@ -132,13 +184,21 @@ pub async fn tokenize_chat_request(
         }
         if let Some(calls) = &mut msg.tool_calls {
             for call in calls {
-                let r =
-                    tokenize_with_detect(engine, &call.function.arguments, policy, detect).await?;
-                call.function.arguments = r;
+                let (out, f) = tokenize_with_detect(
+                    engine,
+                    &call.function.arguments,
+                    policy,
+                    detect,
+                    session.as_deref_mut(),
+                    options,
+                )
+                .await?;
+                call.function.arguments = out;
+                flags.quasi_id_flagged |= f;
             }
         }
     }
-    Ok(())
+    Ok(flags)
 }
 
 /// Tokenise `prompt` (String ou Vec<String>) — aller (legacy).
@@ -147,28 +207,51 @@ pub async fn tokenize_completion_request(
     engine: &mut RequestEngine,
     policy: &Policy,
     detect: Option<&DetectClient>,
-) -> Result<(), ProxyError> {
+    mut session: Option<&mut SessionContext>,
+    options: Option<&SessionOptions>,
+) -> Result<SessionFlags, ProxyError> {
+    let mut flags = SessionFlags::default();
     match &mut req.prompt {
         Prompt::Single(s) => {
-            *s = tokenize_with_detect(engine, s, policy, detect).await?;
+            let (out, f) =
+                tokenize_with_detect(engine, s, policy, detect, session.as_deref_mut(), options)
+                    .await?;
+            *s = out;
+            flags.quasi_id_flagged |= f;
         }
         Prompt::Batch(v) => {
             for s in v {
-                *s = tokenize_with_detect(engine, s, policy, detect).await?;
+                let (out, f) = tokenize_with_detect(
+                    engine,
+                    s,
+                    policy,
+                    detect,
+                    session.as_deref_mut(),
+                    options,
+                )
+                .await?;
+                *s = out;
+                flags.quasi_id_flagged |= f;
             }
         }
     }
-    Ok(())
+    Ok(flags)
 }
 
 /// Tokenise un champ texte avec spans sidecar (B.1) — dégradation gracieuse :
 /// une erreur du sidecar → warn + détection embarquée seule.
+///
+/// N0 v1.1 : en présence d'une session (`Some`), tokenisation session (alias
+/// et jauge quasi-id) ; sinon comportement historique bit-identique. Renvoie
+/// le texte tokenisé et le drapeau de la jauge quasi-id.
 async fn tokenize_with_detect(
     engine: &mut RequestEngine,
     text: &str,
     policy: &Policy,
     detect: Option<&DetectClient>,
-) -> Result<String, ProxyError> {
+    session: Option<&mut SessionContext>,
+    options: Option<&SessionOptions>,
+) -> Result<(String, bool), ProxyError> {
     let extra = match detect {
         Some(client) => match client.detect(text).await {
             Ok(spans) => spans,
@@ -179,10 +262,21 @@ async fn tokenize_with_detect(
         },
         None => Vec::new(),
     };
-    let r = engine
-        .tokenize_with_extra(text, policy, &extra)
-        .map_err(proxy_internal)?;
-    Ok(r.text_out)
+    match (session, options) {
+        (Some(sess), Some(opts)) => {
+            let r = engine
+                .tokenize_session(text, policy, sess, &extra, opts)
+                .map_err(proxy_internal)?;
+            let flagged = r.quasi_id.as_ref().map(|q| q.flagged).unwrap_or(false);
+            Ok((r.text_out, flagged))
+        }
+        _ => {
+            let r = engine
+                .tokenize_with_extra(text, policy, &extra)
+                .map_err(proxy_internal)?;
+            Ok((r.text_out, false))
+        }
+    }
 }
 
 /// Restaure `choices[].message.content` + `choices[].message.tool_calls[].function.arguments`

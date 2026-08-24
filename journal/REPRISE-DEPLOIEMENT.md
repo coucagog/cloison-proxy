@@ -127,8 +127,10 @@ attrapé le bug que les 70 tests ne voyaient pas).
 > auth 100 % locale, sel de session persistant, `/v1/embeddings` bloqué,
 > limites honnêtes (`docs/N0.md`) ; portes vertes (tests/clippy/fmt/WASM/
 > invariants 17) + preuve daemon réel + open-core **v0.2.3** (core/audit/proxy).
-> **Prochaine session = N0 v1.1** (alias/jauge in-core, keychain OS, NER léger
-> embarqué, `cloison-wasm`) ;
+> **✅ N0 v1.1 chantier ① (STACK-N0V11)** : alias intra-session R1–R7 +
+> jauge quasi-id **in-core** livrés (serveur bit-identique).
+> **Prochaine session = N0 v1.1 chantier ②** (keychain OS), puis ③
+> `cloison-wasm`, puis ④ NER léger embarqué (GO/NO-GO à arbitrer) ;
 > **GPU toujours en attente** (aucun GPU disponible — décision reportée ;
 > baseline ONNX de DEPLOY-8 comme référence).
 
@@ -239,9 +241,11 @@ Décisions pilote posées (23/08/2026) **exécutées** :
   compromis »).
 - **Questions ouvertes tranchées** : surface v1 = **daemon desktop** (reco
   retenue) ; alias intra-session (R1-R7) + jauge quasi-id in-core =
-  **report v1.1 documenté** (le sidecar les porte déjà) ; `/v1/embeddings` =
-  **bloqué par défaut** (404).
-- Détails : `journal/STACK-N0.md`, `docs/N0.md`, open-core v0.2.3.
+  **✅ LIVRÉS en N0 v1.1 (STACK-N0V11)** — portage in-core du sidecar
+  (jamais les pronoms, scores plafonnés, jauge signal-only opt-in, serveur
+  bit-identique) ; `/v1/embeddings` = **bloqué par défaut** (404).
+- Détails : `journal/STACK-N0.md`, `journal/STACK-N0V11.md`, `docs/N0.md`,
+  open-core v0.2.3 (→ v0.2.4 si le core change).
 
 ### Secondaires (si le temps le permet)
 

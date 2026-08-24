@@ -254,6 +254,8 @@ fn audit_config(mock_url: &str, seed_path: Option<&std::path::Path>) -> Config {
         control: cloison_proxy::config::ControlConfig::default(),
         // N0 : coffre persistant désactivé (mode audit = observe-only).
         vault: cloison_proxy::config::N0VaultConfig::default(),
+        // N0 v1.1 : session désactivée (alias/jauge hors mode N0).
+        session: cloison_proxy::config::SessionConfig::default(),
     }
 }
 

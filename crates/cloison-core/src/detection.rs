@@ -70,7 +70,7 @@ impl std::fmt::Display for DetectorKind {
 }
 
 /// Occurrence of PII in a text.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Span {
     /// Type of PII detected.
     pub entity_type: DetectorKind,
