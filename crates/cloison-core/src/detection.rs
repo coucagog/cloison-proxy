@@ -525,7 +525,12 @@ mod tests {
             ("Appeler +221751234567", "75 international concat"),
         ] {
             let spans = det.detect_phone_sn(text);
-            assert!(!spans.is_empty(), "{} ({}) doit être détecté", text, _expected);
+            assert!(
+                !spans.is_empty(),
+                "{} ({}) doit être détecté",
+                text,
+                _expected
+            );
             assert_eq!(spans[0].entity_type, DetectorKind::PhoneSn);
         }
     }
