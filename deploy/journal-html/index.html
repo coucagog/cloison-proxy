@@ -1,54 +1,234 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>CLOISON — Journal de transparence</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
-  h1 { font-size: 1.4rem; }
-  .card { border: 1px solid #ddd; border-radius: 8px; padding: 1rem 1.2rem; margin: 1rem 0; }
-  .ok { color: #0a7d2f; font-weight: 600; }
-  .ko { color: #b00020; font-weight: 600; }
-  code { background: #f4f4f4; padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.9em; }
-  input[type=text] { width: 100%; box-sizing: border-box; padding: 0.4rem; font-family: monospace; }
-  button { margin-top: 0.5rem; padding: 0.4rem 1rem; cursor: pointer; }
-  footer { margin-top: 2rem; font-size: 0.8rem; color: #666; }
+  :root{
+    --ink:#191C27;--ink-soft:#535868;--ink-faint:#8A8F9E;
+    --paper:#E7E9EE;--paper-2:#DEE1E8;--panel:#FFFFFF;
+    --line:#CFD3DC;--line-2:#E3E6EC;
+    --clair:#A9640C;--clair-bg:#F6ECDD;--clair-line:#e4cfae;
+    --jeton:#0B7A85;--jeton-bg:#E1F0F1;--jeton-line:#bfe0e3;
+    --edge:#1E7A4D;--edge-bg:#E3F1E9;--edge-line:#c4e2d2;--edge-deep:#1c4c36;
+    --danger:#AD3B3B;--danger-bg:#F6E4E2;--danger-line:#e6c4c0;--danger-deep:#6f2b2b;
+    --field-bg:#F4F6F9;--field-line:#e0e4ea;--stroke-strong:#191C27;
+    --shadow:rgba(25,28,39,.5);--shadow-fig:rgba(25,28,39,.55);
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --wrap:1060px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.62;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  a{color:inherit}
+  .wrap{max-width:var(--wrap);margin:0 auto;padding:0 24px}
+  .mono{font-family:var(--mono)}
+
+  header.top{position:sticky;top:0;z-index:40;background:rgba(231,233,238,.86);backdrop-filter:saturate(120%) blur(8px);border-bottom:1px solid var(--line)}
+  .top .wrap{display:flex;align-items:center;gap:18px;height:60px}
+  .brand{display:flex;align-items:baseline;gap:10px;font-weight:800;letter-spacing:-.02em}
+  .brand .dot{width:11px;height:11px;border-radius:2px;background:var(--ink);display:inline-block}
+  .brand small{font-family:var(--mono);font-weight:500;font-size:11px;letter-spacing:.06em;color:var(--ink-faint);text-transform:uppercase}
+  .top .ver{margin-left:6px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:#fff;background:var(--edge);padding:2px 7px;border-radius:999px}
+  .top nav{display:flex;gap:20px;font-family:var(--mono);font-size:12px;letter-spacing:.03em;text-transform:uppercase}
+  .top nav a{color:var(--ink-soft);text-decoration:none}
+  .top nav a:hover{color:var(--ink)}
+  @media(max-width:820px){.top nav{display:none}}
+
+  .hero{padding:74px 0 30px;position:relative;overflow:hidden}
+  .hero::before{content:"";position:absolute;inset:0;z-index:0;background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:26px 26px;opacity:.5;-webkit-mask-image:linear-gradient(180deg,#000,transparent 82%);mask-image:linear-gradient(180deg,#000,transparent 82%)}
+  .hero .wrap{position:relative;z-index:1}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
+  .hero h1{font-size:clamp(30px,5.2vw,52px);line-height:1.05;letter-spacing:-.035em;font-weight:800;margin:14px 0 0;max-width:18ch}
+  .hero h1 .hl{color:var(--edge)}
+  .lede{margin:20px 0 0;max-width:64ch;color:var(--ink-soft);font-size:clamp(16px,2vw,19px)}
+
+  .band{padding:54px 0;border-top:1px solid var(--line)}
+  .band:nth-of-type(even){background:var(--paper-2)}
+  .band .head{max-width:64ch}
+  .band h2{font-size:clamp(23px,3.2vw,34px);letter-spacing:-.028em;line-height:1.1;font-weight:800;margin:12px 0 0}
+  .band p.intro{margin:14px 0 0;color:var(--ink-soft);max-width:64ch}
+  .idx{font-family:var(--mono);font-size:12px;color:var(--ink-faint);letter-spacing:.08em}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin-top:20px;box-shadow:0 14px 34px -30px var(--shadow-fig)}
+  .card h3{margin:0 0 8px;font-size:17px;letter-spacing:-.01em}
+  .card .tag{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
+  .card p{margin:8px 0 0;color:var(--ink-soft);font-size:15.5px}
+  .card .verdict-line{font-family:var(--mono);font-size:14px;line-height:1.7}
+  .card.ok{border-color:var(--edge-line);background:var(--edge-bg)}
+  .card.ok h3,.card.ok .tag{color:var(--edge-deep)}
+  .card.ko{border-color:var(--danger-line);background:var(--danger-bg)}
+  .card.ko h3,.card.ko .tag{color:var(--danger-deep)}
+
+  .note{display:flex;gap:12px;margin-top:22px;padding:16px 18px;border-radius:12px;background:var(--edge-bg);border:1px solid var(--edge-line);color:var(--edge-deep);font-size:15px;max-width:72ch}
+  .note.warn{background:var(--danger-bg);border-color:var(--danger-line);color:var(--danger-deep)}
+  .note.plain{background:var(--panel);border-color:var(--line);color:var(--ink-soft)}
+  .note b{font-weight:700}
+  .note .k{font-family:var(--mono);font-size:12px;letter-spacing:.05em;text-transform:uppercase;padding-top:2px;flex:0 0 auto;opacity:.7}
+
+  .pill{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:4px 9px;border:1px solid var(--line);border-radius:999px;color:var(--ink-soft);background:var(--panel)}
+
+  label{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);margin:14px 0 4px}
+  input[type=text]{width:100%;box-sizing:border-box;padding:10px 12px;font-family:var(--mono);font-size:13.5px;color:var(--ink);background:var(--field-bg);border:1px solid var(--field-line);border-radius:9px}
+  input[type=text]:focus{outline:2.5px solid var(--jeton);outline-offset:2px;border-radius:9px;border-color:var(--jeton)}
+  button{margin-top:12px;padding:9px 16px;cursor:pointer;font-family:var(--mono);font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:var(--edge);border:none;border-radius:9px;transition:opacity .2s}
+  button:hover{opacity:.85}
+  button:focus-visible{outline:2.5px solid var(--jeton);outline-offset:3px;border-radius:9px}
+
+  footer{padding:46px 0 64px;border-top:1px solid var(--line);color:var(--ink-soft)}
+  footer .wrap{display:flex;flex-wrap:wrap;gap:18px;align-items:baseline;justify-content:space-between}
+  footer .mono{font-size:12px;color:var(--ink-faint);letter-spacing:.03em}
+  code{font-family:var(--mono);font-size:.92em;background:var(--field-bg);border:1px solid var(--field-line);padding:1px 6px;border-radius:5px;color:var(--ink)}
+
+  :focus-visible{outline:2.5px solid var(--jeton);outline-offset:3px;border-radius:3px}
+
+  /* ===== THÈME SOMBRE (auto selon l'OS + bascule manuelle, sans stockage) ===== */
+  @media(prefers-color-scheme:dark){
+    :root:not([data-theme]){
+      --ink:#E7E9EF;--ink-soft:#A9AFBE;--ink-faint:#79808F;
+      --paper:#0E1119;--paper-2:#141824;--panel:#191F2C;
+      --line:#2A3141;--line-2:#232A38;
+      --clair:#E2A24C;--clair-bg:#33280F;--clair-line:#5A4A22;
+      --jeton:#37B5C0;--jeton-bg:#0E2A2E;--jeton-line:#1E4A50;
+      --edge:#3FB878;--edge-bg:#12271B;--edge-line:#2A5540;--edge-deep:#A7DCBD;
+      --danger:#E06A63;--danger-bg:#2E1817;--danger-line:#5A2E2A;--danger-deep:#E8938B;
+      --field-bg:#12161F;--field-line:#2A3141;--stroke-strong:#8A93A6;
+      --shadow:rgba(0,0,0,.6);--shadow-fig:rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#E7E9EF;--ink-soft:#A9AFBE;--ink-faint:#79808F;
+    --paper:#0E1119;--paper-2:#141824;--panel:#191F2C;
+    --line:#2A3141;--line-2:#232A38;
+    --clair:#E2A24C;--clair-bg:#33280F;--clair-line:#5A4A22;
+    --jeton:#37B5C0;--jeton-bg:#0E2A2E;--jeton-line:#1E4A50;
+    --edge:#3FB878;--edge-bg:#12271B;--edge-line:#2A5540;--edge-deep:#A7DCBD;
+    --danger:#E06A63;--danger-bg:#2E1817;--danger-line:#5A2E2A;--danger-deep:#E8938B;
+    --field-bg:#12161F;--field-line:#2A3141;--stroke-strong:#8A93A6;
+    --shadow:rgba(0,0,0,.6);--shadow-fig:rgba(0,0,0,.7);
+  }
+  @media(prefers-color-scheme:dark){:root:not([data-theme]) header.top{background:rgba(14,17,25,.86)}}
+  :root[data-theme="dark"] header.top{background:rgba(14,17,25,.86)}
+
+  .top .right{margin-left:auto;display:flex;align-items:center;gap:16px}
+  .theme-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink-soft);cursor:pointer;transition:color .2s,border-color .2s}
+  .theme-btn:hover{color:var(--ink);border-color:var(--ink-faint)}
+  .theme-btn .ic{width:17px;height:17px;display:block}
+  .ic-sun{display:none}.ic-moon{display:block}
+  @media(prefers-color-scheme:dark){:root:not([data-theme]) .ic-sun{display:block}:root:not([data-theme]) .ic-moon{display:none}}
+  :root[data-theme="dark"] .ic-sun{display:block}:root[data-theme="dark"] .ic-moon{display:none}
+  :root[data-theme="light"] .ic-sun{display:none}:root[data-theme="light"] .ic-moon{display:block}
+
+  body,header.top,.card,.note,.theme-btn{transition:background-color .25s ease,border-color .25s ease,color .25s ease}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<h1>CLOISON — Journal de transparence</h1>
-<p>Journal append-only vérifiable du plan de contrôle aveugle. La vérification
-s'exécute <strong>dans votre navigateur</strong> (WASM <code>cloison-verify</code>) :
-aucune donnée ne quitte la page. Le journal ne contient que des compteurs
-k-anonymisés signés — jamais de texte ni de PII (invariant I9).</p>
 
-<div class="card" id="status">Chargement du journal…</div>
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><span class="dot"></span>CLOISON <small>nom de travail</small><span class="ver">ledger</span></div>
+    <div class="right">
+      <nav>
+        <a href="#journal">Le journal</a>
+        <a href="#verification">Vérification</a>
+        <a href="#inclusion">Inclusion</a>
+      </nav>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Basculer thème clair / sombre" aria-pressed="false" title="Thème clair / sombre">
+        <svg class="ic ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        <svg class="ic ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v2.6M12 19.4V22M2 12h2.6M19.4 12H22M4.8 4.8l1.9 1.9M17.3 17.3l1.9 1.9M19.2 4.8l-1.9 1.9M6.7 17.3l-1.9 1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
 
-<div class="card">
-  <h2>Vérification de la chaîne</h2>
-  <p id="verdict">—</p>
-  <p id="details">—</p>
-</div>
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Plan de contrôle aveugle · transparence</div>
+    <h1>Le journal qui prouve que <span class="hl">personne ne lit</span>.</h1>
+    <p class="lede">Chaque fenêtre d'audit y est enregistrée : des compteurs
+      k-anonymisés, signés par le contrôle, liés en chaîne de hachage.
+      Aucun texte, aucune PII — <em>preuve sans donnée vue</em> (invariant I9).</p>
+    <div class="note">
+      <span class="k">Vérification</span>
+      <div>La chaîne est validée <b>dans votre navigateur</b> (WASM
+      <code>cloison-verify</code>) : aucune donnée ne quitte la page, aucune
+      confiance n'est demandée.</div>
+    </div>
+  </div>
+</section>
 
-<div class="card">
-  <h2>Preuve d'inclusion</h2>
-  <p>Recherche d'un <code>payload_hash</code> (hex 32 octets) dans le journal.</p>
-  <input type="text" id="hash" placeholder="payload_hash hex (ex. 0a1b2c…)" autocomplete="off">
-  <br><button onclick="checkInclusion()">Vérifier l'inclusion</button>
-  <p id="inclusion">—</p>
-</div>
+<!-- 1 -->
+<section class="band" id="journal">
+  <div class="wrap">
+    <div class="head">
+      <div class="idx">01 — Le journal</div>
+      <h2>État de la chaîne</h2>
+      <p class="intro">Le journal est <b>append-only</b> : chaque entrée lie la
+        précédente par <code>prev_hash</code>, et la signature Ed25519 du contrôle
+        scelle l'ensemble. Toute altération — même d'un octet — casse la chaîne.</p>
+    </div>
+    <div class="card" id="status">
+      <div class="tag">Chargement</div>
+      <h3>Lecture du journal…</h3>
+      <p>Chargement de <code>/ledger.jsonl</code> et de la clé publique du contrôle…</p>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="band" id="verification">
+  <div class="wrap">
+    <div class="head">
+      <div class="idx">02 — Vérification</div>
+      <h2>La chaîne est-elle intacte ?</h2>
+      <p class="intro">Genèse, séquence, <code>prev_hash</code>,
+        <code>entry_hash</code>, horodatages et signatures : tout est
+        re-computé et validé localement, depuis la genèse jusqu'à la tête.</p>
+    </div>
+    <div class="card">
+      <div class="tag">Verdict</div>
+      <h3 id="verdict-h">—</h3>
+      <p class="verdict-line" id="verdict">—</p>
+      <p id="details">—</p>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="band" id="inclusion">
+  <div class="wrap">
+    <div class="head">
+      <div class="idx">03 — Inclusion</div>
+      <h2>Preuve d'inclusion</h2>
+      <p class="intro">Un <code>payload_hash</code> (hex, 32 octets) figure-t-il
+        dans le journal ? La preuve est calculée dans votre navigateur.</p>
+    </div>
+    <div class="card">
+      <div class="tag">Recherche</div>
+      <h3>Vérifier l'inclusion d'un hash</h3>
+      <label for="hash">payload_hash hex</label>
+      <input type="text" id="hash" placeholder="ex. 0a1b2c3d…" autocomplete="off" spellcheck="false">
+      <br><button onclick="checkInclusion()">Vérifier l'inclusion</button>
+      <p class="verdict-line" id="inclusion">—</p>
+    </div>
+  </div>
+</section>
 
 <footer>
-  CLOISON — proxy de confidentialité PII. Vérification publique hors-ligne :
-  <code>cloison-verify</code> (WASM). Consulter <code>/ledger.jsonl</code> et
-  <code>/control_pubkey.hex</code> pour la vérification hors-ligne manuelle.
+  <div class="wrap">
+    <div>CLOISON — proxy de confidentialité PII. <span class="pill">open-core</span></div>
+    <div class="mono">/ledger.jsonl · /control_pubkey.hex · cloison-verify (WASM)</div>
+  </div>
 </footer>
 
 <script type="module">
 import init, { verify_chain_bytes, prove_inclusion_bytes } from './verify/cloison_verify.js';
 
-const statusEl = document.getElementById('status');
+const statusCard = document.getElementById('status');
+const verdictH = document.getElementById('verdict-h');
 const verdictEl = document.getElementById('verdict');
 const detailsEl = document.getElementById('details');
 const inclusionEl = document.getElementById('inclusion');
@@ -75,19 +255,29 @@ async function loadAndVerify() {
     const head = entries.length ? entries[entries.length - 1] : null;
 
     if (verdict.ok) {
-      statusEl.textContent = '✅ Chaîne vérifiée';
-      statusEl.className = 'card ok';
+      statusCard.className = 'card ok';
+      statusCard.querySelector('.tag').textContent = 'Chaîne vérifiée';
+      statusCard.querySelector('h3').textContent = '✅ La chaîne est valide';
+      statusCard.querySelector('p').textContent =
+        `${entries.length} entrée(s), signatures Ed25519 valides, chaîne de hachage intacte.`;
+      verdictH.textContent = '✅ Chaîne vérifiée';
       verdictEl.textContent = 'Signatures Ed25519 valides et chaîne de hachage intacte.';
     } else {
-      statusEl.textContent = '❌ Échec de vérification';
-      statusEl.className = 'card ko';
+      statusCard.className = 'card ko';
+      statusCard.querySelector('.tag').textContent = 'Échec';
+      statusCard.querySelector('h3').textContent = '❌ Chaîne invalide';
+      statusCard.querySelector('p').textContent =
+        `Vérification impossible : ${verdict.error || 'erreur inconnue'}.`;
+      verdictH.textContent = '❌ Échec de vérification';
       verdictEl.textContent = verdict.error || 'erreur inconnue';
     }
     detailsEl.textContent =
       `${entries.length} entrée(s) — ${head ? 'tête seq ' + head.seq + ' (hash ' + hex(head.entry_hash).slice(0, 16) + '…)' : 'genèse absente'} — clé publique du contrôle ${keyHex.slice(0, 8)}…`;
   } catch (e) {
-    statusEl.textContent = 'Erreur : ' + e;
-    statusEl.className = 'card ko';
+    statusCard.className = 'card ko';
+    statusCard.querySelector('.tag').textContent = 'Erreur';
+    statusCard.querySelector('h3').textContent = 'Erreur de chargement';
+    statusCard.querySelector('p').textContent = String(e);
   }
 }
 
@@ -106,6 +296,15 @@ window.checkInclusion = function () {
     inclusionEl.textContent = 'Erreur : ' + e;
   }
 };
+
+// Bascule de thème (sans stockage — suit l'OS par défaut).
+const themeBtn = document.getElementById('themeBtn');
+themeBtn.addEventListener('click', () => {
+  const root = document.documentElement;
+  const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  root.setAttribute('data-theme', next);
+  themeBtn.setAttribute('aria-pressed', next === 'dark');
+});
 
 loadAndVerify();
 </script>
