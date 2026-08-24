@@ -16,7 +16,8 @@ confidentialité PII compatible OpenAI.
 | LOC | Toponymes du Sénégal (14 régions, villes, quartiers) | 0.20 |
 | CNI | Carte Nationale d'Identité (13 chiffres, commençant par 1, checksum Luhn) | 0.25 |
 | MAIL | Adresses email | 0.15 |
-| TEL | Numéros de téléphone sénégalais (+221, préfixes 70/71/75/76/77/78) | 0.10 |
+| TEL | Numéros de téléphone sénégalais — mobiles +221 (préfixes 70/71/75/76/77/78) **et fixes** (30/32/33/36, zone 8/9) | 0.10 |
+| PASSPORT / PERMIS / MATRICULE | Identifiants contextuels (passeport, permis de conduire, matricule État/IPRES) — **hors grille GO** (mesurés, non scorés) | — |
 
 ## Grille GO/NO-GO (v1.1 — pré-enregistrée, figée)
 

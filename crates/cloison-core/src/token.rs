@@ -186,6 +186,12 @@ impl Sentinel {
     pub const TAG_PERSON: &'static str = "PE";
     /// Kind tag for NER sidecar LOC (wiring B.1).
     pub const TAG_LOCATION: &'static str = "LO";
+    /// Kind tag for Senegalese passport numbers (contexte).
+    pub const TAG_PASSPORT: &'static str = "PP";
+    /// Kind tag for Senegalese driver licenses (contexte).
+    pub const TAG_DRIVER_LICENSE: &'static str = "DL";
+    /// Kind tag for Senegalese civil-servant / IPRES matricules.
+    pub const TAG_MATRICULE: &'static str = "MA";
     /// Kind tag for gazetteer prefix matches.
     pub const TAG_GAZETTEER_PREFIX: &'static str = "GZ";
 
@@ -256,6 +262,9 @@ impl Sentinel {
             DetectorKind::Date => Self::TAG_DATE,
             DetectorKind::Person => Self::TAG_PERSON,
             DetectorKind::Location => Self::TAG_LOCATION,
+            DetectorKind::Passport => Self::TAG_PASSPORT,
+            DetectorKind::DriverLicense => Self::TAG_DRIVER_LICENSE,
+            DetectorKind::Matricule => Self::TAG_MATRICULE,
             DetectorKind::Gazetteer(name) => {
                 // GZ + first letter of name uppercase
                 match name.as_str() {
@@ -278,6 +287,9 @@ impl Sentinel {
             "DT" => Ok(DetectorKind::Date),
             "PE" => Ok(DetectorKind::Person),
             "LO" => Ok(DetectorKind::Location),
+            "PP" => Ok(DetectorKind::Passport),
+            "DL" => Ok(DetectorKind::DriverLicense),
+            "MA" => Ok(DetectorKind::Matricule),
             "GZA" => Ok(DetectorKind::Gazetteer("nom_sn".to_string())),
             "GZV" => Ok(DetectorKind::Gazetteer("ville_sn".to_string())),
             other if other.starts_with("GZ") => Ok(DetectorKind::Gazetteer(format!(

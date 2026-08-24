@@ -37,6 +37,14 @@ pub enum DetectorKind {
     /// NER sidecar LOC (cloison-detect, wiring B.1) : idem, jamais émis par
     /// les détecteurs embarqués.
     Location,
+    /// Passeport (numéro de passeport sénégalais, format à confirmer —
+    /// CEDEAO/ICAO : 1-2 lettres + 7-8 chiffres, contexte « passeport »).
+    Passport,
+    /// Permis de conduire sénégalais (format à confirmer — contexte « permis »).
+    DriverLicense,
+    /// Matricule de fonctionnaire de l'État / assuré IPRES (actifs et
+    /// retraités) — format à confirmer (contexte « matricule »/« IPRES »).
+    Matricule,
     /// Named gazetteer (e.g., "ville_sn", "nom_sn").
     Gazetteer(String),
 }
@@ -52,6 +60,9 @@ impl std::fmt::Display for DetectorKind {
             DetectorKind::Date => write!(f, "Date"),
             DetectorKind::Person => write!(f, "Person"),
             DetectorKind::Location => write!(f, "Location"),
+            DetectorKind::Passport => write!(f, "Passport"),
+            DetectorKind::DriverLicense => write!(f, "DriverLicense"),
+            DetectorKind::Matricule => write!(f, "Matricule"),
             DetectorKind::Gazetteer(name) => write!(f, "Gazetteer({})", name),
         }
     }
@@ -184,6 +195,12 @@ pub struct Detector {
     credit_card_re: Regex,
     /// Compiled regex for IPv4 addresses.
     ip_re: Regex,
+    /// Compiled regex for Senegalese passport numbers (contexte « passeport »).
+    passport_re: Regex,
+    /// Compiled regex for Senegalese driver licenses (contexte « permis »).
+    driver_license_re: Regex,
+    /// Compiled regex for Senegalese civil-servant / IPRES matricules.
+    matricule_re: Regex,
     /// Registered gazetteers (name → Gazetteer).
     gazetteers: HashMap<String, Gazetteer>,
 }
@@ -197,7 +214,7 @@ impl Detector {
         .map_err(|e| CloisonError::Detection(format!("email regex: {}", e)))?;
 
         let phone_sn_re = Regex::new(
-            r"(?:\+221|00221)\s?(?:7[0-9]|3[0-9])\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2}|(?:70|71|75|76|77|78)(?:[0-9]{7}|\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2})"
+            r"(?:\+221|00221)\s?(?:7[0-9]|3[0-9])\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2}|(?:70|71|75|76|77|78)(?:[0-9]{7}|\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2})|(?:30|32|33|36)(?:[89][0-9]{6}|\s?[89]\s?[0-9]{2}\s?[0-9]{2}\s?[0-9]{2})"
         )
         .map_err(|e| CloisonError::Detection(format!("phone_sn regex: {}", e)))?;
 
@@ -217,12 +234,40 @@ impl Detector {
         )
         .map_err(|e| CloisonError::Detection(format!("ip regex: {}", e)))?;
 
+        // Passeport sénégalais : numéro précédé d'un contexte explicite
+        // (mot « passeport »/« passport »/« n° ») pour limiter les faux positifs.
+        // Format CEDEAO/ICAO observé : 1-2 lettres + 7-8 chiffres (à confirmer —
+        // la structure exacte n'est pas documentée publiquement ; la détection
+        // contextuelle est volontairement conservatrice, charte §11).
+        let passport_re = Regex::new(
+            r"(?i)(?:passeport|passport)\s*(?:n[°o]\s*)?[:#]?\s*([A-Z]{1,2}[0-9]{7,8})"
+        )
+        .map_err(|e| CloisonError::Detection(format!("passport regex: {}", e)))?;
+
+        // Permis de conduire sénégalais : numéro précédé d'un contexte explicite.
+        // Format observé : 7-10 chiffres (à confirmer ; contexte obligatoire).
+        let driver_license_re = Regex::new(
+            r"(?i)(?:permis\s+de\s+conduire|permis|driver\s+license|licence)\s*(?:n[°o]\s*)?[:#]?\s*([0-9]{7,10})"
+        )
+        .map_err(|e| CloisonError::Detection(format!("driver_license regex: {}", e)))?;
+
+        // Matricule de fonctionnaire de l'État / assuré IPRES (actifs et
+        // retraités) : numéro précédé d'un contexte explicite (« matricule »,
+        // « IPRES »). Format observé : 8-11 chiffres (à confirmer).
+        let matricule_re = Regex::new(
+            r"(?i)(?:matricule|ipres|immatriculation)\s*(?:n[°o]\s*)?[:#]?\s*([0-9]{8,11})"
+        )
+        .map_err(|e| CloisonError::Detection(format!("matricule regex: {}", e)))?;
+
         let mut detector = Self {
             email_re,
             phone_sn_re,
             cni_sn_re,
             credit_card_re,
             ip_re,
+            passport_re,
+            driver_license_re,
+            matricule_re,
             gazetteers: HashMap::new(),
         };
 
@@ -267,6 +312,15 @@ impl Detector {
         if policy.is_enabled(&DetectorKind::Ip) {
             spans.extend(self.detect_ip(text));
         }
+        if policy.is_enabled(&DetectorKind::Passport) {
+            spans.extend(self.detect_passport(text));
+        }
+        if policy.is_enabled(&DetectorKind::DriverLicense) {
+            spans.extend(self.detect_driver_license(text));
+        }
+        if policy.is_enabled(&DetectorKind::Matricule) {
+            spans.extend(self.detect_matricule(text));
+        }
 
         // Gazetteers
         for (name, gaz) in &self.gazetteers {
@@ -299,6 +353,9 @@ impl Detector {
         spans.extend(self.detect_cni_sn(text));
         spans.extend(self.detect_credit_card(text));
         spans.extend(self.detect_ip(text));
+        spans.extend(self.detect_passport(text));
+        spans.extend(self.detect_driver_license(text));
+        spans.extend(self.detect_matricule(text));
 
         for gaz in self.gazetteers.values() {
             spans.extend(gaz.find(text));
@@ -394,6 +451,60 @@ impl Detector {
                 end: m.end(),
                 score: 1.0,
                 value: m.as_str().to_string(),
+            })
+            .collect()
+    }
+
+    /// Detect Senegalese passport numbers (contextual : « passeport » + numéro).
+    ///
+    /// Le span couvre le numéro seul (sans le mot-clé) : la valeur masquée est
+    /// le numéro, pas le contexte qui l'annonce. Format CEDEAO/ICAO à confirmer.
+    fn detect_passport(&self, text: &str) -> Vec<Span> {
+        self.passport_re
+            .captures_iter(text)
+            .filter_map(|cap| {
+                let num = cap.get(1)?;
+                Some(Span {
+                    entity_type: DetectorKind::Passport,
+                    start: num.start(),
+                    end: num.end(),
+                    score: 1.0,
+                    value: num.as_str().to_string(),
+                })
+            })
+            .collect()
+    }
+
+    /// Detect Senegalese driver licenses (contextual : « permis » + numéro).
+    fn detect_driver_license(&self, text: &str) -> Vec<Span> {
+        self.driver_license_re
+            .captures_iter(text)
+            .filter_map(|cap| {
+                let num = cap.get(1)?;
+                Some(Span {
+                    entity_type: DetectorKind::DriverLicense,
+                    start: num.start(),
+                    end: num.end(),
+                    score: 1.0,
+                    value: num.as_str().to_string(),
+                })
+            })
+            .collect()
+    }
+
+    /// Detect Senegalese civil-servant / IPRES matricules (contextual).
+    fn detect_matricule(&self, text: &str) -> Vec<Span> {
+        self.matricule_re
+            .captures_iter(text)
+            .filter_map(|cap| {
+                let num = cap.get(1)?;
+                Some(Span {
+                    entity_type: DetectorKind::Matricule,
+                    start: num.start(),
+                    end: num.end(),
+                    score: 1.0,
+                    value: num.as_str().to_string(),
+                })
             })
             .collect()
     }
@@ -533,6 +644,75 @@ mod tests {
             );
             assert_eq!(spans[0].entity_type, DetectorKind::PhoneSn);
         }
+    }
+
+    #[test]
+    fn test_detect_phone_fixe_33_30() {
+        // Téléphones FIXES sénégalais (N3+) : préfixes 30 (Expresso),
+        // 32 (Tigo), 33 (Sonatel/Orange), 36 (Hayo/CSU), code de zone 8
+        // (Dakar) ou 9 (hors Dakar), NSN 8 chiffres (Wikipedia).
+        let det = Detector::new().unwrap();
+        for (text, _expected) in [
+            ("Appeler le 33 869 12 34", "33 Dakar"),
+            ("Appeler le 33 939 12 34", "33 hors Dakar"),
+            ("Appeler le 30 869 12 34", "30 Expresso"),
+            ("Appeler le 32 869 12 34", "32 Tigo"),
+            ("Appeler le 36 869 12 34", "36 Hayo"),
+            ("Appeler +221 33 869 12 34", "33 international"),
+            ("Appeler +221338691234", "33 international concat"),
+        ] {
+            let spans = det.detect_phone_sn(text);
+            assert!(
+                !spans.is_empty(),
+                "{} ({}) doit être détecté",
+                text,
+                _expected
+            );
+            assert_eq!(spans[0].entity_type, DetectorKind::PhoneSn);
+        }
+        // Pas de faux positif : un 33 sans contexte téléphonique (3 chiffres
+        // seuls) ne doit pas matcher un fixe complet.
+        assert!(det.detect_phone_sn("Le numéro 33 ne suffit pas").is_empty());
+    }
+
+    #[test]
+    fn test_detect_passport() {
+        let det = Detector::new().unwrap();
+        // Format CEDEAO/ICAO (1-2 lettres + 7-8 chiffres), contexte explicite.
+        let spans = det.detect_passport("Numéro de passeport : A1234567");
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].entity_type, DetectorKind::Passport);
+        assert_eq!(spans[0].value, "A1234567");
+        // Le span couvre le numéro seul, pas le mot-clé.
+        assert!(spans[0].start > 0);
+        // Sans contexte : aucun faux positif.
+        assert!(det.detect_passport("Mon code est A1234567 ici").is_empty());
+    }
+
+    #[test]
+    fn test_detect_driver_license() {
+        let det = Detector::new().unwrap();
+        let spans = det.detect_driver_license("Permis de conduire n° 12345678");
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].entity_type, DetectorKind::DriverLicense);
+        assert_eq!(spans[0].value, "12345678");
+        assert!(det.detect_driver_license("Réf 12345678 sans contexte").is_empty());
+    }
+
+    #[test]
+    fn test_detect_matricule() {
+        let det = Detector::new().unwrap();
+        // Matricule fonctionnaire de l'État (contexte « matricule »).
+        let spans = det.detect_matricule("Matricule : 012345678");
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].entity_type, DetectorKind::Matricule);
+        assert_eq!(spans[0].value, "012345678");
+        // Matricule IPRES (contexte « ipres ») — actifs et retraités.
+        let spans2 = det.detect_matricule("Numéro IPRES 9876543210");
+        assert_eq!(spans2.len(), 1);
+        assert_eq!(spans2[0].entity_type, DetectorKind::Matricule);
+        // Sans contexte : aucun faux positif.
+        assert!(det.detect_matricule("Le 012345678 n'est pas un matricule").is_empty());
     }
 
     #[test]

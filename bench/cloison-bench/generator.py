@@ -113,6 +113,13 @@ PREFIXES_TEL = {
     "Expresso": ["70", "71"]
 }
 
+# Préfixes téléphoniques FIXES sénégalais (N3+) : 33 Sonatel/Orange,
+# 30 Expresso, 32 Tigo/Sentel, 36 Hayo/CSU — code de zone 8 (Dakar) ou 9
+# (hors Dakar), NSN 8 chiffres (source : Wikipedia "Telephone numbers in
+# Senegal"). Un fixe non détecté partirait en clair (invariant I1).
+PREFIXES_TEL_FIXE = ["30", "32", "33", "36"]
+ZONES_TEL_FIXE = ["8", "9"]
+
 # Templates de documents par niveau de difficulté
 TEMPLATES_SIMPLE = [
     "Nom: {PERSON}. Adresse: {LOC}. Téléphone: {TEL}.",
@@ -130,6 +137,11 @@ TEMPLATES_SIMPLE = [
     "Fiche individuelle: {PERSON}, {MAIL}, {TEL}, {LOC}.",
     "Déclaration de {PERSON}, résidant à {LOC}, CNI {CNI}.",
     "Personne à contacter: {PERSON} ({TEL}).",
+    # N3+ : identifiants contextuels sénégalais (passeport, permis, matricule).
+    "Numéro de passeport de {PERSON} : {PASSPORT}.",
+    "Permis de conduire n° {PERMIS} délivré à {PERSON}.",
+    "Matricule fonction publique : {MATRICULE} ({PERSON}).",
+    "Numéro IPRES : {MATRICULE} — retraité {PERSON}.",
 ]
 
 TEMPLATES_CONTEXTUAL = [
@@ -412,7 +424,21 @@ def generate_loc() -> str:
 
 
 def generate_tel() -> str:
-    """Génère un numéro de téléphone sénégalais synthétique."""
+    """Génère un numéro de téléphone sénégalais synthétique (mobile ou fixe)."""
+    # 25 % de fixes (préfixes 30/32/33/36) : le jeu doit couvrir les deux
+    # familles — un fixe non détecté partirait en clair (invariant I1, N3+).
+    if random.random() < 0.25:
+        prefix = random.choice(PREFIXES_TEL_FIXE)
+        zone = random.choice(ZONES_TEL_FIXE)
+        suffix = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+        format_choice = random.choice(['international', 'local', 'formatted'])
+        if format_choice == 'international':
+            return f"+221{prefix}{zone}{suffix}"
+        elif format_choice == 'local':
+            return f"{prefix}{zone}{suffix}"
+        else:
+            return f"{prefix} {zone}{suffix[0:2]} {suffix[2:4]} {suffix[4:6]}"
+
     operator = random.choice(list(PREFIXES_TEL.keys()))
     prefix = random.choice(PREFIXES_TEL[operator])
     
@@ -429,6 +455,44 @@ def generate_tel() -> str:
     else:
         # Format: XX XXX XX XX
         return f"{prefix} {suffix[0:3]} {suffix[3:5]} {suffix[5:7]}"
+
+
+def generate_passport() -> str:
+    """
+    Génère un numéro de passeport sénégalais synthétique (N3+).
+    
+    Format CEDEAO/ICAO observé : 1-2 lettres majuscules + 7-8 chiffres
+    (ex. A1234567, AB12345678). Structure exacte à confirmer (non documentée
+    publiquement) — la détection produit est contextuelle (« passeport »).
+    """
+    n_letters = random.choice([1, 1, 2])  # 1 lettre plus fréquent
+    letters = ''.join([chr(random.randint(ord('A'), ord('Z'))) for _ in range(n_letters)])
+    n_digits = 8 if n_letters == 1 else 7
+    digits = ''.join([str(random.randint(0, 9)) for _ in range(n_digits)])
+    return f"{letters}{digits}"
+
+
+def generate_permis() -> str:
+    """
+    Génère un numéro de permis de conduire sénégalais synthétique (N3+).
+    
+    Format observé : 7-10 chiffres (à confirmer) — la détection produit est
+    contextuelle (« permis de conduire »).
+    """
+    n = random.choice([7, 8, 9, 10])
+    return ''.join([str(random.randint(0, 9)) for _ in range(n)])
+
+
+def generate_matricule() -> str:
+    """
+    Génère un matricule synthétique de fonctionnaire de l'État / assuré IPRES
+    (actifs et retraités, N3+).
+    
+    Format observé : 8-11 chiffres (à confirmer) — la détection produit est
+    contextuelle (« matricule », « IPRES »).
+    """
+    n = random.choice([8, 9, 10, 11])
+    return ''.join([str(random.randint(0, 9)) for _ in range(n)])
 
 
 def generate_mail() -> str:
@@ -538,6 +602,12 @@ class DatasetGenerator:
                 entity_text = generate_mail()
             elif entity_type == 'TEL':
                 entity_text = generate_tel()
+            elif entity_type == 'PASSPORT':
+                entity_text = generate_passport()
+            elif entity_type == 'PERMIS':
+                entity_text = generate_permis()
+            elif entity_type == 'MATRICULE':
+                entity_text = generate_matricule()
             else:
                 continue
 

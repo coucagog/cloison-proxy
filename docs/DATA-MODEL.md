@@ -17,8 +17,11 @@
   HKDF-SHA256 (extract sur `session_salt` ‖ `tenant_key`, expand `mac`/`enc`).
 - **Sentinelle** (format texte) : `⟦body_b32·TAG⟧` — `body_b32` = base32
   RFC 4648 minuscule sans padding (26 caractères pour 16 octets), `TAG` =
-  2–4 lettres majuscules : `EM` (email), `PH` (PhoneSn), `CN` (CniSn),
-  `CC` (carte), `IP`, `DT` (date), `GZ*` (gazetteer).
+  2–4 lettres majuscules : `EM` (email), `PH` (PhoneSn — mobiles 70-78 **et
+  fixes 30/32/33/36**), `CN` (CniSn), `CC` (carte), `IP`, `DT` (date),
+  `PP` (passeport), `DL` (permis de conduire), `MA` (matricule État/IPRES),
+  `GZ*` (gazetteer). Les identifiants contextuels (PP/DL/MA) sont masqués
+  par défaut (N3+), formats à confirmer (charte §11).
 - **Registre d'émission** : périmètre de la requête en cours ; `restore`
   exige présence au registre **et** MAC valide (invariant I2).
 

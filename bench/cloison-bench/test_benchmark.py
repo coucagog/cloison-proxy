@@ -25,6 +25,9 @@ from generator import (
     generate_loc,
     generate_tel,
     generate_mail,
+    generate_passport,
+    generate_permis,
+    generate_matricule,
     Entity
 )
 from scoring import (
@@ -243,12 +246,45 @@ class TestGenerator:
             assert isinstance(loc, str)
     
     def test_generate_tel(self):
-        """Teste la génération de numéros de téléphone."""
-        prefixes = ('70', '71', '75', '76', '77', '78')
-        for _ in range(50):
+        """Teste la génération de numéros de téléphone (mobiles 70-78 + fixes 30-36)."""
+        prefixes = ('70', '71', '75', '76', '77', '78', '30', '32', '33', '36')
+        for _ in range(100):
             tel = generate_tel()
             # Vérifier le format
             assert '+' in tel or tel.startswith(prefixes)
+
+    def test_generate_tel_fixe(self):
+        """Teste la génération de numéros de téléphone FIXE (30/32/33/36)."""
+        for _ in range(100):
+            tel = generate_tel()
+            if '+221' in tel:
+                # fixe international : +221 3X 8/9 XXXXXX
+                if '30' in tel or '32' in tel or '33' in tel or '36' in tel:
+                    continue
+            elif tel.startswith(('30', '32', '33', '36')):
+                # fixe local : préfixe + zone (8/9) + 6 chiffres
+                digits = tel.replace(' ', '')
+                assert len(digits) == 8, f"fixe local invalide: {tel}"
+                assert digits[2] in ('8', '9'), f"zone invalide: {tel}"
+
+    def test_generate_passport(self):
+        """Teste la génération de numéros de passeport (1-2 lettres + 7-8 chiffres)."""
+        for _ in range(20):
+            p = generate_passport()
+            import re
+            assert re.fullmatch(r"[A-Z]{1,2}[0-9]{7,8}", p), f"passeport invalide: {p}"
+
+    def test_generate_permis(self):
+        """Teste la génération de numéros de permis (7-10 chiffres)."""
+        for _ in range(20):
+            p = generate_permis()
+            assert p.isdigit() and 7 <= len(p) <= 10, f"permis invalide: {p}"
+
+    def test_generate_matricule(self):
+        """Teste la génération de matricules État/IPRES (8-11 chiffres)."""
+        for _ in range(20):
+            m = generate_matricule()
+            assert m.isdigit() and 8 <= len(m) <= 11, f"matricule invalide: {m}"
     
     def test_generate_mail(self):
         """Teste la génération d'emails."""

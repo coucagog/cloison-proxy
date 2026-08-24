@@ -92,9 +92,14 @@ def main() -> int:
         "Email": "MAIL", "PhoneSn": "TEL", "CniSn": "CNI",
         "CreditCard": "CREDIT_CARD", "Ip": "IP", "Date": "DATE",
         "Gazetteer(ville_sn)": "LOC",
+        # N3+ : identifiants contextuels — détectés par le core, présents dans
+        # les prédictions, mais NON scorés (hors ENTITY_WEIGHTS de la grille).
+        "Passport": "PASSPORT",
+        "DriverLicense": "PERMIS",
+        "Matricule": "MATRICULE",
     }
     # Types retenus du core (les autres types restent hors grille).
-    CORE_KEEP = ("CNI", "MAIL", "TEL", "LOC")
+    CORE_KEEP = ("CNI", "MAIL", "TEL", "LOC", "PASSPORT", "PERMIS", "MATRICULE")
 
     def core_spans(text: str) -> list:
         # Spans structures du core Rust (CNI/MAIL/TEL + gazetteer ville_sn).

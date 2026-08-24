@@ -130,14 +130,21 @@ class SenegalPhoneRecognizer(PatternRecognizer):
     - 7X XXX XX XX (formats locaux)
     - (+221) 7X XXX XX XX
     
-    Préfixes opérateurs: 70, 71, 75, 76, 77, 78
+    Préfixes opérateurs: 70, 71, 75, 76, 77, 78 (mobiles) ;
+    fixes : 30, 32, 33, 36 (zone 8/9) — N3+.
     """
     
     PATTERNS = [
-        # Format international complet
+        # Format international complet (mobile)
         Pattern(
             name="tel_international",
             regex=r"\+221(?:70|71|75|76|77|78)\d{7}",
+            score=0.9
+        ),
+        # Format international complet (fixe : 30/32/33/36 + zone 8/9)
+        Pattern(
+            name="tel_international_fixe",
+            regex=r"\+221(?:30|32|33|36)[89]\d{6}",
             score=0.9
         ),
         # Format international avec 00
@@ -146,22 +153,28 @@ class SenegalPhoneRecognizer(PatternRecognizer):
             regex=r"00221(?:70|71|75|76|77|78)\d{7}",
             score=0.85
         ),
-        # Format local 9 chiffres
+        # Format local mobile 9 chiffres
         Pattern(
             name="tel_local",
             regex=r"(?:70|71|75|76|77|78)\d{7}",
             score=0.6
         ),
+        # Format local fixe 8 chiffres (30/32/33/36 + zone 8/9)
+        Pattern(
+            name="tel_local_fixe",
+            regex=r"(?:30|32|33|36)[89]\d{6}",
+            score=0.6
+        ),
         # Format formaté avec espaces
         Pattern(
             name="tel_formatted",
-            regex=r"\+221\s?(?:70|71|75|76|77|78)\s?\d{3}\s?\d{2}\s?\d{2}",
+            regex=r"\+221\s?(?:70|71|75|76|77|78|30|32|33|36)\s?\d{3}\s?\d{2}\s?\d{2}",
             score=0.85
         ),
         # Format avec parenthèses
         Pattern(
             name="tel_parentheses",
-            regex=r"\(\+221\)\s?(?:70|71|75|76|77|78)\s?\d{3}\s?\d{2}\s?\d{2}",
+            regex=r"\(\+221\)\s?(?:70|71|75|76|77|78|30|32|33|36)\s?\d{3}\s?\d{2}\s?\d{2}",
             score=0.85
         ),
     ]
@@ -174,6 +187,58 @@ class SenegalPhoneRecognizer(PatternRecognizer):
     def __init__(self):
         super().__init__(
             supported_entity="TEL",
+            supported_language="fr",
+            patterns=self.PATTERNS,
+            context=self.CONTEXT
+        )
+
+
+# ==============================================================================
+# RECOGNIZER CONTEXTUEL — PASSEPORT / PERMIS / MATRICULE (N3+)
+# ==============================================================================
+
+class SenegalContextualIDRecognizer(PatternRecognizer):
+    """
+    Identifiants contextuels sénégalais : numéro de passeport, permis de
+    conduire, matricule de fonctionnaire de l'État / assuré IPRES (actifs et
+    retraités).
+
+    La détection est CONTEXTUELLE (mot-clé + numéro) pour limiter les faux
+    positifs ; les formats exacts ne sont pas documentés publiquement —
+    structure observée, à confirmer (charte §11 : périmètre honnête).
+    HORS grille GO (le benchmark reste figé sur PERSON/LOC/CNI/MAIL/TEL) :
+    ces entités mesurent la couverture produit, sans critère.
+    """
+
+    PATTERNS = [
+        # Passeport : 1-2 lettres + 7-8 chiffres (CEDEAO/ICAO observé)
+        Pattern(
+            name="id_passeport",
+            regex=r"(?i)(?:passeport|passport)\s*(?:n[°o]\s*)?[:#]?\s*([A-Z]{1,2}[0-9]{7,8})",
+            score=0.85
+        ),
+        # Permis de conduire : 7-10 chiffres
+        Pattern(
+            name="id_permis",
+            regex=r"(?i)(?:permis\s+de\s+conduire|permis|driver\s+license|licence)\s*(?:n[°o]\s*)?[:#]?\s*([0-9]{7,10})",
+            score=0.85
+        ),
+        # Matricule État/IPRES : 8-11 chiffres
+        Pattern(
+            name="id_matricule",
+            regex=r"(?i)(?:matricule|ipres|immatriculation)\s*(?:n[°o]\s*)?[:#]?\s*([0-9]{8,11})",
+            score=0.85
+        ),
+    ]
+
+    CONTEXT = [
+        "passeport", "passport", "permis", "conduire", "driver",
+        "matricule", "ipres", "immatriculation", "fonctionnaire", "retraité"
+    ]
+
+    def __init__(self):
+        super().__init__(
+            supported_entity="ID_CONTEXTUEL",
             supported_language="fr",
             patterns=self.PATTERNS,
             context=self.CONTEXT
@@ -305,6 +370,13 @@ def create_baseline_analyzer(
     # Ajouter le recognizer CNI
     cni_recognizer = CNISenegalRecognizer()
     registry.add_recognizer(cni_recognizer)
+
+    # N3+ : identifiants contextuels sénégalais (passeport, permis de
+    # conduire, matricules État/IPRES) — HORS grille (non scorés par le
+    # benchmark GO, qui reste figé sur PERSON/LOC/CNI/MAIL/TEL) mais
+    # présents dans le jeu pour mesurer la couverture produit.
+    contextual_recognizer = SenegalContextualIDRecognizer()
+    registry.add_recognizer(contextual_recognizer)
     
     # Ajouter les gazetteers
     person_gazetteer = create_person_gazetteer_recognizer()

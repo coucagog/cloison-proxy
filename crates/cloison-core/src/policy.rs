@@ -45,6 +45,12 @@ impl DetectorPolicy {
         // sidecar configuré, aucun impact.
         enabled.insert(DetectorKind::Person);
         enabled.insert(DetectorKind::Location);
+        // Identifiants contextuels sénégalais (N3) : passeport, permis de
+        // conduire, matricules État/IPRES — masqués par défaut (une valeur
+        // non détectée partirait en clair, invariant I1).
+        enabled.insert(DetectorKind::Passport);
+        enabled.insert(DetectorKind::DriverLicense);
+        enabled.insert(DetectorKind::Matricule);
         // Gazetteers embarqués (noms/toponymes sénégalais) : masqués par
         // défaut — la doc (DATA-MODEL §1, THREAT-MODEL) annonce des
         // sentinelles GZ* ; sans eux, les noms passaient en clair.
