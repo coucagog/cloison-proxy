@@ -97,6 +97,13 @@ Procédure (référence, réexécutable pour les versions suivantes) :
 4. vérification : `cargo test` sur chaque sous-arbre (git deps épinglées) ;
 5. README public + lien vers la vérification WASM du journal.
 
+**Versions publiées** : `v0.1.0` (DEPLOY-7) → `v0.2.0` (DEPLOY-8/9 : ONNX,
+71/75) → `v0.2.1` (DEPLOY-9 : couverture étendue) → `v0.2.2` (DEPLOY-10 :
+72/79, matricule officiel, correctif graphe) → **`v0.2.3` (STACK-N0 :
+core/audit/proxy — coffre persistant N0, passphrase locale fail-loud,
+Policy::n0_for, mode N0 du proxy ; vérifié : core 72 tests, audit 34,
+proxy 42 dont e2e_n0 5/5)**.
+
 ## 5. Où vivent les licences
 
 - Racine : `LICENSE` (Apache-2.0, texte officiel — workspace).

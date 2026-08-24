@@ -162,17 +162,27 @@ de conduire** et les **matricules des fonctionnaires de l'État / IPRES**
   detect_cli), open-core **re-publié v0.2.1** (core + bench, README à jour).
 - Détails : `journal/DEPLOY-9.md` §③.
 
-### PRIORITÉ 6 — stratégie : N3 ✅ LIVRÉ, N0 = PROCHAINE session
+### PRIORITÉ 6 — stratégie : N3 ✅ LIVRÉ, **N0 ✅ LIVRÉ (STACK-N0, 25/08/2026)**
 
 **N3 (couche commerciale) est livré (DEPLOY-9)** : `cloison-cli` ops complet,
 onboarding scripté + documenté, docs client (guide 2 champs + FAQ), rapport
 de conformité k-anonyme, journal public restylé (design system de référence).
-- **N0 (prochaine session)** : le plus léger possible — moteur **Rust
-  seul** (core, sans sidecar NER Python), kit portable (natif desktop/mobile +
-  WASM), déclinaisons daemon desktop (v1) / mobile embarqué / navigateur. Coffre
-  persistant, auth 100 % locale, limites honnêtes documentées. **Préparation
-  prête : `journal/N0-PREP.md`** ; décisions et questions ouvertes :
-  `REPRISE-DEPLOIEMENT.md` §6bis.
+- **N0 — ✅ LIVRÉ (STACK-N0, 25/08/2026)** : kit moteur **Rust seul** (core,
+  sans sidecar NER Python) — daemon desktop `localhost:8787` compatible
+  OpenAI, **coffre persistant** redb chiffré AES-256-GCM (clé **dérivée d'une
+  passphrase locale** HKDF, **fail-loud** au boot : passphrase absente/mauvaise
+  ou coffre corrompu → refus de démarrer, jamais de recréation silencieuse),
+  **auth 100 % locale** (aucune dépendance au plan de contrôle pour masquer),
+  sel de session **persistant** (la session survit aux redémarrages),
+  généralisation des faibles cardinalités active (ville → `[VILLE_SN]`),
+  `/v1/embeddings` **bloqué** (404), **limites honnêtes** documentées
+  (`docs/N0.md` §4 : rappel PERSON/LOC réduit, poste compromis,
+  quasi-identifiants). Preuve e2e locale (roundtrip, coffre sans clair,
+  persistance, fail-loud) + open-core **v0.2.3** (core/audit/proxy).
+  Décisions détaillées : `journal/STACK-N0.md` ; préparation `N0-PREP.md`.
+- **Pistes N0 v1.1** (documentées, non livrées) : alias intra-session R1-R7 +
+  jauge quasi-id **in-core**, keychain OS, NER léger embarqué (voie ONNX),
+  déclinaisons `cloison-wasm` (navigateur) / mobile embarqué.
 - **GPU (dette ②)** : en attente (aucun GPU disponible, décision reportée —
   baseline ONNX de DEPLOY-8 comme référence).
 - **✅ RESOLUES (DEPLOY-10)** : **dette documentaire** (attribution TEL

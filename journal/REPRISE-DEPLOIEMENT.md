@@ -122,8 +122,13 @@ attrapé le bug que les 70 tests ne voyaient pas).
 > **✅ DÉCISIONS PILOTE SOLDÉES (25/08/2026)** : `dsh.wonkom.ai` (retrait DNS
 > validé, action opérateur en attente) ; mode audit public vs interne
 > (**interne par défaut validé**).
-> **Prochaine session = N0** (kit moteur léger Rust seul — **préparation :
-> `journal/N0-PREP.md`**, design §6bis posé) ;
+> **✅ N0 LIVRÉ (STACK-N0, 25/08/2026)** : kit moteur **Rust seul** — daemon
+> desktop `localhost:8787`, coffre persistant (passphrase locale, fail-loud),
+> auth 100 % locale, sel de session persistant, `/v1/embeddings` bloqué,
+> limites honnêtes (`docs/N0.md`) ; portes vertes (tests/clippy/fmt/WASM/
+> invariants 17) + preuve daemon réel + open-core **v0.2.3** (core/audit/proxy).
+> **Prochaine session = N0 v1.1** (alias/jauge in-core, keychain OS, NER léger
+> embarqué, `cloison-wasm`) ;
 > **GPU toujours en attente** (aucun GPU disponible — décision reportée ;
 > baseline ONNX de DEPLOY-8 comme référence).
 
@@ -215,29 +220,28 @@ un **GPU local** (dans l'infra) ou une autre approche est envisagé, le sizing
 et la procédure sont documentés (DEPLOY-6) ; la **baseline ONNX chiffrée de
 DEPLOY-8** sert de référence pour mesurer le gain.
 
-### N0 — kit moteur léger (session ULTÉRIEURE, après N3)
+### N0 — kit moteur léger — ✅ LIVRÉ (STACK-N0, 25/08/2026)
 
-Décisions pilote posées (23/08/2026) :
+Décisions pilote posées (23/08/2026) **exécutées** :
 
-- **N0 le plus léger possible** : moteur **Rust seul** (core : détection
-  structurée + gazetteers), **SANS sidecar NER Python** (charte §4 : le
-  sidecar est pour les paliers serveur/enclave) — ~quelques Mo, offline,
-  mobile-friendly. Limite honnête à documenter : rappel PERSON/LOC en texte
-  libre réduit (voie ONNX = rampe vers un NER léger plus tard).
-- **Kit portable** : core en bibliothèque (natif desktop/mobile + WASM
-  navigateur) — déclinaisons : **daemon desktop** (endpoint
-  OpenAI-compatible `localhost:8787`, réutilise le proxy — **recommandé
-  v1**), **mobile** (moteur embarqué — pas de daemon sur iOS), **navigateur**
-  (`cloison-wasm`, à écrire — squelette aujourd'hui).
-- **Décisions techniques** : coffre **persistant** (clé locale keychain,
-  perte = fail-loud), **auth 100 % locale** (jeton `mn_` résolu localement —
-  zéro dépendance au plan de contrôle pour masquer ; audit k-anonyme
-  **opt-in** vers le journal), philosophie référencée (invariants, open-core,
-  lien journal, mention « poste compromis »).
-- **Questions ouvertes** : surface v1 (daemon desktop vs app embarquée —
-  reco daemon) ; alias intra-session (R1-R7) + jauge quasi-id dans le core v1
-  (léger, déterministe) ou report v1.1 documenté.
-- **Prérequis** : dette 71/75 réglée AVANT d'embarquer le moteur (session N3).
+- **N0 le plus léger possible** ✅ : moteur **Rust seul** (core : détection
+  structurée + gazetteers), **SANS sidecar NER Python** — quelques Mo,
+  offline, mobile-friendly. Limite honnête documentée : rappel PERSON/LOC en
+  texte libre réduit (voie ONNX = rampe vers un NER léger plus tard).
+- **Kit portable** ✅ (daemon desktop v1) : `cloison-proxy` en mode N0
+  (`CLOISON_VAULT_PATH` + `CLOISON_VAULT_PASSPHRASE`), endpoint
+  OpenAI-compatible `localhost:8787`, clé composite locale.
+- **Décisions techniques exécutées** : coffre **persistant** (clé dérivée
+  d'une passphrase locale, perte = **fail-loud** au boot), **auth 100 %
+  locale** (jeton `mn_` résolu localement — zéro dépendance au plan de
+  contrôle pour masquer ; audit k-anonyme **opt-in**), philosophie
+  référencée (invariants, open-core, lien journal, mention « poste
+  compromis »).
+- **Questions ouvertes tranchées** : surface v1 = **daemon desktop** (reco
+  retenue) ; alias intra-session (R1-R7) + jauge quasi-id in-core =
+  **report v1.1 documenté** (le sidecar les porte déjà) ; `/v1/embeddings` =
+  **bloqué par défaut** (404).
+- Détails : `journal/STACK-N0.md`, `docs/N0.md`, open-core v0.2.3.
 
 ### Secondaires (si le temps le permet)
 
