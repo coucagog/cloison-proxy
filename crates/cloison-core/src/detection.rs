@@ -239,10 +239,9 @@ impl Detector {
         // Format CEDEAO/ICAO observé : 1-2 lettres + 7-8 chiffres (à confirmer —
         // la structure exacte n'est pas documentée publiquement ; la détection
         // contextuelle est volontairement conservatrice, charte §11).
-        let passport_re = Regex::new(
-            r"(?i)(?:passeport|passport)\s*(?:n[°o]\s*)?[:#]?\s*([A-Z]{1,2}[0-9]{7,8})"
-        )
-        .map_err(|e| CloisonError::Detection(format!("passport regex: {}", e)))?;
+        let passport_re =
+            Regex::new(r"(?i)(?:passeport|passport)\s*(?:n[°o]\s*)?[:#]?\s*([A-Z]{1,2}[0-9]{7,8})")
+                .map_err(|e| CloisonError::Detection(format!("passport regex: {}", e)))?;
 
         // Permis de conduire sénégalais : numéro précédé d'un contexte explicite.
         // Format observé : 7-10 chiffres (à confirmer ; contexte obligatoire).
@@ -255,7 +254,7 @@ impl Detector {
         // retraités) : numéro précédé d'un contexte explicite (« matricule »,
         // « IPRES »). Format observé : 8-11 chiffres (à confirmer).
         let matricule_re = Regex::new(
-            r"(?i)(?:matricule|ipres|immatriculation)\s*(?:n[°o]\s*)?[:#]?\s*([0-9]{8,11})"
+            r"(?i)(?:matricule|ipres|immatriculation)\s*(?:n[°o]\s*)?[:#]?\s*([0-9]{8,11})",
         )
         .map_err(|e| CloisonError::Detection(format!("matricule regex: {}", e)))?;
 
@@ -696,7 +695,9 @@ mod tests {
         assert_eq!(spans.len(), 1);
         assert_eq!(spans[0].entity_type, DetectorKind::DriverLicense);
         assert_eq!(spans[0].value, "12345678");
-        assert!(det.detect_driver_license("Réf 12345678 sans contexte").is_empty());
+        assert!(det
+            .detect_driver_license("Réf 12345678 sans contexte")
+            .is_empty());
     }
 
     #[test]
@@ -712,7 +713,9 @@ mod tests {
         assert_eq!(spans2.len(), 1);
         assert_eq!(spans2[0].entity_type, DetectorKind::Matricule);
         // Sans contexte : aucun faux positif.
-        assert!(det.detect_matricule("Le 012345678 n'est pas un matricule").is_empty());
+        assert!(det
+            .detect_matricule("Le 012345678 n'est pas un matricule")
+            .is_empty());
     }
 
     #[test]
