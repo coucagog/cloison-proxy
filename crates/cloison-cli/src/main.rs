@@ -35,8 +35,8 @@ async fn run(cli: Cli) -> Result<(), CliError> {
         Command::TokenVerify(a) => token_verify(&client, a).await,
         Command::PolicySet(a) => policy_set(&client, a).await,
         Command::LicenseAdd(a) => license_add(&client, a).await,
-        Command::LedgerRoot => ledger_root(&client).await,
-        Command::LedgerCheck(a) => {
+        Command::Ledger(LedgerCmd::Root) => ledger_root(&client).await,
+        Command::Ledger(LedgerCmd::Check(a)) => {
             verify_ledger_file(&a.ledger_file, a.pubkey_file.as_ref())?;
             Ok(())
         }

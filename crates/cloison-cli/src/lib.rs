@@ -78,12 +78,19 @@ pub enum Command {
     PolicySet(PolicySetArgs),
     /// Ajoute une licence (plan + expiration optionnelle).
     LicenseAdd(LicenseAddArgs),
-    /// Racine courante du journal de transparence.
-    LedgerRoot,
-    /// Vérifie hors-ligne un fichier JSONL du journal (chaîne + signatures).
-    LedgerCheck(LedgerCheckArgs),
+    /// Racine courante du journal / vérification hors-ligne (`ledger`).
+    Ledger(LedgerCmd),
     /// Statistiques d'un tenant (version de jeton + racine du journal).
     Stats(StatsArgs),
+}
+
+/// Sous-commandes `ledger` (journal de transparence).
+#[derive(Debug, Subcommand)]
+pub enum LedgerCmd {
+    /// Racine courante du journal (`GET /v1/control/root`).
+    Root,
+    /// Vérifie hors-ligne un fichier JSONL du journal (chaîne + signatures).
+    Check(LedgerCheckArgs),
 }
 
 #[derive(Debug, clap::Args)]
