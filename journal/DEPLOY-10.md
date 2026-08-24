@@ -161,6 +161,10 @@ automatique. [Résultats : section ci-dessous.]
 - **Baseline dérivée** (deps épinglées, onnxdev) : macro **0.7743** —
   référence OFFICIELLE 0.7501 restaurée dans `rapport.json` (doctrine
   DEPLOY-6/9) ; le GO est évalué contre elle (marges a fortiori).
+  NB : la baseline dérivée a été mesurée avec presidio 2.2.355 (onnxdev) ;
+  le pin final est 2.2.364 (voir « Correctif CI bench ») — la dérivée
+  régénérée peut bouger de quelques millièmes, la référence officielle et
+  le verdict (marges > 0.10) ne changent pas.
 - **GO TORCH — VERDICT GO (5/5 PASS)** : macro **0.9573** (seuil ≥ 0.850) ·
   PERSON **0.9428** (≥ 0.638) · LOC **0.8450** (≥ 0.746) · CNI 1.0000
   (non-régression) · spécificité **81 %** (≥ 60 %) · MAIL/TEL 1.0000/0.9988.
@@ -212,6 +216,21 @@ automatique. [Résultats : section ci-dessous.]
   core `cargo test` 50+17 ✅ · bench pytest 36/36 ✅ · detect pytest 79/79
   ✅ · audit/control/proxy `cargo check` ✅ (proxy avec git deps
   core+audit v0.2.2).
+
+### Correctif CI bench (constaté sur le premier run du push DEPLOY-10)
+
+Le job `bench` de la CI échouait : `NameError: PatternRecognizer` —
+`presidio-analyzer==2.2.355` (pin initial, env VPS py3.11) ne s'importe
+**pas sur Python 3.12** (CI), et `spacy 3.7.5` (typer-slim) ne tire pas
+`click` (requis par `spacy.cli`/presidio). Corrigé dans
+`bench/cloison-bench/requirements.txt` :
+`presidio-analyzer==2.2.364` (importe OK py3.12 + py3.11, version prouvée
+par les runs CI précédents) + `click==8.1.8` (épinglé). **Validé sur
+python:3.12-slim** : `PRESIDIO_AVAILABLE=True`, pytest 36/36,
+`run_benchmark.py` complet. Le dépôt public `cloison-bench` v0.2.2 a été
+re-pointé avec le même correctif. Leçon : tout pin de dépendances doit être
+validé sur l'ENVIRONNEMENT de la CI (py3.12) et pas seulement sur le VPS
+(py3.11).
 
 ## Invariants de sécurité vérifiés
 
