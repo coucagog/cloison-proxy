@@ -304,7 +304,9 @@ positifs massifs tout en couvrant les cas réels.
   référence).
 - **N0** (kit léger Rust seul, daemon desktop) : session ultérieure,
   design posé (§6bis) — prérequis 71/75 réglé ✅.
-- `cloison-cli` : re-publication open-core v0.2.0 à prévoir (le dépôt public
-  est un squelette depuis DEPLOY-7) — mécanique identique à cette session.
-- Re-publication open-core N3+ (core/bench v0.2.1 si applicable) : à
-  exécuter après la validation complète (même mécanique que v0.2.0).
+- `cloison-cli` : re-publication open-core v0.2.0 **FAITE** (dépôt public
+  `coucagog/cloison-cli`, manifest autonome, git deps épinglées v0.1.0,
+  cargo test 4 PASS sur le tag) — le dépôt n'est plus un squelette.
+- Re-publication open-core N3+ (core/bench v0.2.1) : **FAITE** — core 50+17,
+  bench 36/36, README relu (verdict GO actualisé). `cloison-cli` v0.2.0
+  également publié (logique N3 + fix ledger).
