@@ -64,6 +64,8 @@ pub const DEFAULT_CONTROL_POLL_INTERVAL_SECS: u64 = 30;
 pub const DEFAULT_CONTROL_VERIFY_CACHE_TTL_SECS: u64 = 300;
 /// Locataire par défaut (reçus d'audit, vérification de jeton).
 pub const DEFAULT_TENANT_ID: &str = "default";
+/// TTL des entrées du coffre persistant N0 par défaut : 7 jours.
+pub const DEFAULT_VAULT_TTL_SECS: u64 = 7 * 24 * 3600;
 
 /// Configuration complète du proxy.
 #[derive(Clone)]
@@ -104,6 +106,53 @@ pub struct Config {
     /// Wiring edge → plan de contrôle (C) : vérification des jetons par hash,
     /// long-poll des versions, ingest automatique des reçus d'audit.
     pub control: ControlConfig,
+    /// Coffre persistant local (N0) : `CLOISON_VAULT_PATH` posé = mode N0.
+    pub vault: N0VaultConfig,
+}
+
+/// Configuration du coffre persistant local (N0 — daemon desktop).
+///
+/// Poser `CLOISON_VAULT_PATH` active le **mode N0** :
+/// - coffre redb chiffré persistant (`Vault`, AES-256-GCM) avec la clé
+///   **dérivée de la passphrase locale** (HKDF, jamais persistée) ;
+/// - **fail-loud au boot** : passphrase absente ou mauvaise → refus de
+///   démarrer (jamais de recréation silencieuse, N0-PREP §4.2) ;
+/// - sel de session **persistant** (fichier 0600) : la session du daemon
+///   survit aux redémarrages (la restauration reste bornée au registre de
+///   chaque requête — invariant I3 inchangé).
+///
+/// Sans `CLOISON_VAULT_PATH`, le comportement historique est conservé
+/// (pas de coffre, sel aléatoire par boot, auth locale statique).
+#[derive(Clone)]
+pub struct N0VaultConfig {
+    /// Chemin du coffre redb (`CLOISON_VAULT_PATH`). `None` = pas de mode N0.
+    pub path: Option<PathBuf>,
+    /// Passphrase locale (`CLOISON_VAULT_PASSPHRASE`) : clé du coffre dérivée
+    /// par HKDF. Requise si `path` est posé. Jamais loggée, jamais persistée.
+    pub passphrase: Option<Zeroizing<String>>,
+    /// TTL des entrées du coffre (`CLOISON_VAULT_TTL_SECS`, défaut 7 jours).
+    pub ttl_secs: u64,
+    /// Fichier du sel de session persistant (`CLOISON_SESSION_SALT_FILE`,
+    /// défaut `<vault_path>.salt`).
+    pub session_salt_file: Option<PathBuf>,
+}
+
+impl N0VaultConfig {
+    /// Mode N0 actif ?
+    pub fn is_active(&self) -> bool {
+        self.path.is_some()
+    }
+}
+
+impl Default for N0VaultConfig {
+    fn default() -> Self {
+        Self {
+            path: None,
+            passphrase: None,
+            ttl_secs: DEFAULT_VAULT_TTL_SECS,
+            session_salt_file: None,
+        }
+    }
 }
 
 /// Configuration du wiring edge → plan de contrôle (`cloison-control`).
@@ -183,6 +232,20 @@ impl std::fmt::Debug for Config {
             .field("control_tenant_id", &self.control.tenant_id)
             .field("control_ingest_interval", &self.control.ingest_interval)
             .field("control_poll_interval", &self.control.poll_interval)
+            .field(
+                "vault_n0",
+                &self.vault.path.as_ref().map(|p| p.display().to_string()),
+            )
+            .field("vault_passphrase_set", &self.vault.passphrase.is_some())
+            .field("vault_ttl_secs", &self.vault.ttl_secs)
+            .field(
+                "session_salt_file",
+                &self
+                    .vault
+                    .session_salt_file
+                    .as_ref()
+                    .map(|p| p.display().to_string()),
+            )
             .finish_non_exhaustive()
     }
 }
@@ -282,17 +345,45 @@ pub fn load() -> Result<Config, ProxyError> {
         }
     };
 
-    let session_salt: [u8; 16] = match std::env::var("CLOISON_SESSION_SALT_HEX") {
-        // Chaîne vide = non configuré (le compose passe ) : sel aléatoire par boot.
-        Ok(v) if !v.is_empty() => decode_hex(&v).map_err(|e| {
-            ProxyError::new(
+    // N0 — coffre persistant local (daemon desktop) : poser CLOISON_VAULT_PATH
+    // active le mode N0 (coffre redb + clé dérivée de la passphrase + sel
+    // persistant). Sans lui, comportement historique inchangé.
+    let vault = {
+        let path = match env("CLOISON_VAULT_PATH", "") {
+            s if s.is_empty() => None,
+            s => Some(PathBuf::from(s)),
+        };
+        let passphrase = match std::env::var("CLOISON_VAULT_PASSPHRASE") {
+            Ok(v) if !v.is_empty() => Some(Zeroizing::new(v)),
+            _ => None,
+        };
+        let ttl_secs = env_u64("CLOISON_VAULT_TTL_SECS", DEFAULT_VAULT_TTL_SECS)?;
+        let explicit_salt_file = match env("CLOISON_SESSION_SALT_FILE", "") {
+            s if s.is_empty() => None,
+            s => Some(PathBuf::from(s)),
+        };
+        // Défaut du fichier de sel : à côté du coffre (`<vault_path>.salt`).
+        let session_salt_file = match (&path, explicit_salt_file) {
+            (Some(p), None) => Some(PathBuf::from(format!("{}.salt", p.display()))),
+            (_, f) => f,
+        };
+        let cfg = N0VaultConfig {
+            path,
+            passphrase,
+            ttl_secs,
+            session_salt_file,
+        };
+        // Fail-loud : coffre posé sans passphrase → refus de démarrer (N0-PREP §4.2).
+        if cfg.is_active() && cfg.passphrase.is_none() {
+            return Err(ProxyError::new(
                 ErrorKind::Internal,
-                "invalid CLOISON_SESSION_SALT_HEX (32 hex chars required)",
-            )
-            .with_field("detail", e.to_string())
-        })?,
-        _ => random_salt(),
+                "CLOISON_VAULT_PASSPHRASE is required when CLOISON_VAULT_PATH is set (N0, fail-loud)",
+            ));
+        }
+        cfg
     };
+
+    let session_salt = load_session_salt(&vault)?;
 
     let expected_access_token = match std::env::var("CLOISON_EXPECTED_ACCESS_TOKEN") {
         Ok(v) if !v.is_empty() => Some(Zeroizing::new(v)),
@@ -395,7 +486,99 @@ pub fn load() -> Result<Config, ProxyError> {
         audit_ledger_file,
         detect,
         control,
+        vault,
     })
+}
+
+/// Charge le sel de session (rotation des jetons) :
+/// 1. `CLOISON_SESSION_SALT_HEX` explicite (priorité — comportement historique) ;
+/// 2. mode N0 : fichier persistant 0600 (session longue du daemon desktop —
+///    les jetons restent restaurables à travers les redémarrages) ;
+/// 3. sinon : aléatoire par boot (comportement historique, rotation).
+fn load_session_salt(vault: &N0VaultConfig) -> Result<[u8; 16], ProxyError> {
+    if let Ok(v) = std::env::var("CLOISON_SESSION_SALT_HEX") {
+        if !v.is_empty() {
+            return decode_hex(&v).map_err(|e| {
+                ProxyError::new(
+                    ErrorKind::Internal,
+                    "invalid CLOISON_SESSION_SALT_HEX (32 hex chars required)",
+                )
+                .with_field("detail", e.to_string())
+            });
+        }
+    }
+    if let Some(path) = &vault.session_salt_file {
+        return load_or_create_salt_file(path);
+    }
+    Ok(random_salt())
+}
+
+/// Lit ou crée le fichier de sel de session (0600, écriture atomique par
+/// création-exclusive). Un fichier existant de mauvaise taille est une erreur
+/// **fatale** (fail-loud) — jamais un sel silencieusement régénéré (les jetons
+/// d'une session changeraient sans avertissement).
+fn load_or_create_salt_file(path: &std::path::Path) -> Result<[u8; 16], ProxyError> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+
+    if let Ok(raw) = std::fs::read(path) {
+        if raw.len() != 16 {
+            return Err(ProxyError::new(
+                ErrorKind::Internal,
+                "invalid session salt file (expected 16 bytes) — fail-loud",
+            )
+            .with_field("path", path.display().to_string()));
+        }
+        let mut salt = [0u8; 16];
+        salt.copy_from_slice(&raw);
+        return Ok(salt);
+    }
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent).map_err(|e| {
+                ProxyError::new(ErrorKind::Internal, "failed to create salt directory")
+                    .with_field("path", parent.display().to_string())
+                    .with_field("detail", e.to_string())
+            })?;
+        }
+    }
+    let salt = random_salt();
+    match std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(path)
+    {
+        Ok(mut f) => {
+            f.write_all(&salt).and_then(|_| f.flush()).map_err(|e| {
+                ProxyError::new(ErrorKind::Internal, "failed to write session salt file")
+                    .with_field("path", path.display().to_string())
+                    .with_field("detail", e.to_string())
+            })?;
+            tracing::info!(
+                path = %path.display(),
+                "sel de session N0 généré et persisté (0600)"
+            );
+            Ok(salt)
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            // Course (création-exclusive) : un autre process a créé le fichier —
+            // relire (même sel pour tous les process, jamais deux sels).
+            let raw = std::fs::read(path).map_err(|e2| {
+                ProxyError::new(ErrorKind::Internal, "failed to read session salt file")
+                    .with_field("path", path.display().to_string())
+                    .with_field("detail", e2.to_string())
+            })?;
+            let mut salt = [0u8; 16];
+            salt.copy_from_slice(&raw);
+            Ok(salt)
+        }
+        Err(e) => Err(
+            ProxyError::new(ErrorKind::Internal, "failed to create session salt file")
+                .with_field("path", path.display().to_string())
+                .with_field("detail", e.to_string()),
+        ),
+    }
 }
 
 fn env(name: &str, default: &str) -> String {
@@ -493,5 +676,67 @@ mod tests {
         assert_eq!(k, [0xab; 32]);
         assert!(decode_hex::<32>("ab").is_err());
         assert!(decode_hex::<16>("zz".repeat(16).as_str()).is_err());
+    }
+
+    #[test]
+    fn salt_file_created_and_reloaded() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("session.salt");
+        let cfg = N0VaultConfig {
+            path: None,
+            passphrase: None,
+            ttl_secs: DEFAULT_VAULT_TTL_SECS,
+            session_salt_file: Some(path.clone()),
+        };
+        // Premier appel : création (0600) + relecture identique.
+        let s1 = load_session_salt(&cfg).unwrap();
+        let s2 = load_session_salt(&cfg).unwrap();
+        assert_eq!(s1, s2, "sel stable à travers les appels/redémarrages");
+        // Permissions 0600.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(&path).unwrap().permissions().mode();
+            assert_eq!(mode & 0o777, 0o600, "fichier sel en 0600");
+        }
+    }
+
+    #[test]
+    fn salt_file_wrong_size_fails_loud() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bad.salt");
+        std::fs::write(&path, vec![0u8; 7]).unwrap();
+        let cfg = N0VaultConfig {
+            path: None,
+            passphrase: None,
+            ttl_secs: DEFAULT_VAULT_TTL_SECS,
+            session_salt_file: Some(path),
+        };
+        assert!(
+            load_session_salt(&cfg).is_err(),
+            "fichier sel de mauvaise taille = fail-loud (jamais de sel silencieusement régénéré)"
+        );
+    }
+
+    #[test]
+    fn explicit_hex_salt_wins_over_file() {
+        // Les env vars sont globales : sérialiser avec les autres tests env.
+        static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+        let _guard = ENV_LOCK.lock().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("session.salt");
+        std::env::set_var("CLOISON_SESSION_SALT_HEX", "ab".repeat(16));
+        let cfg = N0VaultConfig {
+            path: None,
+            passphrase: None,
+            ttl_secs: DEFAULT_VAULT_TTL_SECS,
+            session_salt_file: Some(path),
+        };
+        let salt = load_session_salt(&cfg).unwrap();
+        std::env::remove_var("CLOISON_SESSION_SALT_HEX");
+        assert_eq!(
+            salt, [0xab; 16],
+            "le sel hex explicite prime sur le fichier"
+        );
     }
 }

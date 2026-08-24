@@ -126,6 +126,42 @@ impl Policy {
         }
     }
 
+    /// Politique par défaut **N0** (daemon desktop, moteur Rust seul) :
+    /// comme `default_for`, plus la **généralisation des faibles cardinalités
+    /// explicitement posée** (charte §6.1 couche 5, N0-PREP §4.6 : on
+    /// généralise, jamais on tokenise ce que la fréquence trahit).
+    ///
+    /// Les règles par défaut du `Generalizer` (Date/Ip/CreditCard) couvrent
+    /// déjà ces types ; les poser dans la politique rend le comportement N0
+    /// autonome et documenté, et ajoute la **ville** (toponyme gazetteer,
+    /// faible cardinalité) en généralisation `[VILLE_SN]` — jamais de jeton.
+    pub fn n0_for(tenant_id: &str) -> Self {
+        let mut p = Self::default_for(tenant_id);
+        p.generalization
+            .insert(DetectorKind::Date, GeneralizeRule::DateBucket);
+        p.generalization.insert(
+            DetectorKind::Ip,
+            GeneralizeRule::Range {
+                prefix: "[IP]".to_string(),
+            },
+        );
+        p.generalization.insert(
+            DetectorKind::CreditCard,
+            GeneralizeRule::Mask {
+                keep_start: 0,
+                keep_end: 4,
+                mask_char: '•',
+            },
+        );
+        p.generalization.insert(
+            DetectorKind::Gazetteer(crate::detection::GAZETTEER_VILLE_SN.to_string()),
+            GeneralizeRule::Replace {
+                label: "[VILLE_SN]".to_string(),
+            },
+        );
+        p
+    }
+
     /// Check if a detector is enabled.
     pub fn is_enabled(&self, kind: &DetectorKind) -> bool {
         self.detection.is_enabled(kind)
@@ -181,5 +217,20 @@ mod tests {
     fn test_policy_default_for() {
         let policy = Policy::default_for("tenant-42");
         assert_eq!(policy.tenant_id, "tenant-42");
+    }
+
+    #[test]
+    fn test_policy_n0_for_generalizes_low_cardinality() {
+        let policy = Policy::n0_for("n0-local");
+        // Faibles cardinalités : généralisation posée dans la politique.
+        assert!(policy.should_generalize(&DetectorKind::Date));
+        assert!(policy.should_generalize(&DetectorKind::Ip));
+        assert!(policy.should_generalize(&DetectorKind::CreditCard));
+        let ville = DetectorKind::Gazetteer("ville_sn".to_string());
+        assert!(policy.should_generalize(&ville));
+        // Types à forte entropie : jamais généralisés par défaut.
+        assert!(!policy.should_generalize(&DetectorKind::Email));
+        assert!(!policy.should_generalize(&DetectorKind::PhoneSn));
+        assert!(!policy.should_generalize(&DetectorKind::CniSn));
     }
 }

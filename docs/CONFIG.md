@@ -26,7 +26,11 @@
 | `CLOISON_STREAM_KEEP_ALIVE_MS` | edge | non | `15000` | intervalle keep-alive SSE |
 | `CLOISON_EXPECTED_ACCESS_TOKEN` | edge | **oui** | absent (auth optionnelle) | jeton local `mn_*` attendu, comparé à temps constant |
 | `CLOISON_TENANT_KEY_HEX` | edge/control | **oui** | **requis** (hors mock) | clé locataire 32 octets en hex (64 caractères) |
-| `CLOISON_SESSION_SALT_HEX` | edge | **oui** | aléatoire par boot | sel de session 16 octets (32 hex) ; rotation des jetons |
+| `CLOISON_SESSION_SALT_HEX` | edge | **oui** | aléatoire par boot ; **fichier persistant en mode N0** | sel de session 16 octets (32 hex) ; rotation des jetons. En mode N0 (`CLOISON_VAULT_PATH` posé), le sel est **persisté** dans `<vault_path>.salt` (0600) si non fourni — la session du daemon survit aux redémarrages (la rotation reste possible en supprimant le fichier ou en posant la variable) |
+| `CLOISON_VAULT_PATH` *(N0)* | edge | non | absent (pas de coffre) | **posé = mode N0 (daemon desktop)** : coffre redb **persistant** chiffré AES-256-GCM (`Vault`), clé dérivée de `CLOISON_VAULT_PASSPHRASE`, politique N0 (généralisation des faibles cardinalités explicite), sel de session persistant. Absent = comportement historique (pas de coffre, sel aléatoire par boot) |
+| `CLOISON_VAULT_PASSPHRASE` *(N0)* | edge | **oui** | — | passphrase locale → clé du coffre (HKDF, **jamais persistée ni loggée**). **Requis si `CLOISON_VAULT_PATH` est posé** — absent → refus de démarrer (fail-loud) ; mauvaise passphrase sur un coffre existant → refus de démarrer (jamais de recréation silencieuse) |
+| `CLOISON_VAULT_TTL_SECS` *(N0)* | edge | non | `604800` (7 j) | TTL des entrées du coffre (purge par session) |
+| `CLOISON_SESSION_SALT_FILE` *(N0)* | edge | non | `<vault_path>.salt` | chemin explicite du fichier de sel persistant |
 | `CLOISON_MOCK_MODE` | edge | non | `0` | `1` = prérequis assouplis (clé de dev) — jamais en prod |
 | `CLOISON_AUDIT_MODE` | edge | non | `0` | `1` = observe-only (reçus signés, rapport k-anonyme) |
 | `CLOISON_AUDIT_KEYS` | edge | **oui** | absent (clé générée 0600) | chemin clé Ed25519 de l'agent (32 o bruts ou 64 hex) |

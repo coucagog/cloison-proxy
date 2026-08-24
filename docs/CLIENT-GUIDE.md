@@ -94,6 +94,24 @@ Presidio forte (verdict GO : PERSON 0.94, LOC 0.84, macro 0.95).
 | **N1 site** | votre serveur | seulement vous, chez vous |
 | **N3 hébergé** | chez l'éditeur (api.wonkom.ai) | entrée de gamme ; le clair ne quitte pas l'edge, le cloud ne voit que des compteurs |
 
+### 4bis. N0 — daemon local (le moteur chez vous)
+
+N0 v1 est un **daemon desktop** : le moteur Rust tourne sur **votre machine**
+(coffre chiffré persistant, clé locale, auth 100 % locale). Branchez votre
+interface IA sur :
+
+```
+Base URL : http://localhost:8787/v1
+Clé      : mn_<jeton_local>.<clé_amont>
+```
+
+La promesse « nous ne lisons rien » y est **absolue** (le clair ne quitte pas
+votre poste — le cloud ne voit que des compteurs opt-in). Limites honnêtes à
+connaître : rappel **PERSON/LOC réduit** en texte libre (moteur Rust seul,
+sans sidecar NER), **poste compromis** non protégé, quasi-identifiants
+signalés et non résolus, `/v1/embeddings` **bloqué** (404).
+→ Guide complet : **`docs/N0.md`** (installation, configuration, limites).
+
 ## 5. Liens
 
 - Journal public + vérification : `https://journal.wonkom.ai`

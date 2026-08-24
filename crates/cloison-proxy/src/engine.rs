@@ -49,11 +49,28 @@ pub struct RequestEngine {
 
 impl RequestEngine {
     /// Crée un moteur vierge pour une requête (registre vide).
-    pub fn new(keys: &SessionKeys, request_id: &str) -> Result<Self, ProxyError> {
-        let engine = Engine::new(keys.clone()).map_err(|e| {
-            ProxyError::new(ErrorKind::Internal, "failed to initialize engine")
+    ///
+    /// `vault` (N0) : coffre persistant partagé — la restauration reste bornée
+    /// au registre de la requête (invariant I3) ; le coffre fournit la valeur
+    /// en fallback (source de vérité persistante, charte §9.1).
+    pub fn new(
+        keys: &SessionKeys,
+        request_id: &str,
+        vault: Option<std::sync::Arc<cloison_core::Vault>>,
+    ) -> Result<Self, ProxyError> {
+        let engine = match vault {
+            Some(v) => Engine::with_vault(keys.clone(), (*v).clone()).map_err(|e| {
+                ProxyError::new(
+                    ErrorKind::Internal,
+                    "failed to initialize engine with vault",
+                )
                 .with_field("detail", e.to_string())
-        })?;
+            })?,
+            None => Engine::new(keys.clone()).map_err(|e| {
+                ProxyError::new(ErrorKind::Internal, "failed to initialize engine")
+                    .with_field("detail", e.to_string())
+            })?,
+        };
         Ok(Self {
             engine,
             request_id: request_id.to_string(),

@@ -22,6 +22,7 @@ Le moteur descend **chez le client** (edge) ; le cloud n'est qu'un **plan de con
 | [`docs/OPEN-CORE.md`](docs/OPEN-CORE.md) | Composition open-core, licences, publication |
 | [`docs/ONBOARDING.md`](docs/ONBOARDING.md) | Onboarding locataire (ops, `cloison-cli`) |
 | [`docs/CLIENT-GUIDE.md`](docs/CLIENT-GUIDE.md) | Guide client (2 champs, FAQ confidentialité) |
+| [`docs/N0.md`](docs/N0.md) | **N0 — daemon desktop local** (installation, limites honnêtes) |
 | [`journal/`](journal/) | Journal de développement STACK-N / DEPLOY-N |
 
 ## Structure
@@ -69,6 +70,15 @@ alimenté par le vrai pipeline (DEPLOY-4). E2E prouvé : mock 12/12, LLM réel 8
 **Production (VPS 144.217.81.251) :** `api.wonkom.ai` (edge, masquage actif) · `journal.wonkom.ai`
 (ledger public + vérification WASM) · stack interne control/detect/postgres, 0 OOM (memwatch),
 certs auto-renouvelés (Caddy + sonde J-14).
+
+**N0 (kit moteur léger Rust seul) — ✅ livré (STACK-N0)** : daemon desktop
+`localhost:8787` compatible OpenAI, coffre redb **persistant** chiffré
+AES-256-GCM (clé dérivée d'une passphrase locale, **fail-loud** au boot,
+jamais de clé en clair sur disque), auth 100 % locale, sel de session
+persistant (la session survit aux redémarrages), généralisation des faibles
+cardinalités active, `/v1/embeddings` **bloqué**, limites honnêtes
+documentées (`docs/N0.md`). Preuve e2e locale : roundtrip hors-ligne,
+persistance après redémarrage, fail-loud sur mauvaise passphrase.
 
 ## Licences (open-core — **publié**, DEPLOY-7)
 

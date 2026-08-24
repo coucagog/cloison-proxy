@@ -32,6 +32,26 @@ impl Default for VaultConfig {
     }
 }
 
+/// Dérive la clé de chiffrement du coffre depuis une **passphrase locale** (N0).
+///
+/// HKDF-SHA256 avec un sel de domaine fixe : la passphrase ne quitte jamais le
+/// processus, aucune clé n'est persistée en clair (charte §9.1, N0-PREP §4.2).
+/// La même passphrase + le même sel ⇒ la même clé ⇒ le même coffre ouvrable
+/// entre redémarrages du daemon.
+pub fn derive_key_from_passphrase(passphrase: &[u8]) -> CloisonResult<[u8; 32]> {
+    use hkdf::Hkdf;
+    use sha2::Sha256;
+
+    const SALT: &[u8] = b"cloison-n0-vault-salt-v1";
+    const INFO: &[u8] = b"cloison-n0-vault-key-v1";
+
+    let hkdf = Hkdf::<Sha256>::new(Some(SALT), passphrase);
+    let mut key = [0u8; 32];
+    hkdf.expand(INFO, &mut key)
+        .map_err(|e| CloisonError::Hkdf(format!("vault key derivation: {}", e)))?;
+    Ok(key)
+}
+
 /// Serialized entry stored in the vault (before encryption).
 #[derive(Serialize, Deserialize)]
 struct VaultEntryData {
@@ -61,8 +81,28 @@ pub struct Vault {
     ttl_secs: u64,
 }
 
+impl Clone for Vault {
+    /// Clone léger : partage la base redb (Arc) — la clé de chiffrement est
+    /// copiée en mémoire (même clé pour tous les moteurs de la session N0).
+    fn clone(&self) -> Self {
+        Self {
+            #[cfg(feature = "native")]
+            db: self.db.clone(),
+            #[cfg(not(feature = "native"))]
+            entries: self.entries.clone(),
+            enc_key: self.enc_key,
+            ttl_secs: self.ttl_secs,
+        }
+    }
+}
+
 impl Vault {
     /// Open or create the vault with the given configuration and encryption key.
+    ///
+    /// **Fail-loud au boot (N0)** : si le coffre existe déjà, la clé est vérifiée
+    /// immédiatement (déchiffrement d'une entrée de contrôle) — une mauvaise
+    /// passphrase/clé ou un coffre corrompu est une **erreur fatale**, jamais une
+    /// recréation silencieuse (N0-PREP §4.2 : perte de clé = fail-loud).
     #[cfg(feature = "native")]
     pub fn open(config: &VaultConfig, enc_key: &[u8; 32]) -> CloisonResult<Self> {
         let db = Database::builder()
@@ -80,11 +120,60 @@ impl Vault {
             .commit()
             .map_err(|e| CloisonError::Vault(format!("failed to commit: {}", e)))?;
 
-        Ok(Self {
+        let vault = Self {
             db: Arc::new(db),
             enc_key: *enc_key,
             ttl_secs: config.ttl_secs,
-        })
+        };
+        vault.check_or_seed_key()?;
+        Ok(vault)
+    }
+
+    /// Entrée de contrôle de clé : chiffrée avec `enc_key`, elle permet de
+    /// détecter une mauvaise clé/passphrase au boot (fail-loud, N0).
+    const KEYCHECK_KEY: &'static str = "__cloison_keycheck__";
+
+    /// Vérifie la clé sur un coffre existant, ou sème l'entrée de contrôle sur
+    /// un coffre vierge. Jamais de recréation silencieuse (N0-PREP §4.2).
+    #[cfg(feature = "native")]
+    fn check_or_seed_key(&self) -> CloisonResult<()> {
+        let read_txn = self
+            .db
+            .begin_read()
+            .map_err(|e| CloisonError::Vault(format!("keycheck: begin_read: {}", e)))?;
+        let exists = {
+            let table = read_txn
+                .open_table(VAULT_TABLE)
+                .map_err(|e| CloisonError::Vault(format!("keycheck: open_table: {}", e)))?;
+            table
+                .get(Self::KEYCHECK_KEY)
+                .map_err(|e| CloisonError::Vault(format!("keycheck: get: {}", e)))?
+                .is_some()
+        };
+
+        if !exists {
+            // Coffre vierge : on sème l'entrée de contrôle (valeur aléatoire,
+            // jamais de secret — uniquement une preuve de possession de clé).
+            let seed = random_hex(16);
+            self.put(Self::KEYCHECK_KEY, &seed, "KC")?;
+            return Ok(());
+        }
+
+        match self.get(Self::KEYCHECK_KEY) {
+            // Clé valide : l'entrée se déchiffre.
+            Ok(Some(_)) => Ok(()),
+            // Entrée périmée (TTL) : la clé est valide, on re-sème.
+            Ok(None) | Err(CloisonError::VaultTtlExpired(_)) => {
+                let seed = random_hex(16);
+                self.put(Self::KEYCHECK_KEY, &seed, "KC")
+            }
+            // Échec de déchiffrement → mauvaise clé / coffre corrompu : fail-loud.
+            Err(e) => Err(CloisonError::Vault(format!(
+                "vault key mismatch or corrupted vault (fail-loud): cannot decrypt keycheck \
+                 entry — wrong passphrase or tampered vault? detail: {}",
+                e
+            ))),
+        }
     }
 
     /// Open an in-memory vault (WASM / no-redb builds).
@@ -414,6 +503,14 @@ fn current_epoch_secs() -> u64 {
         .as_secs()
 }
 
+/// Random hex string of `n` bytes (never a secret — keycheck seed only).
+fn random_hex(n: usize) -> String {
+    use rand::RngCore;
+    let mut bytes = vec![0u8; n];
+    rand::thread_rng().fill_bytes(&mut bytes);
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
 /// In-memory encrypted vault for WASM builds.
 #[cfg(not(feature = "native"))]
 pub struct WasmMemVault {
@@ -487,5 +584,97 @@ mod tests {
         let (val, tag) = vault.get("key1").unwrap().unwrap();
         assert_eq!(val, "value2");
         assert_eq!(tag, "PH");
+    }
+
+    // -----------------------------------------------------------------------
+    // N0 — coffre persistant : roundtrip après réouverture + fail-loud clé
+    // -----------------------------------------------------------------------
+
+    #[cfg(feature = "native")]
+    fn vault_at(dir: &std::path::Path, key: [u8; 32]) -> Vault {
+        let config = VaultConfig {
+            db_path: dir.join("n0.redb"),
+            max_db_size: 1024 * 1024,
+            ttl_secs: 3600,
+        };
+        Vault::open(&config, &key).unwrap()
+    }
+
+    /// N0 : le mapping jeton↔valeur survit à la fermeture/réouverture du coffre
+    /// avec la même clé (roundtrip après redémarrage du daemon).
+    #[cfg(feature = "native")]
+    #[test]
+    fn test_roundtrip_after_reopen() {
+        let dir = tempdir().unwrap();
+        let key = derive_key_from_passphrase(b"passphrase-de-test").unwrap();
+
+        {
+            let vault = vault_at(dir.path(), key);
+            vault.put("bodyX", "Aminata Diop", "GZA").unwrap();
+            vault.put("bodyY", "+221 77 123 45 67", "PH").unwrap();
+        } // drop → coffre fermé (redb flush)
+
+        let vault = vault_at(dir.path(), key);
+        let (val, tag) = vault.get("bodyX").unwrap().unwrap();
+        assert_eq!(val, "Aminata Diop");
+        assert_eq!(tag, "GZA");
+        let (val2, _) = vault.get("bodyY").unwrap().unwrap();
+        assert_eq!(val2, "+221 77 123 45 67");
+    }
+
+    /// N0 : une mauvaise passphrase/clé sur un coffre existant est une erreur
+    /// fatale au boot (fail-loud) — jamais une recréation silencieuse.
+    #[cfg(feature = "native")]
+    #[test]
+    fn test_wrong_key_fails_loud() {
+        let dir = tempdir().unwrap();
+        let good = derive_key_from_passphrase(b"bonne-passphrase").unwrap();
+        {
+            let vault = vault_at(dir.path(), good);
+            vault.put("bodyZ", "secret", "EM").unwrap();
+        }
+
+        let bad = derive_key_from_passphrase(b"mauvaise-passphrase").unwrap();
+        let err = match Vault::open(
+            &VaultConfig {
+                db_path: dir.path().join("n0.redb"),
+                max_db_size: 1024 * 1024,
+                ttl_secs: 3600,
+            },
+            &bad,
+        ) {
+            Ok(_) => panic!("une mauvaise clé doit échouer au boot (fail-loud)"),
+            Err(e) => e,
+        };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("key mismatch") || msg.contains("corrupted"),
+            "fail-loud attendu, obtenu: {msg}"
+        );
+    }
+
+    /// N0 : la dérivation de clé est déterministe (même passphrase → même clé)
+    /// et différente entre passphrases.
+    #[cfg(feature = "native")]
+    #[test]
+    fn test_derive_key_deterministic() {
+        let k1 = derive_key_from_passphrase(b"p1").unwrap();
+        let k2 = derive_key_from_passphrase(b"p1").unwrap();
+        let k3 = derive_key_from_passphrase(b"p2").unwrap();
+        assert_eq!(k1, k2);
+        assert_ne!(k1, k3);
+    }
+
+    /// N0 : l'entrée de contrôle (keycheck) est écrite au premier open.
+    #[cfg(feature = "native")]
+    #[test]
+    fn test_keycheck_seeded() {
+        let dir = tempdir().unwrap();
+        let key = derive_key_from_passphrase(b"kc").unwrap();
+        let vault = vault_at(dir.path(), key);
+        assert!(
+            vault.get(Vault::KEYCHECK_KEY).unwrap().is_some(),
+            "entrée de contrôle présente après le premier open"
+        );
     }
 }

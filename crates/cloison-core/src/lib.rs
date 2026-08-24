@@ -38,4 +38,4 @@ pub use registry::{IssuanceRegistry, RegistrySnapshot};
 pub use token::{
     canonicalize, compute_mac, token_body, verify_body, Sentinel, SessionKeys, Token, TokenBody,
 };
-pub use vault::{Vault, VaultConfig};
+pub use vault::{derive_key_from_passphrase, Vault, VaultConfig};
