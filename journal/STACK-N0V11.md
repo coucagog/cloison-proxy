@@ -183,8 +183,13 @@ cargo test -p cloison-proxy --test e2e_n0   # e2e N0 (7/7)
 - [x] **Tests + portes** : cargo test/clippy/fmt verts, e2e_n0 7/7, 17
       invariants inchangés.
 - [x] **Docs** : `docs/N0.md` (§3, §4, §7), `docs/CONFIG.md`, `README.md`.
-- [x] **Journal + push** + re-publication open-core **v0.2.4** (le core
-      change : alias/quasi_id — procédure `docs/OPEN-CORE.md` §4).
+- [x] **Journal + push** (commit `f9a3bb2a`).
+- [ ] **Re-publication open-core v0.2.4 : À FAIRE** — le core change
+      (alias/quasi_id) ; procédure `docs/OPEN-CORE.md` §4 (graphe
+      core→audit→proxy : re-split + Cargo.toml adapté + push public + tag +
+      vérification cargo test des tags publiés). Opération **publique**,
+      reportée en fin de session — outillage `oc-*.sh` sur le VPS (référence
+      DEPLOY-7/8/9/10 + STACK-N0).
 
 ## Prochaine étape
 
