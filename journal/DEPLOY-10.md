@@ -173,10 +173,45 @@ automatique. [Résultats : section ci-dessous.]
   officielle 0.7501). Artefacts : `results/go_nogo_final.deploy10-officiel-
   {torch,onnx}.json` (versionnés).
 
-### Déploiement
+### Déploiement (VPS 144.217.81.251) — VÉRIFIÉ
 
-[REMPLIR : rebuild images, CLOISON_ONNX=1, backend onnx-int8 vérifié,
-e2e mock/réel, stack saine.]
+- **Images rebuildées** (edge, control, detect) au commit `0df76667` ;
+  `.env` : `CLOISON_ONNX=1` + `CLOISON_ONNX_INT8=1` activés.
+- **Backend ONNX int8 ACTIF en prod** : log detect au boot « african:
+  modèle chargé (afroxlmr, backend=onnx-int8) » — la voie ONNX (dette ③)
+  est enfin la voie de production.
+- **Stack saine** : edge/control/detect/journal/postgres Up, detect
+  **healthy** (healthz 200 interne), `api.wonkom.ai` 401 sans auth
+  (auth composite), ledger public 3 lignes intact, memwatch 0 OOM.
+- **E2E mock anti-pass-through : SUCCÈS** — PII « Aminata »,
+  « **72 111 23 45** » (préfixe 72 — couverture DEPLOY-10) et email
+  masquées amont (sentinelles ⟦, pas de PII), restaurées côté client,
+  aucun jeton résiduel.
+- **E2E RÉEL (OpenRouter, gpt-4o-mini) : SUCCÈS 5/5** — nom/téléphone
+  (72 111 23 45)/email restaurés, aucun jeton résiduel, réponse OpenAI
+  valide. Le produit fonctionne contre un vrai LLM avec la nouvelle
+  couverture.
+- **Preuve détection embarquée** (detect_cli) : « Matricule fonction
+  publique : 515808/G, IPRES 734123F — appeler le 790123456 » →
+  `[{"type":"Matricule",…},{"type":"PhoneSn",…}]` — le matricule au format
+  officiel et le 79 (ADIE) sont détectés.
+
+### Open-core re-publié v0.2.2 (procédure docs/OPEN-CORE.md §4)
+
+- **6 dépôts publics** : `cloison-core`, `cloison-bench`, `cloison-detect`,
+  `cloison-audit`, `cloison-control`, `cloison-proxy` — branches `main` +
+  tag `v0.2.2` (ordre de dépendance, git deps épinglées).
+- **Correction en cours de campagne** : le proxy v0.2.2 initial ne
+  compilait pas (E0308 — **deux versions de cloison-core dans le graphe** :
+  le proxy pointait core v0.2.2 mais `cloison-audit` v0.1.0 épinglait core
+  v0.1.0). Corrigé : `cloison-audit` re-publié v0.2.2 (dep core v0.2.2),
+  puis control + proxy re-pointés (dep audit v0.2.2). **Leçon** : après
+  bump d'une git dep interne, vérifier la résolution du graphe de tous les
+  dépendants (même mécanique que la dérive DEPLOY-2).
+- **Vérification post-publication** (clones des tags, git deps réelles) :
+  core `cargo test` 50+17 ✅ · bench pytest 36/36 ✅ · detect pytest 79/79
+  ✅ · audit/control/proxy `cargo check` ✅ (proxy avec git deps
+  core+audit v0.2.2).
 
 ## Invariants de sécurité vérifiés
 
@@ -210,3 +245,29 @@ commenté.
   (structure observée, détection contextuelle conservée).
 - GPU (dette ②) : toujours en attente (baseline ONNX chiffrée).
 - N0 (kit léger Rust seul) : prochaine session (design §6bis posé).
+
+## Porte de sortie
+
+- [x] **Dette documentaire** : attribution TEL confirmée (plan ITU/ARTP —
+      75 = MVNO pas Free, 32 fixe = Free, 76 = Free/Yas) ; **couverture
+      72/79 ajoutée** (NDC officiels manquants = I1) ; **matricule au
+      format officiel** (6 chiffres + lettre, 76 échantillons vérifiés) ;
+      passeport/permis documentés honnêtement (à confirmer).
+- [x] **GO re-validé** (règle §5 — jeu régénéré 12 préfixes, baseline
+      officielle 0.7501) : **torch 0.9573 / onnx 0.9560 — 5/5 PASS les
+      deux chemins** ; artefacts `go_nogo_final.deploy10-officiel-*`.
+- [x] **Dettes secondaires** : deps bench épinglées (reproductibilité) ;
+      **CLOISON_ONNX=1 déployé en prod** (backend onnx-int8 vérifié) ;
+      `CLOISON_DETECT_CONCURRENCY` livré + testé ; **CLOISON_ROLE lu au
+      boot** (fail-loud edge/control).
+- [x] **Tests** : Rust ~230 verts + clippy 0 + fmt 0 + feature pg ;
+      bench 36/36 ; detect 79/79.
+- [x] **Déploiement vérifié** : stack saine, e2e mock SUCCÈS (72 masqué
+      amont) + e2e réel 5/5, detect healthy, ledger intact, 0 OOM.
+- [x] **Open-core v0.2.2** : 6 dépôts re-publiés + vérifiés (cargo
+      test/check + pytest sur les tags, git deps réelles).
+- [x] Journal + push GitHub (commits `c51ae40`, `0df7666`) + CI déclenchée.
+- [ ] **DNS `dsh.wonkom.ai`** : suppression du record A = **action
+      opérateur** (zone anycast.me — aucun accès de gestion disponible ;
+      instruction complète §« Décision pilote requise » ; vérifié : rien ne
+      sert le sous-domaine, Caddy sans bloc).
