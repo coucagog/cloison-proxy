@@ -192,7 +192,9 @@ class TestGenerator:
     def test_generator_entity_types(self, generator):
         """Teste que les entités générées ont des types valides."""
         docs = generator.generate(n_docs=50)
-        valid_types = {'PERSON', 'LOC', 'CNI', 'MAIL', 'TEL'}
+        # Types de la grille GO + identifiants contextuels N3+ (hors grille).
+        valid_types = {'PERSON', 'LOC', 'CNI', 'MAIL', 'TEL',
+                       'PASSPORT', 'PERMIS', 'MATRICULE'}
         
         for doc in docs:
             for entity in doc.entities:
@@ -258,13 +260,16 @@ class TestGenerator:
         for _ in range(100):
             tel = generate_tel()
             if '+221' in tel:
-                # fixe international : +221 3X 8/9 XXXXXX
-                if '30' in tel or '32' in tel or '33' in tel or '36' in tel:
-                    continue
-            elif tel.startswith(('30', '32', '33', '36')):
-                # fixe local : préfixe + zone (8/9) + 6 chiffres
+                # fixe international : +221 3X 8/9 XXXXXX (9 chiffres NSN)
+                digits = tel.replace('+221', '').replace(' ', '')
+                if digits.startswith(('30', '32', '33', '36')):
+                    assert len(digits) == 9, f"fixe international invalide: {tel}"
+                    assert digits[2] in ('8', '9'), f"zone invalide: {tel}"
+                continue
+            if tel.startswith(('30', '32', '33', '36')):
+                # fixe local : préfixe (2) + zone (8/9) + 6 chiffres = 9
                 digits = tel.replace(' ', '')
-                assert len(digits) == 8, f"fixe local invalide: {tel}"
+                assert len(digits) == 9, f"fixe local invalide: {tel}"
                 assert digits[2] in ('8', '9'), f"zone invalide: {tel}"
 
     def test_generate_passport(self):
