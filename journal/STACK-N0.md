@@ -250,8 +250,11 @@ le 8787 de prod étant occupé par le conteneur edge)
 
 ## Prochaine étape
 
-- **v1.1 N0** (documenté) : alias/jauge in-core, keychain OS, NER léger
-  embarqué, déclinaisons `cloison-wasm` (navigateur) et mobile embarqué.
+- **N0 v1.1 — préparation prête : `journal/N0V11-PREP.md`** (ordre recommandé :
+  ① alias intra-session R1-R7 + jauge quasi-id **in-core**, ② keychain OS,
+  ③ déclinaison `cloison-wasm` navigateur, ④ NER léger embarqué ONNX — ce
+  dernier à arbitrer GO/NO-GO en ouverture, re-validation GO règle §5 si le
+  benchmark est touché).
 - **Décisions pilote restantes** : DNS `dsh.wonkom.ai` (action opérateur
   anycast.me — instruction DEPLOY-10) ; GPU (en attente, baseline ONNX).
 - Re-validation GO à chaque évolution du core (règle §5 de la grille) —
