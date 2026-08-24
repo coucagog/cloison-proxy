@@ -174,9 +174,16 @@ de conformité k-anonyme, journal public restylé (design system de référence)
   questions ouvertes : `REPRISE-DEPLOIEMENT.md` §6bis.
 - **GPU (dette ②)** : en attente (aucun GPU disponible, décision reportée —
   baseline ONNX de DEPLOY-8 comme référence).
-- **2 décisions pilote en attente** : `dsh.wonkom.ai` (DNS mort —
-  recommandation : retirer l'enregistrement) ; mode audit public vs interne
-  (choix actuel : interne, rapport par tenant en observe-only).
+- **✅ RESOLUES (DEPLOY-10)** : **dette documentaire** (attribution TEL
+  confirmée plan ITU/ARTP — 75 = MVNO pas Free, 72/79 ajoutés, matricule
+  officiel 6 chiffres+lettre, PP/DL documentés — GO re-validé torch
+  0.9573 / onnx 0.9560, 5/5 PASS) ; **dettes secondaires** (deps bench
+  épinglées, `CLOISON_ONNX=1` déployé en prod, `CLOISON_DETECT_CONCURRENCY`,
+  `CLOISON_ROLE` lu au boot) ; **DNS mort `dsh.wonkom.ai`** : suppression
+  record = **action opérateur** (zone anycast.me, instruction DEPLOY-10 §①).
+- **2 décisions pilote en attente** : ~~`dsh.wonkom.ai`~~ (retrait validé —
+  action opérateur) ; mode audit public vs interne (choix actuel : interne,
+  rapport par tenant en observe-only).
 
 ## 6. Infos pratiques pour reprendre
 

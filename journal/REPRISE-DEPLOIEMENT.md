@@ -109,6 +109,15 @@ attrapé le bug que les 70 tests ne voyaient pas).
 > **N3+ couverture étendue** (fixes 30/32/33/36, passeport PP, permis DL,
 > matricules État/IPRES MA — GO re-validé torch 0.9542 / onnx 0.9520,
 > open-core v0.2.1). Détails : `journal/DEPLOY-9.md`.
+> **✅ TERMINÉ (DEPLOY-10, 24/08/2026)** : **dette documentaire** (attribution
+> TEL confirmée plan ITU/ARTP — 75 = MVNO pas Free ; 72/79 ajoutés ;
+> matricule au format officiel 6 chiffres+lettre ; PP/DL documentés),
+> **dettes secondaires** (deps bench épinglées, CLOISON_ONNX=1 déployé,
+> CLOISON_DETECT_CONCURRENCY, CLOISON_ROLE lu au boot), **DNS mort**
+> (dsh.wonkom.ai — suppression record = action opérateur anycast.me
+> documentée). GO re-validé (torch 0.9573 / onnx 0.9560 vs baseline
+> officielle 0.7501 — 5/5 PASS sur les DEUX chemins). Détails :
+> `journal/DEPLOY-10.md`.
 > **Prochaine session = N0** (kit moteur léger Rust seul, design §6bis) ;
 > **GPU toujours en attente** (aucun GPU disponible — décision reportée ;
 > baseline ONNX de DEPLOY-8 comme référence).
@@ -221,14 +230,25 @@ Décisions pilote posées (23/08/2026) :
 
 ### Secondaires (si le temps le permet)
 
-- **Épingler les deps bench** (`bench/cloison-bench/requirements.txt` :
-  presidio/spacy/numpy en `>=`) — la baseline régénérée a dérivé
-  (macro 0.7501 → 0.7623, spécificité 0.42 → 0.54) ; la référence officielle
-  0.7501 reste gravée dans `rapport.json`. Pinner pour la reproductibilité.
-- **Latence sous charge** — le modèle partagé sérialise les requêtes
-  (verrou) : pool d'inférence ou batching par lot si la charge augmente.
+- **Épingler les deps bench** — ✅ **RÉSOLU (DEPLOY-10)** :
+  `requirements.txt` épinglé sur l'env de référence (presidio 2.2.355,
+  spacy 3.7.5, numpy 1.26.4, pytest 9.1.1, regex, tldextract, PyYAML) ;
+  baseline régénérée reproductible (dérivée macro 0.7743 — la référence
+  OFFICIELLE 0.7501 reste gravée).
+- **Latence sous charge** — ✅ **ADRESSE (DEPLOY-10)** :
+  `CLOISON_DETECT_CONCURRENCY` (0 = illimité, défaut) ; constat : les
+  verrous ne protègent que le chargement lazy, l'inférence est déjà
+  parallèle — le goulot réel est le CPU (ONNX int8 déployé en prod ;
+  GPU en attente).
+- **`CLOISON_ROLE`** — ✅ **RÉSOLU (DEPLOY-10)** : lu au boot par chaque
+  binaire (edge/control), valeur incompatible → échec bruyant.
+- **Voie ONNX en prod** — ✅ **DÉPLOYÉE (DEPLOY-10)** : `CLOISON_ONNX=1`
+  + `CLOISON_ONNX_INT8=1` dans le `.env` du VPS (backend `onnx-int8`
+  vérifié au boot).
+- **DNS mort `dsh.wonkom.ai`** — décision pilote : **supprimer le record A**
+  (zone anycast.me — action opérateur préparée, DEPLOY-10 §①).
 - **CI** — le run `cf2d0c6` est vert ; surveiller le prochain push (le push
-  ONNX va déclencher un run complet) ; secrets GitHub e2e posés.
+  DEPLOY-10 va déclencher un run complet) ; secrets GitHub e2e posés.
 
 ## 6ter. Signalé pilote (23/08/2026) — préfixes téléphoniques sénégalais 71/75
 

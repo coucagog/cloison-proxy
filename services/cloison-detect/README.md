@@ -101,6 +101,15 @@ fp32). Gain attendu ×2-3 sur les docs longs.
 - Le backend actif est exposé par `GET /models` (champ `backend` :
   `onnx-int8` | `onnx` | `torch`).
 
+## Concurrence sous charge (DEPLOY-10)
+
+`CLOISON_DETECT_CONCURRENCY` (défaut `0` = illimité, comportement historique
+inchangé) borne le nombre de pipelines `/detect` simultanés — protège le CPU
+partagé sous charge. NB : l'inférence n'est **pas** sérialisée par verrou
+(les `threading.Lock` ne protègent que le chargement lazy des modèles) ; le
+goulot réel est la capacité CPU — ONNX int8 (ci-dessus) et GPU (en attente)
+sont les voies de latence documentées.
+
 ## API REST
 
 ```bash
