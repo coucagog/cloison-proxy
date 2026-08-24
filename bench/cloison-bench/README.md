@@ -33,8 +33,12 @@ remplies (baseline Presidio forte, `results/rapport.json` → `baseline_ref`) :
 | Spécificité non-PII | ≥ 60 % |
 
 > Vérification : `grille.json` (source de vérité). Verdict 2026 : **GO** —
-> PERSON 0.937 · LOC 0.835 · CNI 1.000 · macro 0.954 · spécificité 0.77
-> (artefacts dans `results/go_nogo_final.json` et `results/*.json`).
+> dernières re-validations (grille v1.1, modèles réels, baseline officielle
+> macro 0.7501) :
+> - **71/75 + fixes 30/32/33/36 (N3)** : torch macro **0.9542** · PERSON
+>   **0.9387** · LOC **0.8320** · CNI/MAIL/TEL 1.000 · spécificité **76 %** ;
+>   onnx-int8 macro **0.9520** · PERSON **0.9401** · LOC **0.8199**.
+> (artefacts dans `results/go_nogo_final.*.json` — voir `journal/DEPLOY-9.md`).
 
 ## Installation
 
@@ -55,6 +59,13 @@ python run_benchmark.py
 #   git clone https://github.com/coucagog/cloison-detect
 #   export PYTHONPATH=/chemin/cloison-detect
 CLOISON_OFFLINE=1 python run_detect_target.py
+
+# Voie ONNX (dette ③, DEPLOY-8) : inférence du NER africain via ONNX Runtime
+# (CPU int8) — même grille, re-validation séparée :
+CLOISON_OFFLINE=1 CLOISON_ONNX=1 python run_detect_target.py
+
+# NER ouest-africain sélectionnable (défaut : afroxlmr — le défaut produit) :
+# CLOISON_AFRICAN_MODEL=serengeti|afroxlmr|masakha  CLOISON_MIN_SCORE=0.40
 ```
 
 ### Fichiers générés
@@ -71,13 +82,14 @@ results/
 
 ```
 generator.py           # Générateur de dataset synthétique (seed 42, 0 PII réelle)
+                       # — mobiles 70-78 + fixes 30-36 + passeport/permis/matricule
 scoring.py             # Module d'évaluation et métriques (exact match, bootstrap IC 95 %)
-presidio_baseline.py   # Configuration Presidio forte (FR + CNI Luhn + gazetteers)
+presidio_baseline.py   # Configuration Presidio forte (FR + CNI Luhn + gazetteers + contextuels)
 run_benchmark.py       # CLI principal (baseline)
 run_detect_target.py   # GO/NO-GO avec le détecteur cible (cloison-detect)
 measure_clusters.py    # Analyse des clusters de scores (calibration des seuils)
 differential.py        # Différentiel cloison-core vs Presidio (oracle, charte §5.2)
-test_benchmark.py      # Tests unitaires (32)
+test_benchmark.py      # Tests unitaires (36)
 grille.json            # Grille de scoring pré-enregistrée (source de vérité)
 protocole.txt          # Protocole figé
 ```
@@ -107,7 +119,8 @@ vérifié par audit d'échantillon (invariant CLOISON : le jeu n'est pas collect
 ## Tests
 
 ```bash
-pytest test_benchmark.py -v     # 32 tests (Luhn, roundtrip, spans, grille)
+pytest test_benchmark.py -v     # 36 tests (Luhn, roundtrip, spans, grille,
+                                # fixes 30-36, passeport/permis/matricule)
 ```
 
 ## Dépendance sur cloison-detect
