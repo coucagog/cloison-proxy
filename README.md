@@ -1,7 +1,7 @@
 # CLOISON — proxy de confidentialité PII compatible OpenAI
 
 > **Nom de travail :** CLOISON. **Dépôt :** `coucagog/cloison` (privé). **Serveur de dev :** VPS 144.217.81.251 (`wonkom.ai`).
-> **Statut :** STACK-0 → 8 livrés, **GO/NO-GO final = GO** (grille v1.1, modèles réels), déploiement DEPLOY-1 → 8 actif, **open-core publié** (DEPLOY-7, v0.1.0), **N3 (couche commerciale) en cours** (voie ONNX DEPLOY-8, préfixes 71/75 + CLI/onboarding). Projet autonome, indépendant de `mania.sn`.
+> **Statut :** STACK-0 → 8 livrés, **GO/NO-GO final = GO** (grille v1.1, modèles réels), déploiement DEPLOY-1 → 9 actif, **open-core publié** (DEPLOY-7, v0.1.0 ; core/bench v0.2.1, detect v0.2.0, cli v0.2.0), **N3 + couverture étendue livrés** (71/75, fixes 30-36, passeport, permis, matricules, CLI/onboarding). Projet autonome, indépendant de `mania.sn`.
 
 Un **proxy de confidentialité PII compatible OpenAI** qui s'intercale entre une interface/agent IA
 (Open WebUI, bolt.diy, LibreChat, agents type Hermes) et un fournisseur de LLM (OpenAI, Anthropic…).
@@ -63,6 +63,8 @@ alimenté par le vrai pipeline (DEPLOY-4). E2E prouvé : mock 12/12, LLM réel 8
 > spécificité 0.77 — les 5 conditions simultanées sont remplies (baseline Presidio forte :
 > PERSON 0.518, LOC 0.596, spécificité 0.42). Le fossé ouest-africain est prouvé
 > (`bench/cloison-bench/results/go_nogo_final.json`, journal `STACK-8.md`).
+> Re-validations N3 (71/75 + fixes 30-36) : torch macro 0.9542 · onnx 0.9520 —
+> 5/5 PASS vs baseline officielle (`journal/DEPLOY-9.md`).
 
 **Production (VPS 144.217.81.251) :** `api.wonkom.ai` (edge, masquage actif) · `journal.wonkom.ai`
 (ledger public + vérification WASM) · stack interne control/detect/postgres, 0 OOM (memwatch),
