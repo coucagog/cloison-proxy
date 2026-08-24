@@ -1,9 +1,11 @@
 # CLOISON — REPRISE-DEPLOIEMENT (handoff pour la prochaine session)
 
 > Écrit à la fin de la campagne DEPLOY-1→6 (VPS 144.217.81.251), mis à jour
-> après DEPLOY-5 (wiring C) et DEPLOY-6 (torch 2.6.0 + fix NER africain). À
-> lire EN PREMIER par toute session qui reprend le déploiement. Complète
-> `journal/REPRISE.md` (handoff produit) et `journal/DEPLOY-*.md`.
+> après DEPLOY-5 (wiring C), DEPLOY-6 (torch 2.6.0 + fix NER africain),
+> DEPLOY-7 (open-core), DEPLOY-8 (ONNX) et **DEPLOY-9/N3 (couche
+> commerciale + dette 71/75 réglée, 24/08/2026)**. À lire EN PREMIER par
+> toute session qui reprend le déploiement. Complète `journal/REPRISE.md`
+> (handoff produit) et `journal/DEPLOY-*.md`.
 
 ---
 
@@ -99,38 +101,25 @@ attrapé le bug que les 70 tests ne voyaient pas).
 
 ## 6. Prochaine session — FINALISER N3 + dette 71/75 (ordre validé par le pilote, 23/08/2026)
 
-> Décision pilote : **N3 et N0 sont les priorités**. Cette session **termine N3**
-> (couche commerciale) et règle **au passage** la dette 71/75 (couverture
-> téléphonique — c'est le moteur qu'on embarque). **N0 (kit léger, daemon
-> desktop) est une session ULTÉRIEURE, après N3** (design posé en §6bis).
-> **GPU : en attente** (aucun GPU disponible — décision reportée ; option
-> « GPU local dans l'infra » à re-voir plus tard).
+> **✅ TERMINÉ (DEPLOY-9, 24/08/2026)** : dette 71/75 réglée (fix core+bench,
+> GO re-validé grille v1.1 torch/onnx vs baseline officielle, edge redéployé,
+> preuve e2e mock + réel avec 71, open-core core+bench v0.2.0 republiés) et
+> **N3 livré** (`cloison-cli` ops complet, onboarding scripté + documenté,
+> docs client, rapport de conformité, journal public restylé design system).
+> Détails : `journal/DEPLOY-9.md`. **Prochaine session = N0** (kit moteur
+> léger Rust seul, design §6bis) ; **GPU toujours en attente** (aucun GPU
+> disponible — décision reportée ; baseline ONNX de DEPLOY-8 comme référence).
 
-### ① Dette 71/75 — préfixes téléphoniques sénégalais (CORRECTIF — cette session)
+### ① Dette 71/75 — ✅ RÉSOLUE (DEPLOY-9)
 
-Inventaire exact : §6ter. Étapes :
+Inventaire corrigé : `detection.rs` (71 ajouté au format local), `presidio_baseline.py`
+(5 regex), `generator.py` (71/75, attribution opérateur à confirmer ARTP — commenté),
+README bench, test_benchmark. GO re-validé (torch 0.9550 / onnx 0.9556 vs baseline
+officielle 0.7501), edge redéployé, preuve e2e 71/75 mock + réel, open-core v0.2.0.
 
-1. `crates/cloison-core/src/detection.rs` (l.200) : ajouter `71` à la branche
-   locale `(?:70|71|75|76|77|78)`.
-2. `bench/cloison-bench/presidio_baseline.py` (l.140/146/152 + l.158/164) :
-   ajouter 71 (et aligner les patterns espacés sur 71/75/76).
-3. `bench/cloison-bench/generator.py` (l.106-109) : ajouter 71/75 à
-   `PREFIXES_TEL` (attribution opérateur à confirmer) — le jeu doit générer
-   ces numéros.
-4. `bench/cloison-bench/README.md` : table TEL à jour.
-5. **Re-validation GO obligatoire** (règle §5) : jeu avec 71/75, grille v1.1
-   (5 conditions), puis e2e mock/réel. Tests unitaires core + bench.
-   **Environnement prêt** : conteneur `onnxdev` sur le VPS (deps
-   bench+detect+ONNX installées, volume `cloison-dev_detect-models` monté —
-   créé en DEPLOY-8 ; le harnais `run_detect_target.py` lit `CLOISON_ONNX`).
-6. **Prod** : rebuild de l'image edge (le core est embarqué dans le proxy) +
-   redéploiement.
-7. **Open-core** : re-publier `cloison-core` + `cloison-bench` (tag `v0.2.0`,
-   procédure `docs/OPEN-CORE.md` §4 — même mécanique que DEPLOY-8).
+### ② N3 — couche commerciale (✅ LIVRÉE — DEPLOY-9)
 
-### ② N3 — couche commerciale (TERMINER N3 — cette session)
-
-La stack est fonctionnelle ; il manque la couche « un client peut nous
+La stack est fonctionnelle ; il manquait la couche « un client peut nous
 acheter » :
 
 1. **`cloison-cli` (squelette)** : remplir l'outillage ops N3 — provisioning
@@ -151,9 +140,14 @@ acheter » :
 6. **Vérifications finales N3** : ledger alimenté par du trafic réel, memwatch
    0 OOM, certs J-14, e2e réel, stack stable.
 
-**Porte de sortie N3** : onboarding client possible de bout en bout (tenant →
-clé composite → requête réelle → journal alimenté) · 71/75 réglé avec GO
-re-validé · docs client publiées · `cloison-cli` livré · dettes à jour.
+**Porte de sortie N3 — ✅ ATTEINTE (DEPLOY-9)** : onboarding client possible
+de bout en bout (tenant → clé composite → requête réelle → journal alimenté) ·
+71/75 réglé avec GO re-validé · docs client publiées · `cloison-cli` livré ·
+dettes à jour. Reste **2 décisions pilote** (documentées DEPLOY-9, non
+tranchées) : `dsh.wonkom.ai` (DNS mort — recommandation : retirer
+l'enregistrement) ; mode audit public vs interne (choix actuel : interne par
+défaut, rapport k-anonyme par tenant en observe-only — la voie de transparence
+publique reste le journal).
 
 ### Dettes résolues (référence)
 
@@ -163,6 +157,14 @@ re-validé · docs client publiées · `cloison-cli` livré · dettes à jour.
   CPU int8 pour afroxlmr), GO re-validé (macro 0.9546), latence doc moyen
   ~20-25 %, `cloison-detect`/`cloison-bench` re-publiés v0.2.0. Détails :
   `journal/DEPLOY-8.md`.
+- **Préfixes TEL 71/75** : **RÉSOLUE** (DEPLOY-9) — fix core+bench, GO
+  re-validé (torch 0.9550 / onnx 0.9556 vs baseline officielle 0.7501),
+  edge redéployé, preuve e2e mock + réel (71), `cloison-core`/`cloison-bench`
+  re-publiés **v0.2.0**. Détails : `journal/DEPLOY-9.md`.
+- **`cloison-cli` (squelette DEPLOY-7)** : **RÉSOLU** (DEPLOY-9) — ops N3
+  complet (provision, token issue/rotate/revoke/verify par hash, policy,
+  license, ledger root/check, stats). Re-publication du dépôt public
+  `cloison-cli` v0.2.0 **à prévoir** (même mécanique que core/bench).
 
 ## 6bis. En attente / sessions suivantes
 

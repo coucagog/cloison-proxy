@@ -1,8 +1,10 @@
 # CLOISON — Document de reprise (handoff)
 
 > Écrit le 20 août 2026 par Ridwan (agent de dev), **mis à jour en fin de
-> session STACK-8** (verdict GO rendu). À lire EN PREMIER par toute session qui
-> reprend le projet. Complète `journal/STACK-*.md` (détails par étape).
+> session STACK-8** (verdict GO rendu), **puis en fin de session DEPLOY-9/N3**
+> (24/08/2026 : couche commerciale N3 livrée + dette 71/75 réglée). À lire EN
+> PREMIER par toute session qui reprend le projet. Complète
+> `journal/STACK-*.md` et `journal/DEPLOY-*.md` (détails par étape).
 
 ---
 
@@ -135,26 +137,28 @@ Runs historiques conservés : `go_nogo_final.offline-avant-fixes.json`,
 - Reste à décision MLS : GPU (dette ② — décision d'infrastructure ; la
   baseline ONNX chiffrée de DEPLOY-8 sert de référence).
 
-### PRIORITÉ 5 — signalé pilote (23/08/2026) : préfixes téléphoniques 71/75
+### ✅ PRIORITÉ 5 — RÉSOLUE (DEPLOY-9) : préfixes téléphoniques 71/75
 
-Les numéros mobiles sénégalais ont évolué : les préfixes **71** et **75** existent
-désormais. Inventaire précis des regex/jeux à mettre à jour (core + bench, dont les
-dépôts publics) et exigence de re-validation GO : voir `REPRISE-DEPLOIEMENT.md` §6ter.
-C'est un correctif de couverture (PII en clair sinon) — **programmé dans la session
-de finalisation N3** (REPRISE-DEPLOIEMENT §6 ①).
+Les numéros mobiles sénégalais ont évolué : les préfixes **71** et **75**
+existent désormais. Corrigé (core + bench, re-validation GO grille v1.1
+torch/onnx vs baseline officielle, edge redéployé, preuve e2e mock + réel,
+open-core core/bench v0.2.0) — voir `journal/DEPLOY-9.md` §①.
 
-### PRIORITÉ 6 — stratégie (décision pilote 23/08/2026) : finir N3, puis N0 léger
+### PRIORITÉ 6 — stratégie : N3 ✅ LIVRÉ, N0 = PROCHAINE session
 
-**N3 et N0 sont les priorités produit.**
-- **N3 d'abord (prochaine session)** : terminer la couche commerciale (onboarding
-  locataire, `cloison-cli`, docs client, métriques k-anonymes) + régler la dette
-  71/75 au passage. Plan détaillé : `REPRISE-DEPLOIEMENT.md` §6.
-- **N0 ensuite (session ultérieure)** : le plus léger possible — moteur **Rust
+**N3 (couche commerciale) est livré (DEPLOY-9)** : `cloison-cli` ops complet,
+onboarding scripté + documenté, docs client (guide 2 champs + FAQ), rapport
+de conformité k-anonyme, journal public restylé (design system de référence).
+- **N0 (prochaine session)** : le plus léger possible — moteur **Rust
   seul** (core, sans sidecar NER Python), kit portable (natif desktop/mobile +
   WASM), déclinaisons daemon desktop (v1) / mobile embarqué / navigateur. Coffre
   persistant, auth 100 % locale, limites honnêtes documentées. Décisions et
   questions ouvertes : `REPRISE-DEPLOIEMENT.md` §6bis.
-- **GPU (dette ②)** : en attente (aucun GPU disponible, décision reportée).
+- **GPU (dette ②)** : en attente (aucun GPU disponible, décision reportée —
+  baseline ONNX de DEPLOY-8 comme référence).
+- **2 décisions pilote en attente** : `dsh.wonkom.ai` (DNS mort —
+  recommandation : retirer l'enregistrement) ; mode audit public vs interne
+  (choix actuel : interne, rapport par tenant en observe-only).
 
 ## 6. Infos pratiques pour reprendre
 
