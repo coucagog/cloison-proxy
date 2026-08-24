@@ -248,8 +248,8 @@ class TestGenerator:
             assert isinstance(loc, str)
     
     def test_generate_tel(self):
-        """Teste la génération de numéros de téléphone (mobiles 70-78 + fixes 30-36)."""
-        prefixes = ('70', '71', '75', '76', '77', '78', '30', '32', '33', '36')
+        """Teste la génération de numéros de téléphone (mobiles 70-79 + fixes 30-36)."""
+        prefixes = ('70', '71', '72', '75', '76', '77', '78', '79', '30', '32', '33', '36')
         for _ in range(100):
             tel = generate_tel()
             # Vérifier le format
@@ -286,10 +286,13 @@ class TestGenerator:
             assert p.isdigit() and 7 <= len(p) <= 10, f"permis invalide: {p}"
 
     def test_generate_matricule(self):
-        """Teste la génération de matricules État/IPRES (8-11 chiffres)."""
+        """Teste la génération de matricules État/IPRES — format OFFICIEL
+        confirmé : 6 chiffres + 1 lettre de contrôle (A-Z sans I ni O),
+        variante avec ou sans slash (« 515808/G » / « 734123F »)."""
+        import re as _re
         for _ in range(20):
             m = generate_matricule()
-            assert m.isdigit() and 8 <= len(m) <= 11, f"matricule invalide: {m}"
+            assert _re.fullmatch(r"\d{6}(?:/)?[A-HJ-NP-Z]", m), f"matricule invalide: {m}"
     
     def test_generate_mail(self):
         """Teste la génération d'emails."""

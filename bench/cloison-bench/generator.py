@@ -102,15 +102,31 @@ DOMAINS_GENERIC = [
     "protonmail.com", "icloud.com", "mail.com"
 ]
 
-# Préfixes opérateurs téléphoniques sénégalais
-# NB : les préfixes 71 et 75 existent depuis 2026 (correctif de couverture,
-# REPRISE-DEPLOIEMENT §6ter). Attribution opérateur à confirmer (ARTP) —
-# la répartition ci-dessous est une hypothèse de travail ; seule la présence
-# des préfixes dans le jeu compte pour la couverture de détection.
+# Préfixes opérateurs téléphoniques sénégalais — attribution CONFIRMÉE
+# (plan national de numérotation, soumission ARTP — ITU T02020000B8, posté
+# 2023-11-29, et sources 2026) :
+#   mobile : 70 Expresso · 7211 CSU/Hayo · 754-756 MVNO PROMOBILE (Sirius
+#            Telecoms Afrique) · 757 MVNO ORIGINES SA · 76 FREE Sénégal
+#            (ex-Tigo ; rebrandé YAS — Axian — nov. 2024) · 77/78 Sonatel
+#            (Orange) · 790 ADIE ;
+#   fixe   : 30 Expresso · 32 FREE · 338/339 Sonatel (Dakar/autres) ·
+#            3611 CSU/Hayo · 390/391 ADIE.
+# NB :
+#   - 75 N'EST PAS Free (correction de l'hypothèse DEPLOY-9 « Free 75 ») :
+#     c'est la plage des MVNO (Promobile/Origines) et d'Expresso.
+#   - 71 n'apparaît PAS au plan ITU 2023 (signalé par le pilote 08/2026) :
+#     conservé en couverture (invariant I1 — un mobile non détecté part en
+#     clair), attribution opérateur à confirmer ARTP.
+#   - 72 (CSU/Hayo, NDC 7211) et 79 (ADIE, NDC 790) : NDC mobiles officiels
+#     du plan ITU 2023 — ajoutés à la couverture (DEPLOY-10, recherche ARTP).
 PREFIXES_TEL = {
-    "Orange": ["77", "78"],
-    "Free": ["75", "76"],
-    "Expresso": ["70", "71"]
+    "Orange (Sonatel)": ["77", "78"],
+    "Free/Yas (ex-Tigo)": ["76"],
+    "Expresso": ["70"],
+    "CSU/Hayo": ["72"],
+    "MVNO (75) / Expresso": ["75"],
+    "ADIE": ["79"],
+    "71 (signalé pilote, hors plan ITU 2023)": ["71"],
 }
 
 # Préfixes téléphoniques FIXES sénégalais (N3+) : 33 Sonatel/Orange,
@@ -460,10 +476,12 @@ def generate_tel() -> str:
 def generate_passport() -> str:
     """
     Génère un numéro de passeport sénégalais synthétique (N3+).
-    
+
     Format CEDEAO/ICAO observé : 1-2 lettres majuscules + 7-8 chiffres
-    (ex. A1234567, AB12345678). Structure exacte à confirmer (non documentée
-    publiquement) — la détection produit est contextuelle (« passeport »).
+    (ex. A1234567, AB12345678). Toujours NON confirmé par une source
+    normative publique (recherche 24/08/2026 : PRADO/HL7/Wikipedia ne
+    documentent pas le format du numéro) — la détection produit reste
+    contextuelle (« passeport »), conservatrice (charte §11).
     """
     n_letters = random.choice([1, 1, 2])  # 1 lettre plus fréquent
     letters = ''.join([chr(random.randint(ord('A'), ord('Z'))) for _ in range(n_letters)])
@@ -475,9 +493,12 @@ def generate_passport() -> str:
 def generate_permis() -> str:
     """
     Génère un numéro de permis de conduire sénégalais synthétique (N3+).
-    
-    Format observé : 7-10 chiffres (à confirmer) — la détection produit est
-    contextuelle (« permis de conduire »).
+
+    Le permis NUMÉRISÉ (format SN 009, carte plastique) est le seul valable
+    depuis le 04/01/2024 (circulaire belge Chapitre 36/Sénégal — l'ancien
+    format papier rose n'est plus reconnu). Le format exact du numéro reste
+    NON confirmé (observé : 7-10 chiffres) — détection contextuelle
+    (« permis de conduire »), conservatrice (charte §11).
     """
     n = random.choice([7, 8, 9, 10])
     return ''.join([str(random.randint(0, 9)) for _ in range(n)])
@@ -487,12 +508,19 @@ def generate_matricule() -> str:
     """
     Génère un matricule synthétique de fonctionnaire de l'État / assuré IPRES
     (actifs et retraités, N3+).
-    
-    Format observé : 8-11 chiffres (à confirmer) — la détection produit est
-    contextuelle (« matricule », « IPRES »).
+
+    Format CONFIRMÉ sur listes officielles (fonctionpublique.gouv.sn — PV
+    inspecteurs + listes CAP, 76 échantillons vérifiés) : 6 chiffres + 1
+    lettre de contrôle majuscule (alphabet A-Z sans I ni O), variante avec
+    slash (« 515808/G ») ou sans (« 734123F »). L'hypothèse initiale
+    « 8-11 chiffres » (DEPLOY-9) était fausse — le jeu doit couvrir le
+    format réel pour tester la détection (invariant I1).
     """
-    n = random.choice([8, 9, 10, 11])
-    return ''.join([str(random.randint(0, 9)) for _ in range(n)])
+    digits = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+    letter = random.choice("ABCDEFGHJKLMNPQRSTUVWXYZ")  # A-Z sans I ni O
+    if random.random() < 0.5:
+        return f"{digits}/{letter}"
+    return f"{digits}{letter}"
 
 
 def generate_mail() -> str:

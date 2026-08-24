@@ -43,7 +43,7 @@
 
 | Variable | Rôle | Secret | Défaut | Description |
 |---|---|---|---|---|
-| `CLOISON_ROLE` *(STACK-7)* | edge/control | non | `edge` | rôle du binaire unique (`edge` \| `control`) — dispatch à implémenter dans `config.rs` |
+| `CLOISON_ROLE` *(DEPLOY-10)* | edge/control | non | natif | rôle attendu du binaire (`edge` → cloison-proxy, `control` → cloison-control) — **LU au boot** : une valeur incompatible échoue bruyamment. Deux binaires distincts (le contrôle exige la feature `pg` que l'edge ne doit pas embarquer) ; absent = rôle natif (dev) |
 | `CLOISON_CONTROL_PORT` | control | non | `8788` | port d'écoute du plan de contrôle (le binaire ne lit PAS `CLOISON_LISTEN_ADDR`) |
 | `CLOISON_LEDGER_FILE` | control | non | absent (mémoire) | journal append-only (JSONL, chaîne + signatures) ; posé → persistance |
 | `CLOISON_ROTATION_GRACE_SECONDS` | control | non | `300` | grâce de rotation des jetons `mn_*` |
@@ -68,6 +68,7 @@
 | `CLOISON_SESSION_MENTIONS_MAX` | detect | non | `200` | borne documentaire (côté core) |
 | `CLOISON_ONNX` | detect | non | `0` | `1` = inférence du NER africain (afroxlmr) via **ONNX Runtime** (CPU, int8 dynamique) au lieu de torch — gain ×2-3 attendu sur les docs longs (dette ③, DEPLOY-8). Fallback torch automatique si l'ONNX est indisponible ; GLiNER reste en torch (pas d'export ONNX dans gliner 0.2.12) |
 | `CLOISON_ONNX_INT8` | detect | non | `1` | `0` = conserver l'export ONNX fp32 (référence précision) au lieu de la quantisation dynamique int8 |
+| `CLOISON_DETECT_CONCURRENCY` *(DEPLOY-10)* | detect | non | `0` | `0` = illimité (défaut historique) ; `>0` = nombre maximal de pipelines `/detect` simultanés (protège le CPU partagé sous charge — dette secondaire §6bis). NB : l'inférence n'est PAS sérialisée par verrou (les verrous ne protègent que le chargement lazy) ; le goulot réel est la capacité CPU (ONNX int8 déployé, GPU en attente) |
 | `CLOISON_LOG_LEVEL` | detect | non | `INFO` | niveau de log |
 | `CLOISON_CONSENSUS_PERSON_LOC` | detect | non | `1` | `1` = span PERSON/LOC mono-source < 0.90 refusé à la fusion (spécificité ; exempté `recall_only`) |
 | `CLOISON_AFRICAN_MODEL` *(via `CLOISON_PRELOAD=all` ou config)* | detect | non | `afroxlmr` | NER ouest-africain : `serengeti` \| `afroxlmr` \| `masakha` — défaut `afroxlmr` (MasakhaNER 1+2, vrai NER) depuis le verdict GO ; `serengeti` est un LM sans tête NER (inutilisable), `masakha` est gated (401) |

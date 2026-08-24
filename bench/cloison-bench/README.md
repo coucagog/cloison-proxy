@@ -16,8 +16,23 @@ confidentialité PII compatible OpenAI.
 | LOC | Toponymes du Sénégal (14 régions, villes, quartiers) | 0.20 |
 | CNI | Carte Nationale d'Identité (13 chiffres, commençant par 1, checksum Luhn) | 0.25 |
 | MAIL | Adresses email | 0.15 |
-| TEL | Numéros de téléphone sénégalais — mobiles +221 (préfixes 70/71/75/76/77/78) **et fixes** (30/32/33/36, zone 8/9) | 0.10 |
+| TEL | Numéros de téléphone sénégalais — mobiles +221 (préfixes 70/71/72/75/76/77/78/79) **et fixes** (30/32/33/36, zone 8/9) | 0.10 |
 | PASSPORT / PERMIS / MATRICULE | Identifiants contextuels (passeport, permis de conduire, matricule État/IPRES) — **hors grille GO** (mesurés, non scorés) | — |
+
+> **Attribution TEL (confirmée — plan national ITU T02020000B8, soumission
+> ARTP, posté 2023-11-29, + sources 2026)** : mobile 70 Expresso · 7211
+> CSU/Hayo · 754-756 MVNO Promobile · 757 MVNO Origines · 76 Free/Yas
+> (ex-Tigo) · 77/78 Orange · 790 ADIE ; fixe 30 Expresso · 32 Free · 338/339
+> Orange · 3611 CSU/Hayo. **75 n'est PAS Free** (correction DEPLOY-9) ; le
+> préfixe **71** (signalé pilote 08/2026) n'apparaît pas au plan ITU 2023 —
+> conservé en couverture (invariant I1), attribution à confirmer ARTP.
+>
+> **Matricule État/IPRES (format confirmé sur listes officielles
+> fonctionpublique.gouv.sn)** : 6 chiffres + 1 lettre de contrôle (A-Z sans
+> I ni O), « 515808/G » ou « 734123F » — l'ancien « 8-11 chiffres » ne
+> matchait jamais les matricules réels. Passeport (1-2 lettres + 7-8 chiffres,
+> CEDEAO/ICAO) et permis (SN 009 numérisé depuis 04/01/2024) : formats
+> observés, toujours à confirmer — détection contextuelle conservatrice.
 
 ## Grille GO/NO-GO (v1.1 — pré-enregistrée, figée)
 

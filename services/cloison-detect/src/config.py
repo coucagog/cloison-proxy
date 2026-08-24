@@ -181,6 +181,15 @@ class Config(BaseModel):
     # pour conserver l'export fp32 (référence précision) au lieu de l'int8.
     onnx: bool = False
     onnx_int8: bool = True
+    # Limiteur de concurrence du pipeline /detect (dette secondaire
+    # REPRISE-DEPLOIEMENT §6bis « latence sous charge ») : 0 = illimité
+    # (défaut — comportement historique inchangé) ; >0 = nombre maximal de
+    # pipelines exécutés simultanément (protège le CPU partagé sous charge).
+    # NB : l'inférence n'est PAS sérialisée par un verrou (les verrous ne
+    # protègent que le chargement lazy des modèles) ; le goulot réel est la
+    # capacité CPU — les voies documentées restent ONNX int8 (déployé) et
+    # GPU (en attente).
+    concurrency: int = 0
     log_level: str = "INFO"
 
     presidio: PresidioConfig = Field(default_factory=PresidioConfig)
@@ -259,6 +268,7 @@ class Config(BaseModel):
             session_mentions_max=_int("CLOISON_SESSION_MENTIONS_MAX", defaults.session_mentions_max),
             onnx=_bool("CLOISON_ONNX", defaults.onnx),
             onnx_int8=_bool("CLOISON_ONNX_INT8", defaults.onnx_int8),
+            concurrency=_int("CLOISON_DETECT_CONCURRENCY", defaults.concurrency),
             log_level=_str("CLOISON_LOG_LEVEL", defaults.log_level),
             consensus_person_loc=_bool("CLOISON_CONSENSUS_PERSON_LOC", defaults.consensus_person_loc),
         )

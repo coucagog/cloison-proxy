@@ -16,6 +16,26 @@ async fn main() -> ExitCode {
         )
         .init();
 
+    // Dispatch de rôle (dette STACK-9 « CLOISON_ROLE non lu ») : ce binaire
+    // EST le rôle `edge`. `CLOISON_ROLE` (posé par le compose) est vérifié —
+    // une valeur autre que `edge` (ex. `control`) échoue BRUYAMMENT au boot
+    // plutôt que de servir silencieusement le mauvais rôle dans un conteneur.
+    // Absent = défaut `edge` (compatibilité dev/harnais). La charte §5.1
+    // « une même image joue les deux rôles » reste une décision écartée :
+    // deux binaires distincts (le contrôle exige la feature `pg` que l'edge
+    // ne doit pas embarquer — surface d'attaque et taille d'image).
+    match std::env::var("CLOISON_ROLE").ok().as_deref() {
+        None | Some("edge") => {}
+        Some(other) => {
+            tracing::error!(
+                role = %other,
+                "CLOISON_ROLE attend `edge` pour ce binaire (cloison-proxy) — \
+                 rôle incompatible, refus de démarrer"
+            );
+            return ExitCode::FAILURE;
+        }
+    }
+
     let config = match config::load() {
         Ok(c) => c,
         Err(e) => {

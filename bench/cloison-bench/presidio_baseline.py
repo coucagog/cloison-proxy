@@ -130,7 +130,8 @@ class SenegalPhoneRecognizer(PatternRecognizer):
     - 7X XXX XX XX (formats locaux)
     - (+221) 7X XXX XX XX
     
-    Préfixes opérateurs: 70, 71, 75, 76, 77, 78 (mobiles) ;
+    Préfixes opérateurs: 70, 71, 72, 75, 76, 77, 78, 79 (mobiles — plan ITU
+    2023 : 72 CSU/Hayo, 79 ADIE ; 71 signalé pilote) ;
     fixes : 30, 32, 33, 36 (zone 8/9) — N3+.
     """
     
@@ -138,7 +139,7 @@ class SenegalPhoneRecognizer(PatternRecognizer):
         # Format international complet (mobile)
         Pattern(
             name="tel_international",
-            regex=r"\+221(?:70|71|75|76|77|78)\d{7}",
+            regex=r"\+221(?:70|71|72|75|76|77|78|79)\d{7}",
             score=0.9
         ),
         # Format international complet (fixe : 30/32/33/36 + zone 8/9)
@@ -150,13 +151,13 @@ class SenegalPhoneRecognizer(PatternRecognizer):
         # Format international avec 00
         Pattern(
             name="tel_international_00",
-            regex=r"00221(?:70|71|75|76|77|78)\d{7}",
+            regex=r"00221(?:70|71|72|75|76|77|78|79)\d{7}",
             score=0.85
         ),
         # Format local mobile 9 chiffres
         Pattern(
             name="tel_local",
-            regex=r"(?:70|71|75|76|77|78)\d{7}",
+            regex=r"(?:70|71|72|75|76|77|78|79)\d{7}",
             score=0.6
         ),
         # Format local fixe 8 chiffres (30/32/33/36 + zone 8/9)
@@ -168,13 +169,13 @@ class SenegalPhoneRecognizer(PatternRecognizer):
         # Format formaté avec espaces
         Pattern(
             name="tel_formatted",
-            regex=r"\+221\s?(?:70|71|75|76|77|78|30|32|33|36)\s?\d{3}\s?\d{2}\s?\d{2}",
+            regex=r"\+221\s?(?:70|71|72|75|76|77|78|79|30|32|33|36)\s?\d{3}\s?\d{2}\s?\d{2}",
             score=0.85
         ),
         # Format avec parenthèses
         Pattern(
             name="tel_parentheses",
-            regex=r"\(\+221\)\s?(?:70|71|75|76|77|78|30|32|33|36)\s?\d{3}\s?\d{2}\s?\d{2}",
+            regex=r"\(\+221\)\s?(?:70|71|72|75|76|77|78|79|30|32|33|36)\s?\d{3}\s?\d{2}\s?\d{2}",
             score=0.85
         ),
     ]
@@ -204,8 +205,9 @@ class SenegalContextualIDRecognizer(PatternRecognizer):
     retraités).
 
     La détection est CONTEXTUELLE (mot-clé + numéro) pour limiter les faux
-    positifs ; les formats exacts ne sont pas documentés publiquement —
-    structure observée, à confirmer (charte §11 : périmètre honnête).
+    positifs ; format MATRICULE confirmé (6 chiffres + lettre, listes
+    fonction publique) ; passeport/permis : structure observée, à confirmer
+    (charte §11 : périmètre honnête).
     HORS grille GO (le benchmark reste figé sur PERSON/LOC/CNI/MAIL/TEL) :
     ces entités mesurent la couverture produit, sans critère.
     """
@@ -223,10 +225,13 @@ class SenegalContextualIDRecognizer(PatternRecognizer):
             regex=r"(?i)(?:permis\s+de\s+conduire|permis|driver\s+license|licence)\s*(?:n[°o]\s*)?[:#]?\s*([0-9]{7,10})",
             score=0.85
         ),
-        # Matricule État/IPRES : 8-11 chiffres
+        # Matricule État/IPRES : 6 chiffres + 1 lettre (A-Z sans I ni O) —
+        # format CONFIRMÉ sur listes officielles (fonctionpublique.gouv.sn,
+        # « 515808/G » ou « 734123F »). L'ancien « 8-11 chiffres » ne matchait
+        # jamais les matricules réels (DEPLOY-9 → corrigé).
         Pattern(
             name="id_matricule",
-            regex=r"(?i)(?:matricule|ipres|immatriculation)\s*(?:n[°o]\s*)?[:#]?\s*([0-9]{8,11})",
+            regex=r"(?i)(?:matricule|ipres|immatriculation)\s*(?:n[°o]\s*)?[:#]?\s*(\d{6}(?:/)?[A-HJ-NP-Z])",
             score=0.85
         ),
     ]

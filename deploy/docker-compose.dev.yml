@@ -36,8 +36,11 @@
 #   - Wiring C (`CLOISON_CONTROL_URL`) : LU par le binaire (auth par hash,
 #     long-poll des versions, ingest automatique des reçus d'audit) — vide par
 #     défaut (mode N0) ; activer après provisionnement (deploy/provision_control.sh).
-#   - `CLOISON_ROLE` : non lu (deux binaires distincts edge/control aujourd'hui —
-#     le compose utilise le bon binaire par service, sans dispatch de rôle).
+#   - `CLOISON_ROLE` : LU au boot (DEPLOY-10) — chaque binaire vérifie son rôle
+#     (edge → cloison-proxy, control → cloison-control) et échoue bruyamment
+#     en cas de valeur incompatible. Deux binaires distincts (le contrôle
+#     exige la feature `pg` que l'edge ne doit pas embarquer) — l'image par
+#     service reste le mécanisme de dispatch.
 # =============================================================================
 
 name: cloison-dev
@@ -205,6 +208,8 @@ services:
       CLOISON_QUARANTINE_SECONDS: ${CLOISON_QUARANTINE_SECONDS:-300}
       CLOISON_SESSION_MENTIONS_MAX: ${CLOISON_SESSION_MENTIONS_MAX:-200}
       CLOISON_ONNX: ${CLOISON_ONNX:-0}
+      CLOISON_ONNX_INT8: ${CLOISON_ONNX_INT8:-1}
+      CLOISON_DETECT_CONCURRENCY: ${CLOISON_DETECT_CONCURRENCY:-0}
       CLOISON_LOG_LEVEL: ${CLOISON_LOG_LEVEL:-INFO}
     # Ports NON publiés (réseau interne) : detect n'est consommé que par
     # edge (wiring STACK-7). Décommenter pour du debug local :

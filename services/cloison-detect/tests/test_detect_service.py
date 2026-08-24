@@ -389,3 +389,69 @@ def test_consensus_can_be_disabled():
         text=TEXT_PERSON_LOC, locale="fr", policy=Policy(types=frozenset({SpanType.PERSON})),
         core_spans=(), session=SessionContext()))
     assert any(s.type is SpanType.PERSON for s in resp.spans), "consensus désactivé → mono-source admis"
+
+
+def test_concurrency_gate_limits_parallel_pipelines():
+    """CLOISON_DETECT_CONCURRENCY=1 : les pipelines sont bornés (sémaphore).
+    Vérifie que 2 requêtes simultanées sont sérialisées — le compteur de
+    pipelines actifs ne dépasse jamais 1."""
+    import threading
+    import time as _time
+
+    active = 0
+    peak = 0
+    lock = threading.Lock()
+
+    class SlowStub:
+        name = "presidio"
+
+        def detect(self, text, locale="fr", policy=None):
+            nonlocal active, peak
+            with lock:
+                active += 1
+                peak = max(peak, active)
+            _time.sleep(0.05)
+            with lock:
+                active -= 1
+            return [person_span()]
+
+        def available(self):
+            return True
+
+        def presidio_loaded(self):
+            return True
+
+    svc = make_service(presidio=SlowStub(), concurrency=1)
+    results = []
+    errors = []
+
+    def run():
+        try:
+            results.append(svc.detect(DetectRequest(
+                text=TEXT_PERSON_LOC, locale="fr",
+                policy=Policy(types=frozenset({SpanType.PERSON})),
+            )))
+        except Exception as exc:  # pragma: no cover
+            errors.append(exc)
+
+    threads = [threading.Thread(target=run) for _ in range(3)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors, errors
+    assert len(results) == 3, "les 3 requêtes aboutissent"
+    assert peak <= 1, f"concurrence>1 avec gate=1 (peak={peak})"
+
+    # Concurrence illimitée (défaut 0) : pas de gate.
+    svc_unlimited = make_service(presidio=SlowStub(), concurrency=0)
+    assert svc_unlimited._gate is None
+
+
+def test_concurrency_from_env():
+    """Config.from_env lit CLOISON_DETECT_CONCURRENCY (0 = illimité)."""
+    cfg = Config.from_env({"CLOISON_DETECT_CONCURRENCY": "3"})
+    assert cfg.concurrency == 3
+    cfg2 = Config.from_env({})
+    assert cfg2.concurrency == 0

@@ -43,7 +43,8 @@ pub enum DetectorKind {
     /// Permis de conduire sénégalais (format à confirmer — contexte « permis »).
     DriverLicense,
     /// Matricule de fonctionnaire de l'État / assuré IPRES (actifs et
-    /// retraités) — format à confirmer (contexte « matricule »/« IPRES »).
+    /// retraités) — format confirmé : 6 chiffres + 1 lettre de contrôle
+    /// (A-Z sans I ni O), ex. « 515808/G » ou « 734123F » (contextuel).
     Matricule,
     /// Named gazetteer (e.g., "ville_sn", "nom_sn").
     Gazetteer(String),
@@ -213,8 +214,12 @@ impl Detector {
         )
         .map_err(|e| CloisonError::Detection(format!("email regex: {}", e)))?;
 
+        // Mobile : 70 Expresso · 72 (7211) CSU/Hayo · 75 MVNO/Expresso ·
+        // 76 Free/Yas (ex-Tigo) · 77/78 Sonatel (Orange) · 79 (790) ADIE ·
+        // 71 (signalé pilote, hors plan ITU 2023 — couverture conservatrice).
+        // Fixe : 30 Expresso · 32 Free · 33 Sonatel · 36 CSU/Hayo (zone 8/9).
         let phone_sn_re = Regex::new(
-            r"(?:\+221|00221)\s?(?:7[0-9]|3[0-9])\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2}|(?:70|71|75|76|77|78)(?:[0-9]{7}|\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2})|(?:30|32|33|36)(?:[89][0-9]{6}|\s?[89]\s?[0-9]{2}\s?[0-9]{2}\s?[0-9]{2})"
+            r"(?:\+221|00221)\s?(?:7[0-9]|3[0-9])\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2}|(?:70|71|72|75|76|77|78|79)(?:[0-9]{7}|\s?[0-9]{3}\s?[0-9]{2}\s?[0-9]{2})|(?:30|32|33|36)(?:[89][0-9]{6}|\s?[89]\s?[0-9]{2}\s?[0-9]{2}\s?[0-9]{2})"
         )
         .map_err(|e| CloisonError::Detection(format!("phone_sn regex: {}", e)))?;
 
@@ -252,9 +257,14 @@ impl Detector {
 
         // Matricule de fonctionnaire de l'État / assuré IPRES (actifs et
         // retraités) : numéro précédé d'un contexte explicite (« matricule »,
-        // « IPRES »). Format observé : 8-11 chiffres (à confirmer).
+        // « IPRES »). Format CONFIRMÉ sur listes officielles (fonctionpublique.
+        // gouv.sn — PV inspecteurs + listes CAP 2025, 76 échantillons vérifiés) :
+        // 6 chiffres + 1 lettre majuscule (A-Z sans I ni O — alphabet de la
+        // clé de contrôle), variante avec ou sans slash : « 515808/G » ou
+        // « 734123F ». L'hypothèse initiale « 8-11 chiffres » (DEPLOY-9) était
+        // fausse — un matricule réel non détecté partirait en clair (I1).
         let matricule_re = Regex::new(
-            r"(?i)(?:matricule|ipres|immatriculation)\s*(?:n[°o]\s*)?[:#]?\s*([0-9]{8,11})",
+            r"(?i)(?:matricule|ipres|immatriculation)\s*(?:n[°o]\s*)?[:#]?\s*(\d{6}(?:/)?[A-HJ-NP-Z])",
         )
         .map_err(|e| CloisonError::Detection(format!("matricule regex: {}", e)))?;
 
@@ -633,6 +643,12 @@ mod tests {
             ("Appeler +221 75 123 45 67", "75 international"),
             ("Appeler +221711234567", "71 international concat"),
             ("Appeler +221751234567", "75 international concat"),
+            // NDC mobiles officiels du plan ITU 2023 complétés par la
+            // recherche ARTP (DEPLOY-10) : 72 (7211 CSU/Hayo), 79 (790 ADIE).
+            ("Appeler le 72 111 23 45", "72 CSU/Hayo"),
+            ("Appeler le 790123456", "790 ADIE"),
+            ("Appeler +221 72 111 23 45", "72 international"),
+            ("Appeler +221790123456", "790 international"),
         ] {
             let spans = det.detect_phone_sn(text);
             assert!(
@@ -703,19 +719,29 @@ mod tests {
     #[test]
     fn test_detect_matricule() {
         let det = Detector::new().unwrap();
-        // Matricule fonctionnaire de l'État (contexte « matricule »).
-        let spans = det.detect_matricule("Matricule : 012345678");
+        // Matricule fonctionnaire de l'État (contexte « matricule ») — format
+        // OFFICIEL confirmé : 6 chiffres + 1 lettre (A-Z sans I ni O), avec
+        // ou sans slash (listes fonctionpublique.gouv.sn).
+        let spans = det.detect_matricule("Matricule : 515808/G");
         assert_eq!(spans.len(), 1);
         assert_eq!(spans[0].entity_type, DetectorKind::Matricule);
-        assert_eq!(spans[0].value, "012345678");
+        assert_eq!(spans[0].value, "515808/G");
+        // Variante sans slash (listes CAP).
+        let spans3 = det.detect_matricule("Matricule : 734123F");
+        assert_eq!(spans3.len(), 1);
+        assert_eq!(spans3[0].value, "734123F");
         // Matricule IPRES (contexte « ipres ») — actifs et retraités.
-        let spans2 = det.detect_matricule("Numéro IPRES 9876543210");
+        let spans2 = det.detect_matricule("Numéro IPRES 611784C");
         assert_eq!(spans2.len(), 1);
         assert_eq!(spans2[0].entity_type, DetectorKind::Matricule);
         // Sans contexte : aucun faux positif.
         assert!(det
             .detect_matricule("Le 012345678 n'est pas un matricule")
             .is_empty());
+        // L'ancien format 8-11 chiffres (faux) ne matche plus : 7 chiffres
+        // sans lettre n'est pas un matricule (ni 8 ni 11 chiffres).
+        assert!(det.detect_matricule("Matricule : 1234567").is_empty());
+        assert!(det.detect_matricule("Matricule : 12345678").is_empty());
     }
 
     #[test]

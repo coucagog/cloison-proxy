@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any, Sequence
@@ -78,6 +79,11 @@ class DetectService:
         self._african = AfricanModelDetector(config)
         self._expander = AliasExpander(AliasPatterns.from_config(config.alias))
         self._gauge = QuasiIdGauge(config)
+        # Limiteur de concurrence (CLOISON_DETECT_CONCURRENCY, 0 = illimité) :
+        # sémaphore optionnel autour du pipeline — voir config.concurrency.
+        self._gate = (
+            threading.Semaphore(config.concurrency) if config.concurrency > 0 else None
+        )
 
     # -- état des modèles (healthz /models) -----------------------------------
     def model_status(self) -> dict[str, dict[str, Any]]:
@@ -111,8 +117,22 @@ class DetectService:
 
     # -- pipeline ---------------------------------------------------------------
     def detect(self, request: DetectRequest) -> DetectResponse:
-        """Exécute le pipeline complet ; lève ValueError pour politique invalide."""
+        """Exécute le pipeline complet ; lève ValueError pour politique invalide.
+
+        Limiteur de concurrence optionnel (CLOISON_DETECT_CONCURRENCY, 0 =
+        illimité) : borne le nombre de pipelines simultanés pour protéger le
+        CPU partagé sous charge. La deadline douce est mesurée APRÈS
+        l'acquisition (le temps d'attente du sémaphore ne compte pas dans le
+        budget de détection).
+        """
         self._validate(request)
+        if self._gate is not None:
+            with self._gate:
+                return self._detect_impl(request)
+        return self._detect_impl(request)
+
+    def _detect_impl(self, request: DetectRequest) -> DetectResponse:
+        """Corps du pipeline (voir docstring de la classe)."""
         text, locale, policy = request.text, request.locale, request.policy
 
         budget = self.config.budget_seconds

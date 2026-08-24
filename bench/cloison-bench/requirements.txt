@@ -1,20 +1,33 @@
 # CLOISON STACK-1 Benchmark Requirements
 # Python >= 3.10, < 3.13
 
-# Core dependencies
-presidio-analyzer>=2.2.0
-spacy>=3.7.0
-numpy>=1.24.0
+# DETTE REPRISE-DEPLOIEMENT §6bis — versions ÉPINGLÉES (doctrine DEPLOY-2) :
+# la dérive des deps non-pinnées (presidio/spacy/numpy en `>=`) faisait
+# dériver la baseline régénérée (macro 0.7501 → 0.7623, spécificité
+# 0.42 → 0.54). Les pins ci-dessous = environnement de référence du VPS
+# (conteneur onnxdev) : un `pip install -r requirements.txt` reproduit
+# EXACTEMENT la baseline dérivée ; la référence OFFICIELLE reste gravée
+# (results/rapport.json -> baseline_ref 0.7501) et le GO est ré-évalué
+# contre elle (doctrine DEPLOY-6/9).
+
+# Core dependencies (épinglées)
+presidio-analyzer==2.2.355
+presidio-anonymizer==2.2.355
+spacy==3.7.5
+numpy==1.26.4
+regex==2026.7.19
+
+# Dépendances transitives de presidio-analyzer, épinglées pour la
+# reproductibilité complète de l'environnement.
+tldextract==5.3.2
+PyYAML==6.0.3
 
 # Spacy French model (install separately with: python -m spacy download fr_core_news_md)
 # fr_core_news_md or fr_core_news_lg
 
-# Optional: for enhanced functionality
-# pandas>=2.0.0
-
-# Development/Testing
-pytest>=7.0.0
-pytest-cov>=4.0.0
+# Development/Testing (épinglées)
+pytest==9.1.1
+pytest-cov==7.1.0
 
 # Note: Install the French spaCy model after installing the base requirements:
 #   python -m spacy download fr_core_news_md

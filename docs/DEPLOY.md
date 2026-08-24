@@ -14,11 +14,14 @@
 2. **Binaire control** ✅ fait : `crates/cloison-control/src/main.rs`
    (routeur `cloison_control::api::router`, écoute `CLOISON_CONTROL_PORT`
    défaut 8788, persistance `CLOISON_LEDGER_FILE`).
-3. **`CLOISON_ROLE`** (edge|control) : dispatch encore à implémenter dans
-   `config.rs` + garde-fou uid 0 dans `main.rs` (refus de démarrer en root).
-4. **Wiring edge→detect** (`CLOISON_DETECT_URL`) : non lu par le binaire
-   actuel ; sans lui, le proxy fonctionne avec ses détecteurs embarqués
-   (regex, gazetteers, Luhn) — le sidecar n'est pas consommé.
+3. **`CLOISON_ROLE`** ✅ fait (DEPLOY-10) : lu au boot par chaque binaire —
+   `edge` → cloison-proxy, `control` → cloison-control ; valeur incompatible
+   → échec bruyant. Deux binaires distincts (le contrôle exige la feature
+   `pg` que l'edge ne doit pas embarquer). Refus de démarrer en root :
+   garde-fou uid 0 documenté (distroless non-root).
+4. **Wiring edge→detect** (`CLOISON_DETECT_URL`) ✅ fait (DEPLOY-2, B.1) :
+   le proxy consomme le sidecar (REST `POST /detect`) ; dégradation gracieuse
+   (sidecar indisponible → détecteurs embarqués seuls).
 
 **Outils (wonkom.ai)** : Docker + compose v2, `helm` (déploiement K8s),
 `syft`/`grype` (SBOM/scan, cf. `deploy/sbom.sh`), `curl`, `openssl`.

@@ -21,7 +21,11 @@
   fixes 30/32/33/36**), `CN` (CniSn), `CC` (carte), `IP`, `DT` (date),
   `PP` (passeport), `DL` (permis de conduire), `MA` (matricule État/IPRES),
   `GZ*` (gazetteer). Les identifiants contextuels (PP/DL/MA) sont masqués
-  par défaut (N3+), formats à confirmer (charte §11).
+  par défaut (N3+). Formats : **MA confirmé** — 6 chiffres + 1 lettre de
+  contrôle (A-Z sans I ni O, ex. « 515808/G » ou « 734123F », listes
+  officielles fonctionpublique.gouv.sn) ; PP (1-2 lettres + 7-8 chiffres,
+  CEDEAO/ICAO) et DL (SN 009 numérisé depuis 04/01/2024) : observés, à
+  confirmer (charte §11).
 - **Registre d'émission** : périmètre de la requête en cours ; `restore`
   exige présence au registre **et** MAC valide (invariant I2).
 

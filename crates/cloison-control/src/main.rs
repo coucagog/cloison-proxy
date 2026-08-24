@@ -39,6 +39,23 @@ async fn main() -> ControlResult<()> {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
+    // Dispatch de rôle (dette STACK-9 « CLOISON_ROLE non lu ») : ce binaire
+    // EST le rôle `control`. `CLOISON_ROLE` (posé par le compose) est vérifié
+    // — une valeur autre que `control` (ex. `edge`) échoue BRUYAMMENT au boot.
+    // Absent = défaut `control` (compatibilité dev). Voir cloison-proxy pour
+    // la justification des deux binaires distincts (feature `pg`).
+    match std::env::var("CLOISON_ROLE").ok().as_deref() {
+        None | Some("control") => {}
+        Some(other) => {
+            tracing::error!(
+                role = %other,
+                "CLOISON_ROLE attend `control` pour ce binaire (cloison-control) — \
+                 rôle incompatible, refus de démarrer"
+            );
+            return Err(ControlError::TokenInvalid); // échec bruyant au boot
+        }
+    }
+
     let port: u16 = std::env::var("CLOISON_CONTROL_PORT")
         .ok()
         .and_then(|v| v.parse().ok())

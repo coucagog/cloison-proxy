@@ -13,7 +13,9 @@
 #     prod (dev ici) — volontairement absent.
 #   - Exposition minimale (THREAT-MODEL §3.1) : SEUL api.wonkom.ai (edge)
 #     sort. cp/detect/postgres restent sur le réseau interne docker.
-#     dsh.wonkom.ai : à décider (ancien hôte servait le harness dsh).
+#     dsh.wonkom.ai : RECORD A SUPPRIMÉ (décision pilote 24/08/2026 — DNS
+#     mort : l'ancien hôte du harness dsh a été remplacé, rien ne le sert ;
+#     action opérateur sur la zone anycast.me, voir journal/DEPLOY-10).
 #
 # Usage (hôte wonkom.ai) :
 #   sudo apt install -y caddy
