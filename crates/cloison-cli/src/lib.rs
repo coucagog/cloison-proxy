@@ -79,6 +79,7 @@ pub enum Command {
     /// Ajoute une licence (plan + expiration optionnelle).
     LicenseAdd(LicenseAddArgs),
     /// Racine courante du journal / vérification hors-ligne (`ledger`).
+    #[command(subcommand)]
     Ledger(LedgerCmd),
     /// Statistiques d'un tenant (version de jeton + racine du journal).
     Stats(StatsArgs),
