@@ -75,10 +75,11 @@ export CLOISON_TENANT_KEY_HEX \
 # PII simulée — choisie pour être détectée par les DÉTECTEURS EMBARQUÉS du
 # proxy (pas de wiring detect) : "Aminata" (gazetteer nom_sn), "+221 77 123
 # 45 67" (regex téléphone sénégalais, exige le préfixe +221), email (regex).
-PII_NAME="Aminata"
-PII_PHONE="+221 77 123 45 67"
-PII_PHONE_DIGITS="771234567"
-PII_EMAIL="e2e.cloison@example.com"
+# Toutes surchargeables par env (ex. preuve des préfixes 71/75 — N3).
+PII_NAME="${CLOISON_E2E_PII_NAME:-Aminata}"
+PII_PHONE="${CLOISON_E2E_PII_PHONE:-+221 77 123 45 67}"
+PII_PHONE_DIGITS="${CLOISON_E2E_PII_PHONE_DIGITS:-771234567}"
+PII_EMAIL="${CLOISON_E2E_PII_EMAIL:-e2e.cloison@example.com}"
 PROMPT="Répète mot pour mot les informations suivantes dans une seule phrase : nom « ${PII_NAME} Diop », téléphone « ${PII_PHONE} », email « ${PII_EMAIL} ». Réponds uniquement avec la phrase répétée, sans commentaire."
 
 # --- Helpers --------------------------------------------------------------------
