@@ -13,7 +13,7 @@ use axum::http::HeaderValue;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use cloison_audit::receipt::{self, Counters, Receipt};
-use cloison_core::{Policy, SessionKeys};
+use cloison_core::{derive_key_from_passphrase, Policy, SessionKeys, Vault, VaultConfig};
 use futures_util::StreamExt;
 use serde_json::Value;
 use zeroize::Zeroizing;
@@ -70,6 +70,10 @@ pub struct AppState {
     pub control_cfg: ControlConfig,
     /// Seuil k-anonyme du rapport (porté aussi par l'ingest).
     pub audit_k: usize,
+    /// Coffre persistant local partagé (N0) ; `None` hors mode N0. Tous les
+    /// `RequestEngine` de la session l'utilisent (clé dérivée de la passphrase,
+    /// fail-loud au boot).
+    pub vault: Option<Arc<Vault>>,
 }
 
 impl AppState {
@@ -81,8 +85,48 @@ impl AppState {
         })?;
         let upstream = UpstreamClient::new(&config.upstream)?;
         // Locataire : la politique porte l'identifiant (`CLOISON_TENANT_ID`) —
-        // il alimente les reçus d'audit et le hash de session.
-        let policy = Policy::default_for(&config.control.tenant_id);
+        // il alimente les reçus d'audit et le hash de session. En mode N0, la
+        // politique N0 s'applique (généralisation des faibles cardinalités
+        // explicite — charte §6.1, N0-PREP §4.6).
+        let policy = if config.vault.is_active() {
+            Policy::n0_for(&config.control.tenant_id)
+        } else {
+            Policy::default_for(&config.control.tenant_id)
+        };
+        // N0 — coffre persistant local : clé dérivée de la passphrase (HKDF,
+        // jamais persistée), fail-loud au boot (mauvaise passphrase ou coffre
+        // corrompu → refus de démarrer, jamais de recréation silencieuse).
+        let vault = match &config.vault.path {
+            Some(path) => {
+                let passphrase = config.vault.passphrase.as_ref().ok_or_else(|| {
+                    ProxyError::new(
+                        ErrorKind::Internal,
+                        "CLOISON_VAULT_PASSPHRASE required in N0 mode (fail-loud)",
+                    )
+                })?;
+                let key = derive_key_from_passphrase(passphrase.as_bytes()).map_err(|e| {
+                    ProxyError::new(ErrorKind::Internal, "failed to derive N0 vault key")
+                        .with_field("detail", e.to_string())
+                })?;
+                let vcfg = VaultConfig {
+                    db_path: path.clone(),
+                    max_db_size: 64 * 1024 * 1024,
+                    ttl_secs: config.vault.ttl_secs,
+                };
+                let v = Vault::open(&vcfg, &key).map_err(|e| {
+                    ProxyError::new(ErrorKind::Internal, "failed to open N0 vault (fail-loud)")
+                        .with_field("path", path.display().to_string())
+                        .with_field("detail", e.to_string())
+                })?;
+                tracing::info!(
+                    path = %path.display(),
+                    ttl_s = config.vault.ttl_secs,
+                    "mode N0 actif : coffre persistant local (clé dérivée de la passphrase, jamais persistée)"
+                );
+                Some(Arc::new(v))
+            }
+            None => None,
+        };
         let audit = if config.audit_mode {
             Some(Arc::new(AuditEngine::new(
                 &policy,
@@ -138,6 +182,7 @@ impl AppState {
             control,
             control_cfg: config.control.clone(),
             audit_k: config.audit_k,
+            vault,
         })
     }
 
@@ -233,7 +278,7 @@ pub async fn chat_completions(
         return audit_chat_completions(state, key, req, request_id).await;
     }
 
-    let mut req_engine = RequestEngine::new(&state.keys, &request_id)?;
+    let mut req_engine = RequestEngine::new(&state.keys, &request_id, state.vault.clone())?;
 
     // Phase aller : tokenisation complète du corps (registre = cette requête).
     // B.1 : le sidecar detect est consulté (dégradation gracieuse s'il est
@@ -337,7 +382,7 @@ pub async fn completions_legacy(
         return audit_completions_legacy(state, key, req, request_id).await;
     }
 
-    let mut req_engine = RequestEngine::new(&state.keys, &request_id)?;
+    let mut req_engine = RequestEngine::new(&state.keys, &request_id, state.vault.clone())?;
     engine::tokenize_completion_request(
         &mut req,
         &mut req_engine,

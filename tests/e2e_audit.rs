@@ -252,6 +252,8 @@ fn audit_config(mock_url: &str, seed_path: Option<&std::path::Path>) -> Config {
         detect: DetectConfig::default(),
         // C : pas de wiring contrôle dans ces tests — auth locale + audit local.
         control: cloison_proxy::config::ControlConfig::default(),
+        // N0 : coffre persistant désactivé (mode audit = observe-only).
+        vault: cloison_proxy::config::N0VaultConfig::default(),
     }
 }
 
