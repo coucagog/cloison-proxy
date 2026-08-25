@@ -229,6 +229,19 @@ de conformité k-anonyme, journal public restylé (design system de référence)
 
 ## 6. Infos pratiques pour reprendre
 
+- **SESSION 27/08/2026 (①② livrés, ③ en attente pilote)** : voir
+  `journal/STACK-N0V13.md` (① packaging N0 — distribution PUBLIQUE
+  `coucagog/cloison-proxy` v0.3.0, 9 assets, téléchargements 200 sans auth,
+  smoke Windows réel SUCCÈS, portage Windows du proxy `fsperm.rs`, CI
+  `test-n0-os` + `release-n0`) et `journal/DEPLOY-11.md` (② premier client N3 —
+  tenant client-demo, simulateur 484 requêtes, ledger 3→13 lignes seq 12,
+  rapport k-anonyme publiable, calibration 1218 TP/0 FP mono-source, chaîne
+  vérifiée `ok=true`). Décisions pilote ③ en attente : GPU, DNS dsh (action
+  opérateur), IndexedDB, formats PP/DL (recherche 2026 : aucune source
+  normative — contextuelle conservée), mobile.
+- **Distribution N0** : les binaires/artefacts/scripts vivent dans le dépôt
+  PUBLIC `coucagog/cloison-proxy` (le monorepo est privé — 404 pour le
+  public). Install : `install-n0.sh`/`install-n0.ps1` à la racine de ce dépôt.
 - **Lancer les tests** : `cd /home/debian/Cloison/cloison && source ~/.cargo/env && cargo test --workspace` (202 Rust) ; `cd services/cloison-detect && source .venv/bin/activate && CLOISON_OFFLINE=1 pytest tests/` (67).
 - **E2E** : `cd /home/debian/Cloison/cloison && sudo -E bash deploy/e2e_reel.sh` (mock, sans clé) ; avec `CLOISON_E2E_MODE=real OPENROUTER_API_KEY=...` pour le réel.
 - **Benchmark GO/NO-GO** : `cd bench/cloison-bench && source .venv/bin/activate && CLOISON_OFFLINE=1 python3 run_detect_target.py --offline` → `results/go_nogo_final.json`.

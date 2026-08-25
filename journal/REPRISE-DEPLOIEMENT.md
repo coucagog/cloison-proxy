@@ -148,6 +148,25 @@ attrapé le bug que les 70 tests ne voyaient pas).
 > (régression v0.2.x : `LICENSE` écrasé par l'Apache du workspace ; texte
 > GNU restauré, commit `67203b2`). Portes : 286 tests, clippy 0, fmt 0,
 > WASM ok, preuve e2e réelle.
+> **SESSION 27/08/2026 (①② livrés — `journal/STACK-N0V13.md` +
+> `DEPLOY-11.md`)** : **① packaging N0** — distribution **PUBLIQUE**
+> `coucagog/cloison-proxy` **v0.3.0** (le monorepo est privé → 404 public ;
+> découverte structurante) : 9 assets (4 binaires testés OS réel + bundle NER
+> ONNX int8 AFL-3.0 + libs onnxruntime 1.29.0 + checksums), téléchargements
+> **200 sans auth**, install `install-n0.sh`/`.ps1` (sans Rust ni torch),
+> **smoke Windows réel SUCCÈS** (masquage + NER + coffre), **portage Windows
+> du proxy** (`fsperm.rs` — E0599/E0433 découverts par `release-n0`),
+> CI `test-n0-os` (Windows/macOS) + `release-n0` verts, open-core proxy
+> v0.3.0 re-publié (cargo check vert, AGPL, lock). **② premier client N3** —
+> tenant `client-demo` + simulateur 484 requêtes synthétiques (0 PII),
+> **ledger 3→13 lignes (seq 12)**, rapport k-anonyme **publiable** (redaction
+> < k prouvée : DriverLicense 1→0), chaîne vérifiée `ok=true` 13 entrées,
+> calibration 1218 TP / **0 FP mono-source** (consensus tient). **Dettes
+> découvertes** : auth edge **mono-tenant** (résolution par requête à
+> implémenter, charte §7.2), **image edge périmée si `up -d` sans `--build`**,
+> docs CLI (`token-issue` plat). **③ en attente pilote** : GPU, DNS dsh
+> (action opérateur anycast.me), IndexedDB, formats PP/DL (recherche 2026 —
+> aucune source normative publique ; détection contextuelle conservée), mobile.
 > **Prochaine session : dettes transverses** (GPU, DNS `dsh.wonkom.ai`,
 > calibration seuils prod, IndexedDB navigateur) + déclinaison mobile —
 > voir `journal/STACK-N0V12.md` ; **GPU toujours en attente** (aucun GPU
