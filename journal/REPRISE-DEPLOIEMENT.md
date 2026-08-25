@@ -167,18 +167,22 @@ attrapé le bug que les 70 tests ne voyaient pas).
 > cache par tenant, reçus tagués au tenant, ingest groupé par tenant —
 > déployé et **prouvé en production** (jeton client-demo + header → 200 ;
 > mauvais tenant / sans header → 401) ; **image edge périmée si `up -d`
-> sans `--build`** ; docs CLI (`token-issue` plat). **③ en attente pilote** :
-> GPU, DNS dsh (action opérateur anycast.me), IndexedDB, formats PP/DL
-> (recherche 2026 — aucune source normative publique ; détection contextuelle
-> conservée), mobile. **⚠️ Panne d'infrastructure GitHub Actions** (depuis
+> sans `--build`** ; docs CLI (`token-issue` plat). **③ (27/08, décisions
+> pilote)** : **GPU = sans** (ONNX CPU baseline, dette close) ; **DNS dsh =
+> clos** (wildcard `*.wonkom.ai` du FAI — vérifié 27/08, aucune suppression
+> nécessaire, rien ne sert dsh) ; **mobile = GO Android d'abord** (iOS plus
+> tard — périmètre v1 à confirmer : app WebView + moteur WASM) ; formats
+> PP/DL : recherche 2026 — aucune source normative publique, détection
+> contextuelle conservée ; **IndexedDB = choix en attente** (recommandation
+> in-memory). **⚠️ Panne d'infrastructure GitHub Actions** (depuis
 > 25/08 19:52, « pas de runner » sur tous les jobs) : la distribution binaire
 > **v0.3.1** (multi-tenant) est en cours — linux binaire construit et uploadé
 > (draft), checksums régénérés ; Windows/macOS en attente de la reprise des
 > runners, puis transfert + publication.
-> **Prochaine session : dettes transverses** (GPU, DNS `dsh.wonkom.ai`,
-> calibration seuils prod, IndexedDB navigateur) + déclinaison mobile —
-> voir `journal/STACK-N0V12.md` ; **GPU toujours en attente** (aucun GPU
-> disponible — décision reportée ; baseline ONNX de DEPLOY-8).
+> **Prochaine session : dettes transverses** (calibration seuils prod,
+> remplacement binaires macOS CI à la reprise des runners) + **déclinaison
+> mobile Android** (périmètre v1 à acter) — voir `journal/STACK-N0V12.md` ;
+> **GPU : décision pilote = sans** (27/08, dette close ; baseline ONNX).
 
 ### ① Dette 71/75 — ✅ RÉSOLUE (DEPLOY-9 + DEPLOY-10)
 

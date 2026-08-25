@@ -184,6 +184,15 @@ appartient à un autre tenant. Implémenté et déployé :
   vérifient AUSSI le binaire → échec). Corrigé : checksums **complets
   (binaires inclus)**, script corrigé, **v0.3.0 et v0.3.1 patchés** (8 entrées).
 
+## §11 — Décisions pilote ③ (session 27/08 — partiellement soldées)
+
+| Décision | Arbitrage pilote | État |
+|---|---|---|
+| **GPU** (dette ②) | **Sans pour le moment** | ✅ **Close** — ONNX CPU = baseline validée (DEPLOY-8/10) ; révisable à la demande (procédure DEPLOY-6) |
+| **DNS `dsh.wonkom.ai`** | Le FAI n'a jamais créé ce record ; seul **`*.wonkom.ai`** (wildcard) existe | ✅ **Close** — vérifié 27/08 : un sous-domaine jamais créé résout vers 144.217.81.251 (wildcard) ; rien ne sert dsh (HTTPS fermé) ; aucune action opérateur nécessaire |
+| **Déclinaison mobile** | **OUI — Android d'abord** (iOS plus tard, date à venir) | 🔄 **GO** — périmètre v1 en cours de confirmation (app WebView embarquant le moteur WASM : tokenize/restore in-app, coffre in-memory, chat + LLM configurable) |
+| **IndexedDB navigateur** | Expliqué au pilote (in-memory assumé recommandé vs passphrase WebCrypto vs clé non-exportable) | ⏳ **Choix en attente** du pilote |
+
 ## Porte de sortie (chantier ①) — ✅ ATTEINTE
 
 - [x] Scripts d'install (Linux/macOS + Windows) sans Rust ni torch, checksums
