@@ -855,12 +855,11 @@ fn ensure_ledger_file(path: &Path) -> Result<(), ProxyError> {
     let mut opts = std::fs::OpenOptions::new();
     opts.create(true).append(true);
     crate::fsperm::restrict(0o600).apply(&mut opts);
-    opts.open(path)
-        .map_err(|e| {
-            ProxyError::new(ErrorKind::Internal, "failed to create audit ledger file")
-                .with_field("path", path.display().to_string())
-                .with_field("detail", e.to_string())
-        })?;
+    opts.open(path).map_err(|e| {
+        ProxyError::new(ErrorKind::Internal, "failed to create audit ledger file")
+            .with_field("path", path.display().to_string())
+            .with_field("detail", e.to_string())
+    })?;
     Ok(())
 }
 
@@ -909,13 +908,13 @@ fn append_receipt_line(path: &Path, receipt: &Receipt) -> Result<(), ProxyError>
     opts.append(true);
     crate::fsperm::restrict(0o600).apply(&mut opts);
     let mut file = opts.open(path).map_err(|e| {
-            ProxyError::new(
-                ErrorKind::Internal,
-                "failed to open audit ledger for append",
-            )
-            .with_field("path", path.display().to_string())
-            .with_field("detail", e.to_string())
-        })?;
+        ProxyError::new(
+            ErrorKind::Internal,
+            "failed to open audit ledger for append",
+        )
+        .with_field("path", path.display().to_string())
+        .with_field("detail", e.to_string())
+    })?;
     file.write_all(line.as_bytes())
         .and_then(|_| file.write_all(b"\n"))
         .and_then(|_| file.flush())
@@ -937,10 +936,10 @@ fn write_seed_file(path: &Path, seed: &[u8; 32]) -> Result<(), ProxyError> {
     opts.write(true).create_new(true);
     crate::fsperm::restrict(0o600).apply(&mut opts);
     let mut file = opts.open(path).map_err(|e| {
-            ProxyError::new(ErrorKind::Internal, "failed to create audit key file")
-                .with_field("path", path.display().to_string())
-                .with_field("detail", e.to_string())
-        })?;
+        ProxyError::new(ErrorKind::Internal, "failed to create audit key file")
+            .with_field("path", path.display().to_string())
+            .with_field("detail", e.to_string())
+    })?;
     file.write_all(seed).map_err(|e| {
         ProxyError::new(ErrorKind::Internal, "failed to write audit key file")
             .with_field("path", path.display().to_string())
