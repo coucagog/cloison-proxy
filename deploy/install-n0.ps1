@@ -125,7 +125,7 @@ $env:CLOISON_VAULT_PASSPHRASE = "<VOTRE passphrase — choisie par vous, jamais 
 $env:CLOISON_EXPECTED_ACCESS_TOKEN = "<votre jeton mn_ local>"
 $env:CLOISON_TENANT_KEY_HEX = "<la clé affichée ci-dessus>"
 '@
-$quoted = $quoted.Replace("<VAULT>", $vault.Replace("\", "\\"))
+$quoted = $quoted.Replace("<VAULT>", $vault)
 Write-Host "`n==> Configuration N0 (docs/N0.md §3 — à placer dans votre profil / service) :" -ForegroundColor Cyan
 Write-Host $quoted
 if (-not $SkipNer) {
