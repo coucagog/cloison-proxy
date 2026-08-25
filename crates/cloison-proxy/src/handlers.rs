@@ -607,7 +607,7 @@ fn audit_count_response(value: &Value, audit: &AuditEngine, counters: &mut Count
 /// le reçu ne révèle ni la session ni sa clé (invariant I2).
 fn audit_build_and_record(
     audit: &AuditEngine,
-    policy: &Policy,
+    _policy: &Policy,
     tenant_id: &str,
     request_id: &str,
     session_ref: &str,
