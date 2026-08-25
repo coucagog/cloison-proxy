@@ -274,14 +274,6 @@ async fn n0_roundtrip_with_persistent_vault() {
             !upstream_text.contains("user@example.com"),
             "clair amont interdit"
         );
-
-        // Le fichier coffre est chiffré : aucun clair en clair.
-        let vault_bytes = std::fs::read(&vault_path).unwrap();
-        let vault_str = String::from_utf8_lossy(&vault_bytes).to_lowercase();
-        assert!(
-            !vault_str.contains("aminata") && !vault_str.contains("user@example.com"),
-            "le fichier coffre ne contient aucune valeur en clair"
-        );
     } // drop → coffre fermé (redb)
 
     // Boot #2 : même passphrase → keycheck OK, les entrées persistées sont
@@ -301,6 +293,17 @@ async fn n0_roundtrip_with_persistent_vault() {
         );
         assert!(!text.contains('\u{27E6}'), "aucune sentinelle: {text}");
     }
+
+    // Le fichier coffre est chiffré : aucun clair en clair. Le scan se fait
+    // APRÈS la fermeture du coffre (redb verrouille des plages du fichier sur
+    // Windows — lecture impossible tant que le coffre est ouvert, constat CI
+    // release-n0 / test-n0-os, journal STACK-N0V13).
+    let vault_bytes = std::fs::read(&vault_path).unwrap();
+    let vault_str = String::from_utf8_lossy(&vault_bytes).to_lowercase();
+    assert!(
+        !vault_str.contains("aminata") && !vault_str.contains("user@example.com"),
+        "le fichier coffre ne contient aucune valeur en clair"
+    );
 }
 
 /// N0 : une mauvaise passphrase sur un coffre existant est une erreur fatale
