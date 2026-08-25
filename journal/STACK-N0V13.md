@@ -168,6 +168,22 @@ appartient à un autre tenant. Implémenté et déployé :
 - Docs : `docs/CONFIG.md` (header), `docs/CLIENT-GUIDE.md` (multi-tenant).
 - Open-core : proxy re-publié **v0.3.1** (crate changé).
 
+## §10 — Distribution v0.3.1 + leçon checksums (round 3/4)
+
+- **v0.3.1 (multi-tenant) publié sur `coucagog/cloison-proxy`** : 9 assets,
+  téléchargements publics **200** (linux/win/mac/checksums/ner vérifiés).
+  Linux + Windows : binaires construits **et testés** (le Windows cross-compilé
+  mingw est **smoke-testé sur machine Windows réelle**, exit 0) ; macOS :
+  binaires v0.3.0 (multi-tenant edge-only, sans effet N0 — caveat dans la
+  release, remplacés à la reprise des runners).
+- **Panne d'infrastructure GitHub Actions** (25/08 19:52 → , « pas de runner »
+  sur tous les jobs, tous workflows) : la CI release-n0 est indisponible —
+  fallback : builds natifs/cross sur le VPS (mingw installé dans rustdev).
+- **🔴 Leçon v0.3.0 corrigée** : le checksums.txt généré par
+  `n0-release-assets.sh` ne couvrait que les fichiers modèles (les installateurs
+  vérifient AUSSI le binaire → échec). Corrigé : checksums **complets
+  (binaires inclus)**, script corrigé, **v0.3.0 et v0.3.1 patchés** (8 entrées).
+
 ## Porte de sortie (chantier ①) — ✅ ATTEINTE
 
 - [x] Scripts d'install (Linux/macOS + Windows) sans Rust ni torch, checksums
