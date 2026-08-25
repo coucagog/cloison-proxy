@@ -183,6 +183,11 @@ attrapé le bug que les 70 tests ne voyaient pas).
 > remplacement binaires macOS CI à la reprise des runners) + **déclinaison
 > mobile Android** (périmètre v1 à acter) — voir `journal/STACK-N0V12.md` ;
 > **GPU : décision pilote = sans** (27/08, dette close ; baseline ONNX).
+> **📋 NOUVEAU (28/08, demande pilote) : documentation complète sur le site
+> avec un SLUG spécifique** — à exécuter (slug à acter avec le pilote :
+> `docs.wonkom.ai` ou chemin sur wonkom.ai) ; voir `journal/STACK-N0V13.md`
+> §12. **Mobile Android v1 livré en source** (`mobile/android/`, app WebView
+> + WASM, coffre in-memory, build APK documenté — SDK Android requis).
 
 ### ① Dette 71/75 — ✅ RÉSOLUE (DEPLOY-9 + DEPLOY-10)
 

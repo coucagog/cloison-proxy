@@ -193,6 +193,46 @@ appartient à un autre tenant. Implémenté et déployé :
 | **Déclinaison mobile** | **OUI — Android d'abord** (iOS plus tard, date à venir) | 🔄 **GO** — périmètre v1 en cours de confirmation (app WebView embarquant le moteur WASM : tokenize/restore in-app, coffre in-memory, chat + LLM configurable) |
 | **IndexedDB navigateur** | Expliqué au pilote ; **choix : (a) in-memory assumé** (28/08) | ✅ **Acté** — zéro persistance, zéro risque ; piste passphrase WebCrypto documentée pour plus tard |
 
+## §12 — Mobile Android v1 (source) + 📋 DOCUMENTATION PUBLIQUE SUR LE SITE (slug)
+
+### Mobile Android v1 — source livrée (GO pilote 27/08, périmètre acté 28/08)
+
+- `mobile/android/` : app **WebView + moteur WASM** (Kotlin, minSdk 26) —
+  pseudonymisation **in-app** (`cloisonInitSession`/`cloisonTokenize`/
+  `cloisonRestore`), coffre **in-memory** (décision pilote 28/08), chat +
+  endpoint LLM configurable (SharedPreferences), HTTP natif (le corps envoyé
+  est TOKENISÉ — le fournisseur ne voit jamais la PII), clé locataire
+  aléatoire côté client (crypto.getRandomValues).
+- Build APK : `wasm-pack build --target web` (artefact `assets/cloison/pkg/`,
+  non commité) + SDK Android (`gradle assembleDebug`) — voir
+  `mobile/android/README.md`. APK non compilé dans cette session (pas de SDK
+  Android disponible ; CI à la reprise des runners).
+- iOS : plus tard (date pilote à venir) — même moteur WASM.
+
+### 📋 Dette produit — Documentation publique sur le site, avec SLUG spécifique
+
+**Demande pilote (28/08/2026) : « Il nous faudra une documentation complète
+sur le site avec un slug spécifique. »** — NOTÉ au journal, à exécuter.
+
+- **Objet** : une **documentation publique complète** du produit (pas les
+  docs internes du monorepo) : promesse de confidentialité vérifiable,
+  installation N0 (≤ 10 min), guide mobile Android, API OpenAI-compatible +
+  clé composite, CLI ops, journal de transparence (`journal.wonkom.ai`),
+  open-core (`github.com/coucagog/cloison-*`), FAQ + limites honnêtes
+  (charte §11).
+- **Slug spécifique** : **à définir avec le pilote** — ex. `docs.wonkom.ai`
+  (sous-domaine, le wildcard `*.wonkom.ai` existe déjà) ou un chemin sur
+  `wonkom.ai` (ex. `/docs`). Le slug exact est une décision pilote.
+- **Contraintes** (charte) : zéro secret, zéro PII, zéro log
+  d'Authorization/query (reverse-proxy), liens de vérification du journal,
+  open-core comme preuve de la promesse.
+- **Existant réutilisable** : `docs/` du monorepo (N0.md, CLIENT-GUIDE.md,
+  ONBOARDING.md, API.md, CONFIG.md) — à adapter en contenu public ;
+  design system des pages (thème clair/sombre) déjà validé (STACK-N0 §0) ;
+  infra Caddy + TLS éprouvée (api/journal.wonkom.ai).
+- **Porte de sortie** : une URL publique documentée (slug acté) qui explique
+  le produit et permet d'installer N0/mobile en ≤ 10 min.
+
 ## Porte de sortie (chantier ①) — ✅ ATTEINTE
 
 - [x] Scripts d'install (Linux/macOS + Windows) sans Rust ni torch, checksums

@@ -1,0 +1,8 @@
+# CLOISON Mobile — fichiers locaux (jamais commités)
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+# Artefact WASM (construit via wasm-pack — jamais commité)
+app/src/main/assets/cloison/pkg/
