@@ -708,7 +708,6 @@ impl AuditEngine {
     /// jamais de fichier partiellement écrit, invariant I-A10).
     fn persist_ingest_offset(&self) -> Result<(), ProxyError> {
         use std::io::Write;
-        use std::os::unix::fs::OpenOptionsExt;
         let Some(offset_path) = &self.ingest_offset_file else {
             return Ok(());
         };
@@ -718,17 +717,14 @@ impl AuditEngine {
             .expect("ingest cursor mutex poisoned");
         let tmp = offset_path.with_extension("tmp");
         {
-            let mut file = std::fs::OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .mode(0o600)
-                .open(&tmp)
-                .map_err(|e| {
-                    ProxyError::new(ErrorKind::Internal, "failed to open ingest offset tmp")
-                        .with_field("path", tmp.display().to_string())
-                        .with_field("detail", e.to_string())
-                })?;
+            let mut opts = std::fs::OpenOptions::new();
+            opts.write(true).create(true).truncate(true);
+            crate::fsperm::restrict(0o600).apply(&mut opts);
+            let mut file = opts.open(&tmp).map_err(|e| {
+                ProxyError::new(ErrorKind::Internal, "failed to open ingest offset tmp")
+                    .with_field("path", tmp.display().to_string())
+                    .with_field("detail", e.to_string())
+            })?;
             file.write_all(cursor.to_string().as_bytes())
                 .and_then(|_| file.flush())
                 .map_err(|e| {
@@ -856,12 +852,10 @@ fn load_or_create_signing_key(path: Option<&Path>) -> Result<SigningKey, ProxyEr
 /// Crée le fichier journal des reçus s'il n'existe pas (mode 0600, jamais
 /// réécrit s'il existe — append-only).
 fn ensure_ledger_file(path: &Path) -> Result<(), ProxyError> {
-    use std::os::unix::fs::OpenOptionsExt;
-    std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .mode(0o600)
-        .open(path)
+    let mut opts = std::fs::OpenOptions::new();
+    opts.create(true).append(true);
+    crate::fsperm::restrict(0o600).apply(&mut opts);
+    opts.open(path)
         .map_err(|e| {
             ProxyError::new(ErrorKind::Internal, "failed to create audit ledger file")
                 .with_field("path", path.display().to_string())
@@ -907,16 +901,14 @@ fn load_ledger_file(path: &Path) -> Result<Vec<Receipt>, ProxyError> {
 /// (durabilité de la preuve, comme le ledger de transparence).
 fn append_receipt_line(path: &Path, receipt: &Receipt) -> Result<(), ProxyError> {
     use std::io::Write;
-    use std::os::unix::fs::OpenOptionsExt;
     let line = serde_json::to_string(receipt).map_err(|e| {
         ProxyError::new(ErrorKind::Internal, "failed to serialize audit receipt")
             .with_field("detail", e.to_string())
     })?;
-    let mut file = std::fs::OpenOptions::new()
-        .append(true)
-        .mode(0o600)
-        .open(path)
-        .map_err(|e| {
+    let mut opts = std::fs::OpenOptions::new();
+    opts.append(true);
+    crate::fsperm::restrict(0o600).apply(&mut opts);
+    let mut file = opts.open(path).map_err(|e| {
             ProxyError::new(
                 ErrorKind::Internal,
                 "failed to open audit ledger for append",
@@ -941,13 +933,10 @@ fn append_receipt_line(path: &Path, receipt: &Receipt) -> Result<(), ProxyError>
 /// Écrit une graine 32 octets avec permissions 0600 (jamais de logs dessus).
 fn write_seed_file(path: &Path, seed: &[u8; 32]) -> Result<(), ProxyError> {
     use std::io::Write;
-    use std::os::unix::fs::OpenOptionsExt;
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(path)
-        .map_err(|e| {
+    let mut opts = std::fs::OpenOptions::new();
+    opts.write(true).create_new(true);
+    crate::fsperm::restrict(0o600).apply(&mut opts);
+    let mut file = opts.open(path).map_err(|e| {
             ProxyError::new(ErrorKind::Internal, "failed to create audit key file")
                 .with_field("path", path.display().to_string())
                 .with_field("detail", e.to_string())

@@ -20,6 +20,7 @@ pub mod control;
 pub mod detect;
 pub mod engine;
 pub mod errors;
+pub mod fsperm;
 pub mod handlers;
 pub mod light_ner;
 pub mod openai;
