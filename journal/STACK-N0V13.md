@@ -220,9 +220,9 @@ sur le site avec un slug spécifique. »** — NOTÉ au journal, à exécuter.
   clé composite, CLI ops, journal de transparence (`journal.wonkom.ai`),
   open-core (`github.com/coucagog/cloison-*`), FAQ + limites honnêtes
   (charte §11).
-- **Slug spécifique** : **à définir avec le pilote** — ex. `docs.wonkom.ai`
-  (sous-domaine, le wildcard `*.wonkom.ai` existe déjà) ou un chemin sur
-  `wonkom.ai` (ex. `/docs`). Le slug exact est une décision pilote.
+- **Slug spécifique** : **ACTÉ par le pilote (28/08) : `docs.wonkom.ai`**
+  (sous-domaine — le wildcard `*.wonkom.ai` existe déjà ; Caddy à poser
+  comme api/journal). **À CONSTRUIRE en nouvelle session** (contenu + déploiement).
 - **Contraintes** (charte) : zéro secret, zéro PII, zéro log
   d'Authorization/query (reverse-proxy), liens de vérification du journal,
   open-core comme preuve de la promesse.
