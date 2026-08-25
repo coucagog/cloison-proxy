@@ -105,15 +105,29 @@ Policy::n0_for, mode N0 du proxy ; vérifié : core 72 tests, audit 34,
 proxy 42 dont e2e_n0 5/5)** → **`v0.2.4` (STACK-N0V11 : core/audit/proxy —
 alias intra-session R1-R7 + jauge quasi-id in-core (core), wiring session
 N0 du proxy ; deps git taguées v0.2.4 ; vérifié : cargo test des tags
-publiés, rust 1.97)**.
+publiés, rust 1.97)** → **`v0.2.5` (STACK-N0V12, chantier ④ :
+**core/audit/proxy/wasm** — fusion englobante NER + `apply_rule` (core),
+NER léger embarqué ONNX Rust `ort`+`tokenizers` (proxy), keychain OS (proxy),
+ré-export navigateur (wasm) ; publié **en cascade** (leçon DEPLOY-10) :
+core v0.2.5 → audit v0.2.5 → proxy/wasm v0.2.5 (git deps taguées v0.2.5) ;
+**LICENCE du proxy corrigée** : les re-publications v0.2.x écrasaient
+`LICENSE` (Apache du workspace) — v0.2.5 restaure `LICENSE` = texte GNU
+AGPL-3.0 officiel (commit `67203b2`) ; Cargo.lock committés ; vérifié :
+cargo check des 4 tags publiés (git deps réelles), licences API GitHub
+correctes)**.
 
 ## 5. Où vivent les licences
 
 - Racine : `LICENSE` (Apache-2.0, texte officiel — workspace).
-- `LICENSE-AGPL-3.0` : texte AGPL-3.0 (passerelle uniquement).
+- `LICENSE-AGPL-3.0` : texte AGPL-3.0 officiel (GNU) — racine ET
+  `crates/cloison-proxy/` (la passerelle uniquement).
 - `crates/cloison-proxy/Cargo.toml` : `license = "AGPL-3.0"` (dérogation
   workspace, documentée dans le fichier).
 - Tous les autres crates : `license.workspace = true` → Apache-2.0.
+- **Règle de re-publication (leçon v0.2.5)** : l'overlay `git show
+  main:LICENSE` (Apache du workspace) écrase la licence AGPL du proxy —
+  pour `cloison-proxy`, `LICENSE` doit être le texte
+  `crates/cloison-proxy/LICENSE-AGPL-3.0` (GNU), pas le `LICENSE` racine.
 
 ## 6. Conformité charte
 
