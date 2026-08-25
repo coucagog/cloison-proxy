@@ -36,8 +36,10 @@ TOKEN="$(sed -nE 's#https://[^:]+:([^@]+)@github\.com#\1#p' "$HOME/.git-credenti
 [[ -n "$TOKEN" ]] || { echo "❌ jeton GitHub introuvable dans ~/.git-credentials" >&2; exit 1; }
 
 # --- 1. Bundle NER léger (artefacts validés du volume detect) ----------------
+# Le volume docker est root-only : accès via sudo (le script tourne sur le VPS,
+# debian NOPASSWD — charte §12).
 NER_SRC="/var/lib/docker/volumes/cloison-dev_detect-models/_data/ner-lite-distil"
-[[ -f "$NER_SRC/model-int8.onnx" ]] || { echo "❌ $NER_SRC/model-int8.onnx absent" >&2; exit 1; }
+sudo test -f "$NER_SRC/model-int8.onnx" || { echo "❌ $NER_SRC/model-int8.onnx absent" >&2; exit 1; }
 
 cat > "$WORK/NOTICE.txt" <<'EOF'
 CLOISON N0 — NER léger embarqué (artefact provisionné, jamais committé)
@@ -53,7 +55,7 @@ Réf.    : journal/ARBITRAGE-04-NER-LEGER.md (verdict GO pré-enregistré)
 EOF
 
 echo "==> assemblage du bundle NER léger…"
-cp "$NER_SRC/model-int8.onnx" "$NER_SRC/tokenizer.json" "$NER_SRC/label_map.json" \
+sudo cp "$NER_SRC/model-int8.onnx" "$NER_SRC/tokenizer.json" "$NER_SRC/label_map.json" \
    "$NER_SRC/special_tokens_map.json" "$NER_SRC/tokenizer_config.json" "$NER_SRC/vocab.txt" "$WORK/"
 cp "$WORK/NOTICE.txt" "$WORK/LICENSE-AFL-3.0.txt"
 tar -czf "$WORK/cloison-n0-ner-lite.tar.gz" -C "$WORK" \
