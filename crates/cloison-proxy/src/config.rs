@@ -658,7 +658,6 @@ fn load_session_salt(vault: &N0VaultConfig) -> Result<[u8; 16], ProxyError> {
 /// d'une session changeraient sans avertissement).
 fn load_or_create_salt_file(path: &std::path::Path) -> Result<[u8; 16], ProxyError> {
     use std::io::Write;
-    use std::os::unix::fs::OpenOptionsExt;
 
     if let Ok(raw) = std::fs::read(path) {
         if raw.len() != 16 {
@@ -682,12 +681,10 @@ fn load_or_create_salt_file(path: &std::path::Path) -> Result<[u8; 16], ProxyErr
         }
     }
     let salt = random_salt();
-    match std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(path)
-    {
+    let mut opts = std::fs::OpenOptions::new();
+    opts.write(true).create_new(true);
+    crate::fsperm::restrict(0o600).apply(&mut opts);
+    match opts.open(path) {
         Ok(mut f) => {
             f.write_all(&salt).and_then(|_| f.flush()).map_err(|e| {
                 ProxyError::new(ErrorKind::Internal, "failed to write session salt file")

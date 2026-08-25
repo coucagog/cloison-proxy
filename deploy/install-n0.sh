@@ -67,7 +67,15 @@ mkdir -p "$PREFIX" "$PREFIX/ner"
 chmod 700 "$PREFIX" "$PREFIX/ner"
 
 need() { command -v "$1" >/dev/null 2>&1 || { echo "❌ outil requis : $1" >&2; exit 2; }; }
-need curl; need tar; need sha256sum || true
+need curl; need tar
+# SHA-256 : sha256sum (Linux) ou shasum -a 256 (macOS).
+if command -v sha256sum >/dev/null 2>&1; then
+  SHA_CMD="sha256sum"
+elif command -v shasum >/dev/null 2>&1; then
+  SHA_CMD="shasum -a 256"
+else
+  echo "❌ outil requis : sha256sum ou shasum" >&2; exit 2
+fi
 
 # --- 1. Binaire --------------------------------------------------------------
 BIN="$PREFIX/cloison-proxy"
@@ -88,7 +96,7 @@ verify() { # verify <fichier> <nom-dans-checksums>
   local f="$1" n="$2" expected actual
   expected="$(awk -v n="$n" '$2==n {print $1}' "$SUM_FILE")"
   [[ -n "$expected" ]] || { echo "❌ $n absent de checksums.txt" >&2; exit 1; }
-  actual="$(sha256sum "$f" | awk '{print $1}')"
+  actual="$($SHA_CMD "$f" | awk '{print $1}')"
   [[ "$actual" == "$expected" ]] || { echo "❌ checksum invalide pour $n (attendu $expected, obtenu $actual)" >&2; exit 1; }
 }
 verify "$BIN" "cloison-proxy-$TARGET"
