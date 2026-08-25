@@ -178,7 +178,8 @@ de conformité k-anonyme, journal public restylé (design system de référence)
   `/v1/embeddings` **bloqué** (404), **limites honnêtes** documentées
   (`docs/N0.md` §4 : rappel PERSON/LOC réduit, poste compromis,
   quasi-identifiants). Preuve e2e locale (roundtrip, coffre sans clair,
-  persistance, fail-loud) + open-core **v0.2.3** (core/audit/proxy).
+  persistance, fail-loud) + open-core **v0.2.3 → v0.2.4** (core/audit/proxy,
+  STACK-N0V11 : alias+jauge in-core).
   Décisions détaillées : `journal/STACK-N0.md` ; préparation `N0-PREP.md`.
 - **Pistes N0 v1.1** : ① **alias intra-session R1-R7 + jauge quasi-id
   in-core ✅ LIVRÉS (STACK-N0V11)** — portage Rust du sidecar (jamais les

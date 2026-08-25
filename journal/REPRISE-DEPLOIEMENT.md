@@ -245,7 +245,8 @@ Décisions pilote posées (23/08/2026) **exécutées** :
   (jamais les pronoms, scores plafonnés, jauge signal-only opt-in, serveur
   bit-identique) ; `/v1/embeddings` = **bloqué par défaut** (404).
 - Détails : `journal/STACK-N0.md`, `journal/STACK-N0V11.md`, `docs/N0.md`,
-  open-core v0.2.3 (→ v0.2.4 si le core change).
+  open-core **v0.2.4** publié et vérifié (core/audit/proxy — deps git
+  taguées v0.2.4, cargo test des tags publiés).
 
 ### Secondaires (si le temps le permet)
 

@@ -102,7 +102,10 @@ Procédure (référence, réexécutable pour les versions suivantes) :
 72/79, matricule officiel, correctif graphe) → **`v0.2.3` (STACK-N0 :
 core/audit/proxy — coffre persistant N0, passphrase locale fail-loud,
 Policy::n0_for, mode N0 du proxy ; vérifié : core 72 tests, audit 34,
-proxy 42 dont e2e_n0 5/5)**.
+proxy 42 dont e2e_n0 5/5)** → **`v0.2.4` (STACK-N0V11 : core/audit/proxy —
+alias intra-session R1-R7 + jauge quasi-id in-core (core), wiring session
+N0 du proxy ; deps git taguées v0.2.4 ; vérifié : cargo test des tags
+publiés, rust 1.97)**.
 
 ## 5. Où vivent les licences
 
