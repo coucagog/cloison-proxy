@@ -239,6 +239,18 @@ de conformité k-anonyme, journal public restylé (design system de référence)
   vérifiée `ok=true`). Décisions pilote ③ en attente : GPU, DNS dsh (action
   opérateur), IndexedDB, formats PP/DL (recherche 2026 : aucune source
   normative — contextuelle conservée), mobile.
+- **SESSION 29/08/2026 (docs.wonkom.ai — ✅ LIVRÉ)** : voir
+  `journal/STACK-N0V14.md` — **documentation publique complète en ligne**
+  (`https://docs.wonkom.ai`, 8 pages statiques, design system du journal,
+  zéro conteneur/zéro log — Caddy file_server, zéro secret/PII) : promesse
+  vérifiable (journal + open-core + rapport), install N0 ≤ 10 min, guide
+  mobile Android, API + clé composite + multi-tenant, CLI ops, journal,
+  open-core, FAQ + limites honnêtes. Déployé via `deploy/deploy-docs.sh`
+  (idempotent, contenu source `deploy/docs-site/`), toutes les routes 200,
+  non-régression vérifiée (api 401/journal 200/ledger 13/caddy actif/certs
+  87 j). **⚠️ Runners GitHub TOUJOURS en panne** (aucun run depuis 27/08 —
+  jobs échoués sans steps) → APK Android et binaires macOS v0.3.1 restent en
+  attente de la reprise.
 - **Distribution N0** : les binaires/artefacts/scripts vivent dans le dépôt
   PUBLIC `coucagog/cloison-proxy` (le monorepo est privé — 404 pour le
   public). Install : `install-n0.sh`/`install-n0.ps1` à la racine de ce dépôt.

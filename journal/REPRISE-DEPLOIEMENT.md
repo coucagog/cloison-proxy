@@ -184,10 +184,16 @@ attrapé le bug que les 70 tests ne voyaient pas).
 > mobile Android** (périmètre v1 à acter) — voir `journal/STACK-N0V12.md` ;
 > **GPU : décision pilote = sans** (27/08, dette close ; baseline ONNX).
 > **📋 NOUVEAU (28/08, demande pilote) : documentation complète sur le site —
-> SLUG ACTÉ : `docs.wonkom.ai`** — à construire en prochaine session (contenu
-> + bloc Caddy/TLS ; voir `journal/STACK-N0V13.md` §12). **Mobile Android v1
-> livré en source** (`mobile/android/`, app WebView + WASM, coffre in-memory,
-> build APK documenté — SDK Android requis).
+> SLUG ACTÉ : `docs.wonkom.ai`** — **✅ LIVRÉE ET DÉPLOYÉE (29/08,
+> `journal/STACK-N0V14.md`)** : `https://docs.wonkom.ai` (8 pages statiques,
+> design system du journal, **Caddy file_server — zéro conteneur, zéro log**,
+> TLS ACME identique api/journal) ; déploiement `deploy/deploy-docs.sh`
+> (idempotent), toutes les routes 200, non-régression vérifiée.
+> **Mobile Android v1 livré en source** (`mobile/android/`, app WebView +
+> WASM, coffre in-memory, build APK documenté — SDK Android requis ;
+> **APK en attente de la reprise des runners GitHub — panne TOUJOURS en
+> cours 29/08** : aucun run depuis 27/08, jobs échoués sans steps).
+> **Binaires macOS v0.3.1** : idem — en attente de la reprise des runners.
 
 ### ① Dette 71/75 — ✅ RÉSOLUE (DEPLOY-9 + DEPLOY-10)
 
