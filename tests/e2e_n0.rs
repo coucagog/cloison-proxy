@@ -168,6 +168,8 @@ fn n0_config(mock_url: &str, dir: &Path, passphrase: &str) -> Config {
             keychain_user: "default".to_string(),
         },
         session: SessionConfig::default(),
+        // N0 v1.2 : pas de NER léger dans ces tests (modèle absent → N0 v1).
+        light_ner: None,
     }
 }
 

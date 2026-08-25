@@ -28,6 +28,7 @@ use crate::control::{flush_pending_audit, ControlClient, TokenVerifier};
 use crate::detect::DetectClient;
 use crate::engine::{self, AuditEngine, RequestEngine};
 use crate::errors::{ErrorKind, ProxyError};
+use crate::light_ner::LightNer;
 use crate::openai::{ChatCompletionRequest, CompletionRequest, Content, Prompt};
 use crate::stream;
 use crate::upstream::UpstreamClient;
@@ -87,6 +88,9 @@ pub struct AppState {
     pub session: Arc<AsyncMutex<SessionContext>>,
     /// Options de session (alias/jauge) — `Some` uniquement en mode N0.
     pub session_options: Option<SessionOptions>,
+    /// NER léger embarqué (chantier ④, N0 v1.2) ; `None` = N0 v1 inchangé
+    /// (ou modèle non configuré). Dégradation gracieuse au chargement.
+    pub light_ner: Option<Arc<LightNer>>,
 }
 
 impl AppState {
@@ -160,6 +164,29 @@ impl AppState {
             }
             None => None,
         };
+        // N0 v1.2 — chantier ④ : NER léger embarqué (mode N0 uniquement).
+        // Dégradation gracieuse : modèle/lib absents → `None` + warn (le
+        // daemon reste N0 v1 : gazetteers + alias — jamais d'erreur).
+        let light_ner = match (&config.light_ner, config.vault.is_active()) {
+            (Some(cfg), true) => match LightNer::try_new(cfg.clone()) {
+                Some(ner) => {
+                    tracing::info!(
+                        model = %cfg.model_path.display(),
+                        threshold = cfg.threshold,
+                        "NER léger embarqué chargé (chantier ④) — PERSON/LOC in-core"
+                    );
+                    Some(Arc::new(ner))
+                }
+                None => None,
+            },
+            (Some(_), false) => {
+                tracing::warn!(
+                    "NER léger embarqué configuré mais hors mode N0 (CLOISON_VAULT_PATH absent) — ignoré"
+                );
+                None
+            }
+            (None, _) => None,
+        };
         // C — wiring edge → contrôle : vérification des jetons + ingest d'audit.
         let (control, token_verifier) = match &config.control.url {
             Some(_) => {
@@ -205,10 +232,15 @@ impl AppState {
                     enable_alias_expansion: config.session.enable_alias_expansion,
                     enable_quasiid_gauge: config.session.enable_quasiid_gauge,
                     quasiid_threshold: config.session.quasiid_threshold,
+                    // N0 v1.2 — chantier ④ : la fusion englobante NER est
+                    // active en mode N0 **si le NER léger est configuré**
+                    // (sinon aucun span NER embarqué n'existe — no-op).
+                    enable_enclosing_ner_fusion: config.light_ner.is_some(),
                 })
             } else {
                 None
             },
+            light_ner,
         })
     }
 
@@ -321,6 +353,7 @@ pub async fn chat_completions(
         &mut req_engine,
         &state.policy,
         state.detect.as_ref(),
+        state.light_ner.as_deref(),
         session_guard.as_deref_mut(),
         state.session_options.as_ref(),
     )
@@ -435,6 +468,7 @@ pub async fn completions_legacy(
         &mut req_engine,
         &state.policy,
         state.detect.as_ref(),
+        state.light_ner.as_deref(),
         session_guard.as_deref_mut(),
         state.session_options.as_ref(),
     )

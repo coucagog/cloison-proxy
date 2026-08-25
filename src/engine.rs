@@ -27,6 +27,7 @@ use cloison_core::{
 use crate::detect::DetectClient;
 use crate::errors::{ErrorKind, ProxyError};
 use crate::handlers::Metrics;
+use crate::light_ner::LightNer;
 use crate::openai::{
     ChatCompletionRequest, ChatCompletionResponse, CompletionRequest, Content, Prompt,
 };
@@ -141,6 +142,7 @@ pub async fn tokenize_chat_request(
     engine: &mut RequestEngine,
     policy: &Policy,
     detect: Option<&DetectClient>,
+    light_ner: Option<&LightNer>,
     mut session: Option<&mut SessionContext>,
     options: Option<&SessionOptions>,
 ) -> Result<SessionFlags, ProxyError> {
@@ -154,6 +156,7 @@ pub async fn tokenize_chat_request(
                         s,
                         policy,
                         detect,
+                        light_ner,
                         session.as_deref_mut(),
                         options,
                     )
@@ -170,6 +173,7 @@ pub async fn tokenize_chat_request(
                                     text,
                                     policy,
                                     detect,
+                                    light_ner,
                                     session.as_deref_mut(),
                                     options,
                                 )
@@ -189,6 +193,7 @@ pub async fn tokenize_chat_request(
                     &call.function.arguments,
                     policy,
                     detect,
+                    light_ner,
                     session.as_deref_mut(),
                     options,
                 )
@@ -207,15 +212,23 @@ pub async fn tokenize_completion_request(
     engine: &mut RequestEngine,
     policy: &Policy,
     detect: Option<&DetectClient>,
+    light_ner: Option<&LightNer>,
     mut session: Option<&mut SessionContext>,
     options: Option<&SessionOptions>,
 ) -> Result<SessionFlags, ProxyError> {
     let mut flags = SessionFlags::default();
     match &mut req.prompt {
         Prompt::Single(s) => {
-            let (out, f) =
-                tokenize_with_detect(engine, s, policy, detect, session.as_deref_mut(), options)
-                    .await?;
+            let (out, f) = tokenize_with_detect(
+                engine,
+                s,
+                policy,
+                detect,
+                light_ner,
+                session.as_deref_mut(),
+                options,
+            )
+            .await?;
             *s = out;
             flags.quasi_id_flagged |= f;
         }
@@ -226,6 +239,7 @@ pub async fn tokenize_completion_request(
                     s,
                     policy,
                     detect,
+                    light_ner,
                     session.as_deref_mut(),
                     options,
                 )
@@ -244,15 +258,20 @@ pub async fn tokenize_completion_request(
 /// N0 v1.1 : en présence d'une session (`Some`), tokenisation session (alias
 /// et jauge quasi-id) ; sinon comportement historique bit-identique. Renvoie
 /// le texte tokenisé et le drapeau de la jauge quasi-id.
+///
+/// N0 v1.2 (chantier ④) : `light_ner` (NER léger embarqué) produit des spans
+/// PERSON/LOC **locaux** fusionnés à ceux du sidecar distant — le core reste
+/// la source de vérité (validation stricte + fusion englobante N0).
 async fn tokenize_with_detect(
     engine: &mut RequestEngine,
     text: &str,
     policy: &Policy,
     detect: Option<&DetectClient>,
+    light_ner: Option<&LightNer>,
     session: Option<&mut SessionContext>,
     options: Option<&SessionOptions>,
 ) -> Result<(String, bool), ProxyError> {
-    let extra = match detect {
+    let mut extra = match detect {
         Some(client) => match client.detect(text).await {
             Ok(spans) => spans,
             Err(e) => {
@@ -262,6 +281,12 @@ async fn tokenize_with_detect(
         },
         None => Vec::new(),
     };
+    // N0 v1.2 — NER léger embarqué : spans PERSON/LOC locaux (offsets octets,
+    // cohérents avec le contrat interne du core). La dégradation gracieuse est
+    // garantie à l'intérieur de `LightNer::detect` (jamais d'erreur).
+    if let Some(ner) = light_ner {
+        extra.extend(ner.detect(text));
+    }
     match (session, options) {
         (Some(sess), Some(opts)) => {
             let r = engine
