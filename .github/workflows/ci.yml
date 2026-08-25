@@ -80,6 +80,25 @@ jobs:
         run: cargo check -p cloison-control --features pg --locked
 
   # ---------------------------------------------------------------------------
+  # Preuve « OS réel » du daemon N0 (priorité ④ RAPPORT §5.1) : les tests e2e
+  # N0 (coffre, fail-loud, roundtrip, keychain, embeddings 404) s'exécutent
+  # sur Windows et macOS natifs à chaque push — pas seulement une compilation
+  # (Linux est couvert par test-rust). Keychain réel : Credential Manager
+  # (Windows) / Keychain (macOS) ; repli env si indisponible (testé STACK-N0V11).
+  test-n0-os:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-14]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.97.0
+      - uses: Swatinem/rust-cache@v2
+      - name: E2E N0 sur ${{ matrix.os }}
+        run: cargo test -p cloison-proxy --test e2e_n0 --locked
+
+  # ---------------------------------------------------------------------------
   test-detect:
     runs-on: ubuntu-latest
     steps:

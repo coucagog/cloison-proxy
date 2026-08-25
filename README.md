@@ -87,7 +87,11 @@ committé) détecte PERSON/LOC **in-core** via ONNX Runtime Rust (`ort`,
 load-dynamic) + fusion englobante N0 ; arbitrage pré-enregistré **GO**
 (`journal/ARBITRAGE-04-NER-LEGER.md`) : PERSON 0 → 0.62, LOC +0.18,
 spécificité 83 %, latence ~11 ms/doc court ; dégradation gracieuse si
-modèle absent (N0 v1 inchangé).
+modèle absent (N0 v1 inchangé). **N0 v1.3 (packaging release)** : distribution
+par **release GitHub** (binaires Linux/Windows/macOS testés sur l'OS réel +
+bundle NER + libs onnxruntime + checksums) — installation en ≤ 10 min sans
+Rust ni torch : `bash <(curl -fsSL …/deploy/install-n0.sh)` (Linux/macOS) ou
+`install-n0.ps1` (Windows), voir `docs/N0.md` §2.
 Preuve e2e locale : roundtrip hors-ligne, persistance après redémarrage,
 fail-loud sur mauvaise passphrase, masquage d'un diminutif inter-requêtes,
 drapeau jauge sur densité élevée, boot avec keychain, **nom hors gazetteer

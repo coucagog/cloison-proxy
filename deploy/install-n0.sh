@@ -1,61 +1,151 @@
 #!/usr/bin/env bash
 # =============================================================================
-# CLOISON N0 — Installation du daemon desktop local (moteur Rust seul).
+# CLOISON N0 — Installation du daemon desktop (moteur Rust seul) DEPUIS LES
+# RELEASES : binaire + NER léger embarqué (ONNX int8) + lib onnxruntime.
 #
-# Ce que fait le script :
-#   1. Construit le binaire `cloison-proxy` (mode N0 = même binaire, rôle edge) ;
-#   2. Crée le répertoire ~/.cloison (0600) ;
-#   3. Génère la clé locataire (jamais persistée en clair — affichée une fois) ;
-#   4. Affiche la configuration N0 à placer dans votre environnement
-#      (la passphrase du coffre est fournie par VOUS au premier lancement —
-#      jamais générée, jamais stockée par ce script).
+# Aucune toolchain Rust, aucun torch : tout est téléchargé depuis la release
+# GitHub (charte §4 — N0 = moteur Rust seul ; §12 — install reproductible).
 #
-# Usage : ./deploy/install-n0.sh [--prefix /opt/cloison]
-# Après installation : suivez `docs/N0.md` §3 pour lancer le daemon.
+# Usage :
+#   bash <(curl -fsSL https://raw.githubusercontent.com/coucagog/cloison/main/deploy/install-n0.sh)
+#   bash install-n0.sh [--version v0.3.0] [--prefix ~/.cloison] [--skip-ner]
+#
+#   --version   tag de release (défaut : latest publiée)
+#   --prefix    répertoire d'installation (défaut ~/.cloison)
+#   --skip-ner  n'installe pas le NER léger (gazetteers + alias seuls — la
+#               limite « texte libre » de docs/N0.md §4.1 reste alors assumée)
+#
+# Après installation : configurez l'environnement (affiché à la fin) puis
+# lancez <prefix>/cloison-proxy — voir docs/N0.md §3.
 # =============================================================================
 set -euo pipefail
 
-PREFIX="${1:-$HOME/.cloison}"
-BIN_SRC="$(cd "$(dirname "$0")/.." && pwd)/target/release/cloison-proxy"
+# --- Options ----------------------------------------------------------------
+VERSION="latest"
+PREFIX="${HOME}/.cloison"
+SKIP_NER=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --version) VERSION="$2"; shift 2 ;;
+    --prefix)  PREFIX="$2";  shift 2 ;;
+    --skip-ner) SKIP_NER=1;  shift ;;
+    *) echo "usage: install-n0.sh [--version TAG] [--prefix DIR] [--skip-ner]" >&2; exit 2 ;;
+  esac
+done
 
-echo "==> CLOISON N0 — installation daemon desktop"
-mkdir -p "$PREFIX"
-chmod 700 "$PREFIX"
+BASE_URL="https://github.com/coucagog/cloison/releases/download"
+LATEST_URL="https://github.com/coucagog/cloison/releases/latest/download"
+REPO_RAW="https://raw.githubusercontent.com/coucagog/cloison/main"
 
-# 1. Construire le binaire (mode release, rôle edge)
-if [[ ! -x "$BIN_SRC" ]]; then
-  echo "==> build du binaire (release)…"
-  cargo build --release -p cloison-proxy
+# --- Détection OS / arch → cible de release ---------------------------------
+OS="$(uname -s)"
+ARCH="$(uname -m)"
+case "$OS-$ARCH" in
+  Linux-x86_64)  TARGET="x86_64-unknown-linux-gnu"   LIB_EXT="so" ;;
+  Linux-aarch64) TARGET="aarch64-unknown-linux-gnu"  LIB_EXT="so" ;;
+  Darwin-x86_64) TARGET="x86_64-apple-darwin"        LIB_EXT="dylib" ;;
+  Darwin-arm64)  TARGET="aarch64-apple-darwin"       LIB_EXT="dylib" ;;
+  *)
+    echo "❌ Cible non publiée ($OS-$ARCH). Windows : utilisez install-n0.ps1. Pour les autres cibles, compilez depuis le dépôt (docs/N0.md §2 — build depuis le code)." >&2
+    exit 2 ;;
+esac
+
+DL_BIN="$BASE_URL/$VERSION/cloison-proxy-$TARGET"
+DL_NER="$BASE_URL/$VERSION/cloison-n0-ner-lite.tar.gz"
+DL_LIB="$BASE_URL/$VERSION/cloison-n0-onnxruntime-$TARGET.tar.gz"
+DL_SUM="$BASE_URL/$VERSION/checksums.txt"
+if [[ "$VERSION" == "latest" ]]; then
+  DL_BIN="$LATEST_URL/cloison-proxy-$TARGET"
+  DL_NER="$LATEST_URL/cloison-n0-ner-lite.tar.gz"
+  DL_LIB="$LATEST_URL/cloison-n0-onnxruntime-$TARGET.tar.gz"
+  DL_SUM="$LATEST_URL/checksums.txt"
 fi
-install -m 0755 "$BIN_SRC" "$PREFIX/cloison-proxy"
-echo "==> binaire : $PREFIX/cloison-proxy"
 
-# 2. Clé locataire (affichée UNE fois — c'est elle qui dérive les jetons)
-TENANT_KEY="$(openssl rand -hex 32)"
-echo "==> clé locataire (à conserver précieusement, jamais à committer) :"
+echo "==> CLOISON N0 — installation daemon desktop (moteur Rust seul)"
+echo "    cible : $TARGET   →   $PREFIX"
+mkdir -p "$PREFIX" "$PREFIX/ner"
+chmod 700 "$PREFIX" "$PREFIX/ner"
+
+need() { command -v "$1" >/dev/null 2>&1 || { echo "❌ outil requis : $1" >&2; exit 2; }; }
+need curl; need tar; need sha256sum || true
+
+# --- 1. Binaire --------------------------------------------------------------
+BIN="$PREFIX/cloison-proxy"
+echo "==> téléchargement du binaire ($TARGET)…"
+curl -fsSL -o "$BIN" "$DL_BIN"
+chmod 0755 "$BIN"
+
+# --- 2. Checksums (vérification d'intégrité — échec bruyant si absent) ------
+SUM_FILE="$PREFIX/checksums.txt"
+echo "==> vérification d'intégrité (checksums.txt)…"
+curl -fsSL -o "$SUM_FILE" "$DL_SUM"
+cd "$PREFIX"
+if ! grep -q "cloison-proxy-$TARGET" "$SUM_FILE"; then
+  echo "❌ checksums.txt ne référence pas le binaire $TARGET — release incomplète ?" >&2
+  exit 1
+fi
+verify() { # verify <fichier> <nom-dans-checksums>
+  local f="$1" n="$2" expected actual
+  expected="$(awk -v n="$n" '$2==n {print $1}' "$SUM_FILE")"
+  [[ -n "$expected" ]] || { echo "❌ $n absent de checksums.txt" >&2; exit 1; }
+  actual="$(sha256sum "$f" | awk '{print $1}')"
+  [[ "$actual" == "$expected" ]] || { echo "❌ checksum invalide pour $n (attendu $expected, obtenu $actual)" >&2; exit 1; }
+}
+verify "$BIN" "cloison-proxy-$TARGET"
+
+# --- 3. NER léger embarqué (ONNX int8) + lib onnxruntime --------------------
+if [[ "$SKIP_NER" == "1" ]]; then
+  echo "==> --skip-ner : NER léger non installé (limite « texte libre » assumée)"
+else
+  echo "==> téléchargement du NER léger (modèle ONNX int8, ~135 Mo)…"
+  curl -fsSL -o "$PREFIX/ner-lite.tar.gz" "$DL_NER"
+  verify "$PREFIX/ner-lite.tar.gz" "cloison-n0-ner-lite.tar.gz"
+  tar -xzf "$PREFIX/ner-lite.tar.gz" -C "$PREFIX/ner"
+  rm -f "$PREFIX/ner-lite.tar.gz"
+
+  echo "==> téléchargement de la lib onnxruntime ($OS)…"
+  curl -fsSL -o "$PREFIX/ort.tar.gz" "$DL_LIB"
+  verify "$PREFIX/ort.tar.gz" "cloison-n0-onnxruntime-$TARGET.tar.gz"
+  tar -xzf "$PREFIX/ort.tar.gz" -C "$PREFIX/ner"
+  rm -f "$PREFIX/ort.tar.gz"
+
+  ls "$PREFIX/ner/model-int8.onnx" >/dev/null 2>&1 || { echo "❌ modèle introuvable après extraction" >&2; exit 1; }
+fi
+rm -f "$SUM_FILE"
+
+# --- 4. Clé locataire (affichée UNE fois — dérive les jetons) ----------------
+TENANT_KEY="$(openssl rand -hex 32 2>/dev/null || od -An -N32 -tx1 /dev/urandom | tr -d ' \n')"
+echo "==> clé locataire (à conserver précieusement, JAMAIS à committer) :"
 echo "    CLOISON_TENANT_KEY_HEX=$TENANT_KEY"
 
-# 3. Configuration minimale affichée
-cat <<'EOF'
+# --- 5. Configuration minimale affichée --------------------------------------
+cat <<EOF
 
-==> Configuration N0 (à placer dans votre profil / service, voir docs/N0.md) :
+==> Configuration N0 (docs/N0.md §3 — à placer dans votre profil / service) :
 
 export CLOISON_ROLE=edge
 export CLOISON_LISTEN_ADDR=127.0.0.1:8787
 export CLOISON_UPSTREAM_BASE_URL=<votre fournisseur LLM, ex. https://openrouter.ai/api/v1>
-export CLOISON_VAULT_PATH=~/.cloison/vault.redb
+export CLOISON_VAULT_PATH=$PREFIX/vault.redb
 export CLOISON_VAULT_PASSPHRASE='<VOTRE passphrase — choisie par vous, jamais stockée>'
 export CLOISON_EXPECTED_ACCESS_TOKEN=<votre jeton mn_ local>
 export CLOISON_TENANT_KEY_HEX=<la clé affichée ci-dessus>
-
-# N0 v1.1 (optionnel — défauts documentés dans docs/N0.md §3) :
-# export CLOISON_ALIAS_EXPANSION=1        # alias intra-session (défaut 1)
-# export CLOISON_QUASI_ID_GAUGE=1         # jauge quasi-id (défaut 0 = off)
-# export CLOISON_QUASI_ID_THRESHOLD=0.5   # seuil de la jauge (défaut 0.5)
-# export CLOISON_VAULT_KEYCHAIN_SERVICE=cloison-n0  # passphrase via le keychain OS
-#                                                   # (sinon CLOISON_VAULT_PASSPHRASE)
-
-Lancement : $PREFIX/cloison-proxy
 EOF
 
-echo "==> Installation N0 terminée. Le coffre persistant sera créé au premier lancement (fail-loud si la passphrase ne correspond pas à un coffre existant)."
+if [[ "$SKIP_NER" != "1" ]]; then
+  cat <<EOF
+
+# NER léger embarqué (PERSON/LOC in-core — N0 v1.2, ARBITRAGE-04) :
+export CLOISON_NER_MODEL_ONNX=$PREFIX/ner/model-int8.onnx
+export CLOISON_NER_TOKENIZER=$PREFIX/ner/tokenizer.json
+export CLOISON_ONNX_LIB=$PREFIX/ner/libonnxruntime.$LIB_EXT
+# export CLOISON_NER_THRESHOLD=0.70   # défaut 0.70 (calibration GO)
+
+# Passphrase via le keychain OS (recommandé — jamais en clair par CLOISON) :
+# export CLOISON_VAULT_KEYCHAIN_SERVICE=cloison-n0
+EOF
+fi
+
+echo ""
+echo "==> Lancement : $PREFIX/cloison-proxy"
+echo "    Vérification : docs/N0.md §5. Installation terminée ✅"

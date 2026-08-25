@@ -1,0 +1,4 @@
+# Fins de ligne verrouillées (le dépôt est cloné sur Linux VPS et Windows) :
+# les scripts bash doivent rester LF (shebang), les scripts PowerShell CRLF.
+*.sh text eol=lf
+*.ps1 text eol=crlf
