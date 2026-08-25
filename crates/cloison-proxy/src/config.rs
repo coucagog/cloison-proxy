@@ -22,7 +22,16 @@
 //!   `GET /v1/control/version`, ingest automatique des reçus d'audit via
 //!   `POST /v1/control/ingest`), `CLOISON_CONTROL_INGEST_INTERVAL_SECS`
 //!   (défaut 60), `CLOISON_CONTROL_POLL_INTERVAL_SECS` (défaut 30),
-//!   `CLOISON_CONTROL_VERIFY_CACHE_TTL_SECS` (défaut 300).
+//!   `CLOISON_CONTROL_VERIFY_CACHE_TTL_SECS` (défaut 300) ;
+//! - N0 — coffre : `CLOISON_VAULT_PATH`, `CLOISON_VAULT_PASSPHRASE`,
+//!   `CLOISON_VAULT_TTL_SECS` (défaut 7 j), `CLOISON_SESSION_SALT_FILE`,
+//!   `CLOISON_VAULT_KEYCHAIN_SERVICE` (chantier ② — posé = passphrase lue/
+//!   stockée dans le keychain OS, repli env), `CLOISON_VAULT_KEYCHAIN_USER`
+//!   (défaut `default`) ;
+//! - N0 v1.1 — session (alias intra-session + jauge quasi-id, in-core) :
+//!   `CLOISON_ALIAS_EXPANSION` (défaut `1`), `CLOISON_QUASI_ID_GAUGE`
+//!   (défaut `0` — opt-in), `CLOISON_QUASI_ID_THRESHOLD` (défaut `0.5` ;
+//!   `1.0` = désactivée de fait), `CLOISON_ALIAS_MAX_MENTIONS` (défaut 200).
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -169,6 +178,14 @@ pub struct N0VaultConfig {
     /// Fichier du sel de session persistant (`CLOISON_SESSION_SALT_FILE`,
     /// défaut `<vault_path>.salt`).
     pub session_salt_file: Option<PathBuf>,
+    /// Service keychain OS (`CLOISON_VAULT_KEYCHAIN_SERVICE`, N0 v1.1
+    /// chantier ②) : posé → la passphrase du coffre est lue/stockée dans le
+    /// keychain OS (Windows Credential Manager / macOS Keychain / Linux
+    /// Secret Service-keyutils) — **chiffrée par l'OS, jamais en clair par
+    /// CLOISON**. `None` = env uniquement (`CLOISON_VAULT_PASSPHRASE`).
+    pub keychain_service: Option<String>,
+    /// Compte keychain (`CLOISON_VAULT_KEYCHAIN_USER`, défaut `default`).
+    pub keychain_user: String,
 }
 
 impl N0VaultConfig {
@@ -185,6 +202,8 @@ impl Default for N0VaultConfig {
             passphrase: None,
             ttl_secs: DEFAULT_VAULT_TTL_SECS,
             session_salt_file: None,
+            keychain_service: None,
+            keychain_user: "default".to_string(),
         }
     }
 }
@@ -280,6 +299,7 @@ impl std::fmt::Debug for Config {
                     .as_ref()
                     .map(|p| p.display().to_string()),
             )
+            .field("vault_keychain_service", &self.vault.keychain_service)
             .field("session", &self.session)
             .finish_non_exhaustive()
     }
@@ -397,6 +417,13 @@ pub fn load() -> Result<Config, ProxyError> {
             s if s.is_empty() => None,
             s => Some(PathBuf::from(s)),
         };
+        // Chantier ② — keychain OS : la passphrase peut venir du keychain au
+        // lieu de l'env (`CLOISON_VAULT_KEYCHAIN_SERVICE` posé).
+        let keychain_service = match env("CLOISON_VAULT_KEYCHAIN_SERVICE", "") {
+            s if s.is_empty() => None,
+            s => Some(s),
+        };
+        let keychain_user = env("CLOISON_VAULT_KEYCHAIN_USER", "default");
         // Défaut du fichier de sel : à côté du coffre (`<vault_path>.salt`).
         let session_salt_file = match (&path, explicit_salt_file) {
             (Some(p), None) => Some(PathBuf::from(format!("{}.salt", p.display()))),
@@ -407,12 +434,15 @@ pub fn load() -> Result<Config, ProxyError> {
             passphrase,
             ttl_secs,
             session_salt_file,
+            keychain_service,
+            keychain_user,
         };
-        // Fail-loud : coffre posé sans passphrase → refus de démarrer (N0-PREP §4.2).
-        if cfg.is_active() && cfg.passphrase.is_none() {
+        // Fail-loud : coffre posé sans AUCUNE source de passphrase (keychain
+        // OS ou env) → refus de démarrer (N0-PREP §4.2, chantier ②).
+        if cfg.is_active() && cfg.passphrase.is_none() && cfg.keychain_service.is_none() {
             return Err(ProxyError::new(
                 ErrorKind::Internal,
-                "CLOISON_VAULT_PASSPHRASE is required when CLOISON_VAULT_PATH is set (N0, fail-loud)",
+                "CLOISON_VAULT_PASSPHRASE is required when CLOISON_VAULT_PATH is set and no CLOISON_VAULT_KEYCHAIN_SERVICE is configured (N0, fail-loud)",
             ));
         }
         cfg
@@ -746,6 +776,8 @@ mod tests {
             passphrase: None,
             ttl_secs: DEFAULT_VAULT_TTL_SECS,
             session_salt_file: Some(path.clone()),
+            keychain_service: None,
+            keychain_user: "default".to_string(),
         };
         // Premier appel : création (0600) + relecture identique.
         let s1 = load_session_salt(&cfg).unwrap();
@@ -770,6 +802,8 @@ mod tests {
             passphrase: None,
             ttl_secs: DEFAULT_VAULT_TTL_SECS,
             session_salt_file: Some(path),
+            keychain_service: None,
+            keychain_user: "default".to_string(),
         };
         assert!(
             load_session_salt(&cfg).is_err(),
@@ -790,6 +824,8 @@ mod tests {
             passphrase: None,
             ttl_secs: DEFAULT_VAULT_TTL_SECS,
             session_salt_file: Some(path),
+            keychain_service: None,
+            keychain_user: "default".to_string(),
         };
         let salt = load_session_salt(&cfg).unwrap();
         std::env::remove_var("CLOISON_SESSION_SALT_HEX");

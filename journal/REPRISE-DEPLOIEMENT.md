@@ -129,8 +129,10 @@ attrapé le bug que les 70 tests ne voyaient pas).
 > invariants 17) + preuve daemon réel + open-core **v0.2.3** (core/audit/proxy).
 > **✅ N0 v1.1 chantier ① (STACK-N0V11)** : alias intra-session R1–R7 +
 > jauge quasi-id **in-core** livrés (serveur bit-identique).
-> **Prochaine session = N0 v1.1 chantier ②** (keychain OS), puis ③
-> `cloison-wasm`, puis ④ NER léger embarqué (GO/NO-GO à arbitrer) ;
+> **✅ N0 v1.1 chantier ② (STACK-N0V11)** : **keychain OS** pour la passphrase
+> du coffre (`keyring` v3, repli env avec warn, fail-loud, jamais en clair).
+> **Prochaine session = N0 v1.1 chantier ③** (`cloison-wasm` navigateur),
+> puis ④ NER léger embarqué (GO/NO-GO à arbitrer) ;
 > **GPU toujours en attente** (aucun GPU disponible — décision reportée ;
 > baseline ONNX de DEPLOY-8 comme référence).
 

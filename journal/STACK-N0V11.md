@@ -28,9 +28,10 @@ session séparées de la `Policy` (serveur bit-identique), wiring proxy (mode
 N0 : mention store par daemon, drapeau jauge → compteur + log), tests
 unitaires + invariants + e2e N0, docs (N0.md, CONFIG.md, README), journal.
 
-**Hors :** keychain OS (chantier ②), `cloison-wasm` navigateur (③), NER léger
-embarqué ONNX (④ — à arbitrer), alias côté serveur (les paliers serveur
-restent portés par le sidecar Python).
+**Hors :** `cloison-wasm` navigateur (③), NER léger embarqué ONNX (④ — à
+arbitrer), alias côté serveur (les paliers serveur restent portés par le
+sidecar Python). Le chantier ② (keychain OS) a été **livré dans cette
+session** (voir « Chantier ② »).
 
 ## Décisions (N0V11-PREP §4 tranchées en ouverture)
 
@@ -104,7 +105,37 @@ restent portés par le sidecar Python).
 - Tests e2e N0 : `n0_alias_across_requests_masks_derived_form` (msg 1
   « Mamadou » → msg 2 « Momo » masqué par alias, roundtrip) ;
   `n0_quasi_id_gauge_flags_dense_text` (opt-in : flag sur densité
-  âge+acte+date+lieu, 0 sans opt-in).
+  âge+acte+date+lieu, 0 sans opt-in) ;
+  `n0_keychain_service_roundtrip` (chantier ② : service keychain posé →
+  boot + roundtrip).
+
+## Chantier ② — keychain OS (passphrase du coffre)
+
+Livré dans cette session (N0V11-PREP §2.2 / §4.4 : « au moins une plateforme
+prouvée, fallback env, la passphrase jamais persistée en clair »).
+
+### `cloison-proxy` — `src/passphrase.rs` (nouveau)
+- `PassphraseProvider` : résolution au boot **keychain OS → env → fail-loud** :
+  - `CLOISON_VAULT_KEYCHAIN_SERVICE` posé → lecture dans le keychain
+    (crate `keyring` v3 : Windows Credential Manager / macOS Keychain /
+    Linux Secret Service-keyutils — **stockage chiffré par l'OS**) ;
+  - **premier démarrage** (entrée absente + env fournie) : l'env est
+    **stockée** dans le keychain (création uniquement, jamais d'écrasement —
+    le keycheck du coffre reste le fail-loud final) ;
+  - **keychain indisponible** (pas de Secret Service / keyutils) : repli
+    `CLOISON_VAULT_PASSPHRASE` avec `warn` — jamais un blocage silencieux ;
+  - ni keychain ni env → **refus de démarrer** (fail-loud, message inchangé
+    pour les tests existants).
+- `config.rs` : `N0VaultConfig.keychain_service` / `keychain_user` (env
+  `CLOISON_VAULT_KEYCHAIN_SERVICE` / `CLOISON_VAULT_KEYCHAIN_USER` défaut
+  `default`) ; fail-loud « coffre sans passphrase » assoupli quand le
+  keychain est configuré.
+- `handlers.rs` : `AppState::new` résout la passphrase via le fournisseur
+  (comportement env inchangé sans keychain).
+- `Cargo.toml` : `keyring = "3"`.
+- Tests : 5 unitaires passphrase (env, fail-loud, NoEntry+env → stockage,
+  NoEntry sans env → fail-loud, roundtrip) + 1 e2e N0 (boot + roundtrip avec
+  service keychain posé).
 
 ## Comment lancer / tester
 
@@ -169,7 +200,10 @@ cargo test -p cloison-proxy --test e2e_n0   # e2e N0 (7/7)
   utilisé qu'en mode N0 (décision §4, à re-évaluer avec l'usage réel).
 - **NER léger embarqué (④)** : toujours à arbitrer (GO/NO-GO — re-validation
   grille v1.1 obligatoire si le benchmark est touché).
-- **Keychain OS (②)** et **`cloison-wasm` (③)** : pistes v1.1 suivantes.
+- **`cloison-wasm` (③)** : piste v1.1 suivante (non livrée).
+- **Open-core proxy** : le chantier ② ajoute `keyring` au proxy → la
+  re-publication open-core du proxy (v0.2.5, deps + tag) est **à faire**
+  quand le proxy sera re-publié.
 - Limite honnête N0 conservée : un nom **hors gazetteer** et jamais
   mentionné peut partir en clair (docs/N0.md §4.1).
 
@@ -180,10 +214,14 @@ cargo test -p cloison-proxy --test e2e_n0   # e2e N0 (7/7)
       signal-only) — portage fidèle du sidecar, zéro réécriture de logique.
 - [x] **Serveur bit-identique** : `SessionOptions` séparée de la `Policy` ;
       hors mode N0, aucun changement de comportement ni de `policy_hash`.
-- [x] **Tests + portes** : cargo test/clippy/fmt verts, e2e_n0 7/7, 17
+- [x] **Tests + portes** : cargo test/clippy/fmt verts, e2e_n0 8/8, 17
       invariants inchangés.
-- [x] **Docs** : `docs/N0.md` (§3, §4, §7), `docs/CONFIG.md`, `README.md`.
-- [x] **Journal + push** (commits `f9a3bb2a`, `76437e65`).
+- [x] **Keychain OS opérationnel (chantier ②)** : crate `keyring` v3 (trois
+      plates-formes), fallback env avec warn, fail-loud si ni keychain ni
+      env ; passphrase jamais persistée en clair par CLOISON.
+- [x] **Docs** : `docs/N0.md` (§3, §4, §7), `docs/CONFIG.md`, `README.md`,
+      `deploy/install-n0.sh`.
+- [x] **Journal + push** (commits `f9a3bb2a`, `76437e65`, + session ②).
 - [x] **Re-publication open-core v0.2.4** — core/audit/proxy publiés et
       **vérifiés** (cargo test des tags publiés, rust 1.97, deps git taguées
       v0.2.4 ; le tag core embarque `alias.rs` + `quasi_id.rs`). Procédure
@@ -191,7 +229,8 @@ cargo test -p cloison-proxy --test e2e_n0   # e2e N0 (7/7)
 
 ## Prochaine étape
 
-**Chantier ② — keychain OS** (passphrase du coffre : libsecret / Credential
-Manager / Keychain, fallback env documenté, la passphrase jamais persistée
-en clair), puis ③ `cloison-wasm` navigateur, puis arbitrage ④ NER léger
-embarqué (ONNX).
+**Chantier ③ — `cloison-wasm` navigateur** (tokenize/restore in-browser,
+coffre in-memory, page de démo — N0V11-PREP §2.3), puis arbitrage ④ NER
+léger embarqué (ONNX, GO/NO-GO en ouverture — re-validation grille v1.1 si
+le benchmark est touché), puis re-publication open-core du proxy (v0.2.5,
+le chantier ② ajoute `keyring`).

@@ -22,6 +22,7 @@ pub mod engine;
 pub mod errors;
 pub mod handlers;
 pub mod openai;
+pub mod passphrase;
 pub mod routes;
 pub mod stream;
 pub mod upstream;

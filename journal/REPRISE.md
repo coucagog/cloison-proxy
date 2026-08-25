@@ -184,8 +184,11 @@ de conformité k-anonyme, journal public restylé (design system de référence)
 - **Pistes N0 v1.1** : ① **alias intra-session R1-R7 + jauge quasi-id
   in-core ✅ LIVRÉS (STACK-N0V11)** — portage Rust du sidecar (jamais les
   pronoms, scores plafonnés, jauge signal-only opt-in, serveur
-  bit-identique) ; restent documentés : ② keychain OS, ③ `cloison-wasm`
-  (navigateur), ④ NER léger embarqué (voie ONNX, GO/NO-GO à arbitrer).
+  bit-identique) ; ② **keychain OS ✅ LIVRÉ (STACK-N0V11)** — passphrase du
+  coffre via `keyring` v3 (Credential Manager / Keychain / Secret Service),
+  repli env avec warn, fail-loud, jamais en clair par CLOISON ; restent
+  documentés : ③ `cloison-wasm` (navigateur), ④ NER léger embarqué (voie
+  ONNX, GO/NO-GO à arbitrer). Open-core v0.2.4 publié (core/audit/proxy).
 - **GPU (dette ②)** : en attente (aucun GPU disponible, décision reportée —
   baseline ONNX de DEPLOY-8 comme référence).
 - **✅ RESOLUES (DEPLOY-10)** : **dette documentaire** (attribution TEL

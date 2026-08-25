@@ -52,6 +52,8 @@ export CLOISON_TENANT_KEY_HEX=<la clé affichée ci-dessus>
 # export CLOISON_ALIAS_EXPANSION=1        # alias intra-session (défaut 1)
 # export CLOISON_QUASI_ID_GAUGE=1         # jauge quasi-id (défaut 0 = off)
 # export CLOISON_QUASI_ID_THRESHOLD=0.5   # seuil de la jauge (défaut 0.5)
+# export CLOISON_VAULT_KEYCHAIN_SERVICE=cloison-n0  # passphrase via le keychain OS
+#                                                   # (sinon CLOISON_VAULT_PASSPHRASE)
 
 Lancement : $PREFIX/cloison-proxy
 EOF
