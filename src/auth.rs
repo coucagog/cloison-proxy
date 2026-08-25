@@ -97,7 +97,12 @@ pub struct AuthenticatedTenant(pub String);
 /// alphanumérique + `-`/`_`/`.` (borné 64) — jamais de métacaractère.
 fn sanitize_tenant(value: &str) -> Option<String> {
     let v = value.trim();
-    if v.is_empty() || v.len() > 64 || !v.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.') {
+    if v.is_empty()
+        || v.len() > 64
+        || !v
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+    {
         return None;
     }
     Some(v.to_string())

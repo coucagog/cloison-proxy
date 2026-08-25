@@ -618,7 +618,8 @@ fn audit_build_and_record(
     // l'ingest est groupé par tenant et le journal reflète chaque client.
     let session_ref_hashed = receipt::hash_session_ref(tenant_id, session_ref);
     let ts_unix = receipt::now_unix();
-    let unsigned = audit.build_receipt(tenant_id.to_string(), session_ref_hashed, ts_unix, counters);
+    let unsigned =
+        audit.build_receipt(tenant_id.to_string(), session_ref_hashed, ts_unix, counters);
     let signed = audit.sign(&unsigned);
     // Fail-loud : une erreur de persistance est loguée (le reçu reste signé
     // et en mémoire ; seul l'historique disque est perdu pour ce reçu).
