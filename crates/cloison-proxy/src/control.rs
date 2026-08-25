@@ -399,8 +399,11 @@ impl TokenVerifier {
             match self.client.tokens_version(&tenant).await {
                 Ok(version) => {
                     let mut versions = self.versions.lock().expect("version lock poisoned");
-                    match versions.get(&tenant) {
-                        Some(prev) if *prev != version => {
+                    // Copie locale du courant pour éviter un emprunt chevauchant
+                    // (E0502 : `get()` emprunte `versions` dans le garde).
+                    let current = versions.get(&tenant).copied();
+                    match current {
+                        Some(prev) if prev != version => {
                             tracing::warn!(
                                 tenant_id = %tenant,
                                 prev_version = prev,

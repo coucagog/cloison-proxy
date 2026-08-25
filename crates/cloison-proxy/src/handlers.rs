@@ -618,7 +618,7 @@ fn audit_build_and_record(
     // l'ingest est groupé par tenant et le journal reflète chaque client.
     let session_ref_hashed = receipt::hash_session_ref(tenant_id, session_ref);
     let ts_unix = receipt::now_unix();
-    let unsigned = audit.build_receipt(tenant_id, session_ref_hashed, ts_unix, counters);
+    let unsigned = audit.build_receipt(tenant_id.to_string(), session_ref_hashed, ts_unix, counters);
     let signed = audit.sign(&unsigned);
     // Fail-loud : une erreur de persistance est loguée (le reçu reste signé
     // et en mémoire ; seul l'historique disque est perdu pour ce reçu).
@@ -826,6 +826,7 @@ async fn audit_chat_stream(
         counters,
         request_id,
         key.access_token.as_str().to_string(),
+        tenant,
     ))
 }
 
@@ -842,6 +843,7 @@ fn audit_count_only_sse(
     mut counters: Counters,
     request_id: String,
     session_ref: String,
+    tenant: String,
 ) -> Response {
     let mut bytes = upstream.bytes_stream();
     let body = Body::from_stream(async_stream::stream! {
