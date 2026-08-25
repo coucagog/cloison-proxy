@@ -327,7 +327,8 @@ impl TokenVerifier {
         }
         seen.push(tenant_id.to_string());
         if seen.len() > MAX_SEEN_TENANTS {
-            seen.drain(..seen.len() - MAX_SEEN_TENANTS);
+            let excess = seen.len() - MAX_SEEN_TENANTS;
+            seen.drain(..excess);
         }
     }
 
