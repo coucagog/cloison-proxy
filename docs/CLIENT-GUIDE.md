@@ -28,6 +28,12 @@ curl https://api.wonkom.ai/v1/chat/completions \
        "content":"Bonjour, je m'appelle Aminata Diop, mon téléphone est le 77 123 45 67."}]}'
 ```
 
+> **Multi-tenant (intégration directe)** : votre jeton est émis pour un tenant
+> (`client-demo`, …). Si votre jeton appartient à un autre tenant que la
+> plateforme, ajoutez le header de routage (non secret — charte §7.2) :
+> `X-Cloison-Tenant: <votre-tenant>`. Un jeton n'est accepté que dans son
+> tenant (fail-closed — jamais de fuite inter-tenant).
+
 ## 2. Ce qui se passe (promesse, architecture)
 
 ```

@@ -142,6 +142,32 @@ promesse — charte §5.1) :
 - `n0-release-assets.sh` paramétrable (`CLOISON_RELEASE_REPO`, défaut
   cloison-proxy) — le release monorepo privé reste pour usage interne.
 
+## §9 — Auth edge MULTI-TENANT (dette ② soldée, charte §7.2)
+
+Découverte de DEPLOY-11 : l'edge vérifiait les jetons contre **un seul tenant**
+(`CLOISON_TENANT_ID`) — impossible de servir un client dont le jeton
+appartient à un autre tenant. Implémenté et déployé :
+
+- **Routage par requête** : header **`X-Cloison-Tenant`** (non secret, charte
+  §7.2) sélectionne le tenant de vérification ; sans header → tenant par
+  défaut (rétro-compatible). Header invalide (format, borné 64) → tenant par
+  défaut (jamais un tenant arbitraire).
+- **TokenVerifier multi-tenant** : cache clé par `(tenant, digest)`, long-poll
+  du tenant par défaut + des tenants vus (borné 64), purge par tenant sur
+  rotation/révocation — **fail-closed inchangé** (invariant I8).
+- **Reçus d'audit tagués au tenant de la requête** ; **ingest groupé par
+  tenant** (le contrôle rejette un reçu hors-lot — `api.rs` ligne 470).
+- **Tests** : +2 e2e_control (`tenant_header_routes_verification`,
+  `flush_groups_receipts_by_tenant`) — 19 e2e_control, workspace **288 tests
+  verts**, clippy 0, fmt 0.
+- **Preuve PRODUCTION** (edge redéployé, image fraîche) :
+  - jeton `client-demo` + `X-Cloison-Tenant: client-demo` → **200** ;
+  - même jeton sans header (tenant default) → **401** ;
+  - jeton du tenant default + header `client-demo` → **401** (pas de fuite
+    inter-tenant).
+- Docs : `docs/CONFIG.md` (header), `docs/CLIENT-GUIDE.md` (multi-tenant).
+- Open-core : proxy re-publié **v0.3.1** (crate changé).
+
 ## Porte de sortie (chantier ①) — ✅ ATTEINTE
 
 - [x] Scripts d'install (Linux/macOS + Windows) sans Rust ni torch, checksums
