@@ -259,7 +259,9 @@ cargo test -p cloison-proxy --test e2e_n0   # e2e N0 (7/7)
 
 ## Prochaine étape
 
-**Arbitrage ④ — NER léger embarqué** (ONNX, GO/NO-GO en ouverture —
-re-validation grille v1.1 obligatoire si le benchmark est touché), puis
-re-publication open-core du proxy (v0.2.5 : le chantier ② ajoute `keyring`,
-le chantier ③ touche `cloison-wasm`).
+**Session N0 v1.2 préparée — `journal/N0V12-PREP.md`** : arbitrage ④ —
+NER léger embarqué (ONNX, GO/NO-GO en ouverture, critères à figer ;
+re-validation grille v1.1 obligatoire si le benchmark est touché — règle
+§5), puis re-publication open-core **v0.2.5** (proxy : `keyring` du
+chantier ② ; wasm : chantier ③), puis dettes transverses (calibration
+seuils prod, IndexedDB navigateur).

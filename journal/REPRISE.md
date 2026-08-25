@@ -192,6 +192,8 @@ de conformité k-anonyme, journal public restylé (design system de référence)
   secret) + page de démo `deploy/wasm-demo/` ; reste à arbitrer :
   ④ NER léger embarqué (voie ONNX, GO/NO-GO). Open-core v0.2.4 publié
   (core/audit/proxy) ; open-core **v0.2.5** (proxy + wasm) à faire.
+  **Prochaine session = arbitrage ④ + open-core v0.2.5 — voir
+  `journal/N0V12-PREP.md`.**
 - **GPU (dette ②)** : en attente (aucun GPU disponible, décision reportée —
   baseline ONNX de DEPLOY-8 comme référence).
 - **✅ RESOLUES (DEPLOY-10)** : **dette documentaire** (attribution TEL

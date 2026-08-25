@@ -135,7 +135,8 @@ attrapé le bug que les 70 tests ne voyaient pas).
 > (`cloison-wasm` ré-exporte les bindings, coffre in-memory, zéro secret,
 > page de démo `deploy/wasm-demo/`).
 > **Prochaine session = arbitrage ④ NER léger embarqué** (GO/NO-GO à
-> arbitrer ; re-validation grille v1.1 si le benchmark est touché) ;
+> arbitrer ; re-validation grille v1.1 si le benchmark est touché) +
+> open-core v0.2.5 (proxy + wasm) — **voir `journal/N0V12-PREP.md`** ;
 > **GPU toujours en attente** (aucun GPU disponible — décision reportée ;
 > baseline ONNX de DEPLOY-8 comme référence).
 
