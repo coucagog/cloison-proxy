@@ -8,6 +8,7 @@ rust-version = "1.75"
 # (core/ledger/verify/audit/control/cli/wasm) restent Apache-2.0 (workspace).
 license = "AGPL-3.0"
 description = "CLOISON STACK-3 : passerelle OpenAI-compatible avec tokenisation PII"
+repository = "https://github.com/coucagog/cloison-proxy"
 
 [dependencies]
 axum = "0.8"
@@ -39,8 +40,8 @@ keyring = "3"
 # binaire — dégradation gracieuse si absente, N0 v1 inchangé).
 ort = { version = "=2.0.0-rc.13", features = ["load-dynamic"] }
 tokenizers = "0.20"
-cloison-core = { path = "../cloison-core" }
-cloison-audit = { path = "../cloison-audit" }
+cloison-core = { git = "https://github.com/coucagog/cloison-core", tag = "v0.2.5" }
+cloison-audit = { git = "https://github.com/coucagog/cloison-audit", tag = "v0.2.5" }
 
 [dev-dependencies]
 http-body-util = "0.1"
