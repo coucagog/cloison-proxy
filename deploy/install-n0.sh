@@ -102,6 +102,7 @@ verify() { # verify <fichier> <nom-dans-checksums>
 verify "$BIN" "cloison-proxy-$TARGET"
 
 # --- 3. NER léger embarqué (ONNX int8) + lib onnxruntime --------------------
+NER_OK=0
 if [[ "$SKIP_NER" == "1" ]]; then
   echo "==> --skip-ner : NER léger non installé (limite « texte libre » assumée)"
 else
@@ -112,12 +113,21 @@ else
   rm -f "$PREFIX/ner-lite.tar.gz"
 
   echo "==> téléchargement de la lib onnxruntime ($OS)…"
-  curl -fsSL -o "$PREFIX/ort.tar.gz" "$DL_LIB"
-  verify "$PREFIX/ort.tar.gz" "cloison-n0-onnxruntime-$TARGET.tar.gz"
-  tar -xzf "$PREFIX/ort.tar.gz" -C "$PREFIX/ner"
-  rm -f "$PREFIX/ort.tar.gz"
+  if curl -fsSL -o "$PREFIX/ort.tar.gz" "$DL_LIB" 2>/dev/null; then
+    verify "$PREFIX/ort.tar.gz" "cloison-n0-onnxruntime-$TARGET.tar.gz"
+    tar -xzf "$PREFIX/ort.tar.gz" -C "$PREFIX/ner"
+    rm -f "$PREFIX/ort.tar.gz"
+    NER_OK=1
+  else
+    # Cible sans lib publiée (ex. macOS Intel — microsoft n'archive plus
+    # osx-x86_64) : le daemon dégrade gracieusement vers N0 v1 (gazetteers +
+    # alias, warn — jamais d'erreur, ARBITRAGE-04 §4.3).
+    echo "⚠ lib onnxruntime indisponible pour $TARGET — NER léger désactivé (N0 v1, docs/N0.md §8)"
+  fi
 
-  ls "$PREFIX/ner/model-int8.onnx" >/dev/null 2>&1 || { echo "❌ modèle introuvable après extraction" >&2; exit 1; }
+  if [[ "$NER_OK" == "1" ]]; then
+    ls "$PREFIX/ner/model-int8.onnx" >/dev/null 2>&1 || { echo "❌ modèle introuvable après extraction" >&2; exit 1; }
+  fi
 fi
 rm -f "$SUM_FILE"
 
@@ -140,7 +150,7 @@ export CLOISON_EXPECTED_ACCESS_TOKEN=<votre jeton mn_ local>
 export CLOISON_TENANT_KEY_HEX=<la clé affichée ci-dessus>
 EOF
 
-if [[ "$SKIP_NER" != "1" ]]; then
+if [[ "$NER_OK" == "1" ]]; then
   cat <<EOF
 
 # NER léger embarqué (PERSON/LOC in-core — N0 v1.2, ARBITRAGE-04) :

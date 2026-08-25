@@ -70,9 +70,12 @@ sudo docker cp onnxdev:/usr/local/lib/python3.11/site-packages/onnxruntime/capi/
 tar -czf "$WORK/cloison-n0-onnxruntime-x86_64-unknown-linux-gnu.tar.gz" -C "$WORK" libonnxruntime.so
 
 # Windows / macOS : archives officielles microsoft/onnxruntime (épinglées).
-echo "==> libs onnxruntime Windows + macOS (archives officielles)…"
-dl_win()  { curl -fsSL -o "$WORK/ort-win.zip"  "https://github.com/microsoft/onnxruntime/releases/download/v$ORT_VER/onnxruntime-win-x64-$ORT_VER.zip"; }
-dl_osx()  { curl -fsSL -o "$WORK/ort-osx.tgz"  "https://github.com/microsoft/onnxruntime/releases/download/v$ORT_VER/onnxruntime-osx-$1-$ORT_VER.tgz"; }
+# NB : microsoft ne publie PLUS d'archive osx-x86_64 (Intel) depuis ~1.27 —
+# la cible macos-x64 du binaire est fournie sans lib (dégradation gracieuse
+# N0 v1 : gazetteers + alias, warn — voir docs/N0.md §8).
+echo "==> libs onnxruntime Windows + macOS arm64 (archives officielles)…"
+dl_win()  { curl -fsSL --retry 3 --retry-delay 2 -o "$WORK/ort-win.zip"  "https://github.com/microsoft/onnxruntime/releases/download/v$ORT_VER/onnxruntime-win-x64-$ORT_VER.zip"; }
+dl_osx()  { curl -fsSL --retry 3 --retry-delay 2 -o "$WORK/ort-osx.tgz"  "https://github.com/microsoft/onnxruntime/releases/download/v$ORT_VER/onnxruntime-osx-$1-$ORT_VER.tgz"; }
 
 dl_win
 python3 -c 'import zipfile,sys; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])' "$WORK/ort-win.zip" "$WORK/win"
@@ -83,12 +86,6 @@ dl_osx arm64
 tar -xzf "$WORK/ort-osx.tgz" -C "$WORK"
 cp "$WORK/onnxruntime-osx-arm64-$ORT_VER/lib/libonnxruntime.dylib" "$WORK/libonnxruntime.dylib"
 tar -czf "$WORK/cloison-n0-onnxruntime-aarch64-apple-darwin.tar.gz" -C "$WORK" libonnxruntime.dylib
-rm -f "$WORK/onnxruntime-osx-arm64-$ORT_VER/lib/libonnxruntime.dylib" "$WORK/libonnxruntime.dylib"
-
-dl_osx x86_64
-tar -xzf "$WORK/ort-osx.tgz" -C "$WORK"
-cp "$WORK/onnxruntime-osx-x86_64-$ORT_VER/lib/libonnxruntime.dylib" "$WORK/libonnxruntime.dylib"
-tar -czf "$WORK/cloison-n0-onnxruntime-x86_64-apple-darwin.tar.gz" -C "$WORK" libonnxruntime.dylib
 
 # --- 3. Checksums -------------------------------------------------------------
 echo "==> checksums…"
