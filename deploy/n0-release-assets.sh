@@ -90,8 +90,11 @@ cp "$WORK/onnxruntime-osx-arm64-$ORT_VER/lib/libonnxruntime.dylib" "$WORK/libonn
 tar -czf "$WORK/cloison-n0-onnxruntime-aarch64-apple-darwin.tar.gz" -C "$WORK" libonnxruntime.dylib
 
 # --- 3. Checksums -------------------------------------------------------------
-echo "==> checksums…"
-(cd "$WORK" && sha256sum cloison-n0-ner-lite.tar.gz cloison-n0-onnxruntime-*.tar.gz > checksums.txt)
+# COMPLETS : tous les assets publiés (binaires + bundle + libs) — un
+# checksums.txt sans les binaires ferait échouer les installateurs
+# (leçon v0.3.0 : les checksums ne couvraient que les fichiers modèles).
+echo "==> checksums (tous les assets, binaires inclus)…"
+(cd "$WORK" && sha256sum cloison-proxy-* cloison-n0-* 2>/dev/null | sort -k2 > checksums.txt)
 
 # --- 4. Publication via l'API GitHub ------------------------------------------
 # NB : `GET /releases/tags/{tag}` ne renvoie PAS les releases en DRAFT
