@@ -37,6 +37,10 @@
 | `CLOISON_QUASI_ID_GAUGE` *(N0 v1.1)* | edge | non | `0` | **jauge quasi-id in-core** (densité âge+acte+date+lieu, fenêtre glissante) — **opt-in** ; signal (compteur + log), jamais de résolution (charte §6.1 couche 6, §11) |
 | `CLOISON_QUASI_ID_THRESHOLD` *(N0 v1.1)* | edge | non | `0.5` | seuil de la jauge (`score > seuil` strict ; `1.0` = désactivée de fait) |
 | `CLOISON_ALIAS_MAX_MENTIONS` *(N0 v1.1)* | edge | non | `200` | borne documentaire du nombre de mentions canoniques en session (FIFO — miroir de `session_mentions_max` du sidecar) |
+| `CLOISON_NER_MODEL_ONNX` *(N0 v1.2 ④)* | edge | non | absent | **chemin du modèle ONNX int8 du NER léger embarqué** (ex. `distilbert-base-multilingual-cased-ner-hrl` exporté + quantisé — 135 Mo, licence AFL-3.0 provisionnée, jamais committé). Posé **avec** `CLOISON_NER_TOKENIZER` ET en mode N0 (`CLOISON_VAULT_PATH`) → le daemon détecte PERSON/LOC **in-core** (jamais un sidecar Python). Modèle/lib absents → **dégradation gracieuse** (N0 v1 inchangé : gazetteers + alias), warn, jamais d'erreur (ARBITRAGE-04) |
+| `CLOISON_NER_TOKENIZER` *(N0 v1.2 ④)* | edge | non | absent | chemin du `tokenizer.json` HF du NER léger (obligatoire avec `CLOISON_NER_MODEL_ONNX`) |
+| `CLOISON_ONNX_LIB` *(N0 v1.2 ④)* | edge | non | `libonnxruntime.so` | chemin de la lib onnxruntime chargée dynamiquement (provisionnée avec le daemon — jamais embarquée dans le binaire) |
+| `CLOISON_NER_THRESHOLD` *(N0 v1.2 ④)* | edge | non | `0.70` | seuil de score minimal du NER léger (balayage ARBITRAGE-04 : 0.70 = meilleur F1 PERSON/LOC) |
 | `CLOISON_MOCK_MODE` | edge | non | `0` | `1` = prérequis assouplis (clé de dev) — jamais en prod |
 | `CLOISON_AUDIT_MODE` | edge | non | `0` | `1` = observe-only (reçus signés, rapport k-anonyme) |
 | `CLOISON_AUDIT_KEYS` | edge | **oui** | absent (clé générée 0600) | chemin clé Ed25519 de l'agent (32 o bruts ou 64 hex) |

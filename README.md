@@ -81,10 +81,17 @@ documentées (`docs/N0.md`). **N0 v1.1 : alias intra-session in-core (R1–R7,
 jamais les pronoms) + jauge quasi-id in-core (opt-in, signal sans
 résolution) + keychain OS pour la passphrase du coffre (jamais en clair) +
 module navigateur `@cloison/core` (tokenize/restore in-browser, coffre
-in-memory, zéro secret — démo `deploy/wasm-demo/`)**.
+in-memory, zéro secret — démo `deploy/wasm-demo/`)**. **N0 v1.2 (chantier ④) :
+NER léger embarqué** — distilbert HRL ONNX int8 (135 Mo, provisionné — jamais
+committé) détecte PERSON/LOC **in-core** via ONNX Runtime Rust (`ort`,
+load-dynamic) + fusion englobante N0 ; arbitrage pré-enregistré **GO**
+(`journal/ARBITRAGE-04-NER-LEGER.md`) : PERSON 0 → 0.62, LOC +0.18,
+spécificité 83 %, latence ~11 ms/doc court ; dégradation gracieuse si
+modèle absent (N0 v1 inchangé).
 Preuve e2e locale : roundtrip hors-ligne, persistance après redémarrage,
 fail-loud sur mauvaise passphrase, masquage d'un diminutif inter-requêtes,
-drapeau jauge sur densité élevée, boot avec keychain.
+drapeau jauge sur densité élevée, boot avec keychain, **nom hors gazetteer
+masqué par le NER embarqué**.
 
 ## Licences (open-core — **publié**, DEPLOY-7)
 
