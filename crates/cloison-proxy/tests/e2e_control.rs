@@ -128,62 +128,68 @@ fn mock_control_router(state: Arc<MockControlState>) -> Router {
     Router::new()
         .route(
             "/v1/control/verify",
-            post(move |State(s): State<Arc<MockControlState>>, Json(req): Json<Value>| async move {
-                if *s.fail_all.lock().unwrap() {
-                    return (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!({ "error": "mock control down" })),
-                    );
-                }
-                let hash = req["token_hash"].as_str().unwrap_or_default().to_string();
-                let tenant = req["tenant_id"].as_str().unwrap_or_default().to_string();
-                let valid = s
-                    .valid_hashes
-                    .lock()
-                    .unwrap()
-                    .get(&tenant)
-                    .map(|h| h.contains(&hash))
-                    .unwrap_or(false);
-                let version = *s.version.lock().unwrap();
-                (
-                    StatusCode::OK,
-                    Json(json!({ "tenant_id": tenant, "valid": valid, "version": version })),
-                )
-            }),
+            post(
+                move |State(s): State<Arc<MockControlState>>, Json(req): Json<Value>| async move {
+                    if *s.fail_all.lock().unwrap() {
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(json!({ "error": "mock control down" })),
+                        );
+                    }
+                    let hash = req["token_hash"].as_str().unwrap_or_default().to_string();
+                    let tenant = req["tenant_id"].as_str().unwrap_or_default().to_string();
+                    let valid = s
+                        .valid_hashes
+                        .lock()
+                        .unwrap()
+                        .get(&tenant)
+                        .map(|h| h.contains(&hash))
+                        .unwrap_or(false);
+                    let version = *s.version.lock().unwrap();
+                    (
+                        StatusCode::OK,
+                        Json(json!({ "tenant_id": tenant, "valid": valid, "version": version })),
+                    )
+                },
+            ),
         )
         .route(
             "/v1/control/version",
-            get(move |State(s): State<Arc<MockControlState>>, Query(q): Query<Value>| async move {
-                if *s.fail_all.lock().unwrap() {
-                    return (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!({ "error": "mock control down" })),
-                    );
-                }
-                let version = *s.version.lock().unwrap();
-                (
-                    StatusCode::OK,
-                    Json(json!({ "tenant_id": q["tenant_id"], "version": version })),
-                )
-            }),
+            get(
+                move |State(s): State<Arc<MockControlState>>, Query(q): Query<Value>| async move {
+                    if *s.fail_all.lock().unwrap() {
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(json!({ "error": "mock control down" })),
+                        );
+                    }
+                    let version = *s.version.lock().unwrap();
+                    (
+                        StatusCode::OK,
+                        Json(json!({ "tenant_id": q["tenant_id"], "version": version })),
+                    )
+                },
+            ),
         )
         .route(
             "/v1/control/ingest",
-            post(move |State(s): State<Arc<MockControlState>>, Json(req): Json<Value>| async move {
-                if *s.fail_all.lock().unwrap() {
-                    return (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!({ "error": "mock control down" })),
-                    );
-                }
-                let mut ingests = s.ingests.lock().unwrap();
-                ingests.push(req.clone());
-                let seq = ingests.len() as u64;
-                (
-                    StatusCode::OK,
-                    Json(json!({ "seq": seq, "root_hash": "mock-root" })),
-                )
-            }),
+            post(
+                move |State(s): State<Arc<MockControlState>>, Json(req): Json<Value>| async move {
+                    if *s.fail_all.lock().unwrap() {
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(json!({ "error": "mock control down" })),
+                        );
+                    }
+                    let mut ingests = s.ingests.lock().unwrap();
+                    ingests.push(req.clone());
+                    let seq = ingests.len() as u64;
+                    (
+                        StatusCode::OK,
+                        Json(json!({ "seq": seq, "root_hash": "mock-root" })),
+                    )
+                },
+            ),
         )
         .with_state(state)
 }
@@ -711,20 +717,12 @@ async fn flush_groups_receipts_by_tenant() {
         1000,
         counters1.clone(),
     ));
-    let r2 = audit.sign(audit.build_receipt(
-        "tenant-1".to_string(),
-        "h2".to_string(),
-        1001,
-        counters1,
-    ));
+    let r2 =
+        audit.sign(audit.build_receipt("tenant-1".to_string(), "h2".to_string(), 1001, counters1));
     let mut counters2 = cloison_audit::receipt::Counters::default();
     counters2.masked_by_type.insert("Email".to_string(), 2);
-    let r3 = audit.sign(audit.build_receipt(
-        "tenant-2".to_string(),
-        "h3".to_string(),
-        1002,
-        counters2,
-    ));
+    let r3 =
+        audit.sign(audit.build_receipt("tenant-2".to_string(), "h3".to_string(), 1002, counters2));
     audit.record(r1).unwrap();
     audit.record(r2).unwrap();
     audit.record(r3).unwrap();

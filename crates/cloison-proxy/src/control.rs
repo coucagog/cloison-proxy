@@ -337,11 +337,7 @@ impl TokenVerifier {
     /// `Ok(true)` = jeton actif (ou en grâce) ; `Ok(false)` = inconnu/révoqué ;
     /// `Err` = contrôle injoignable et aucune décision fraîche en cache — le
     /// middleware d'auth traduit en 401 (fail-closed).
-    pub async fn verify(
-        &self,
-        tenant_id: &str,
-        access_token: &str,
-    ) -> Result<bool, ProxyError> {
+    pub async fn verify(&self, tenant_id: &str, access_token: &str) -> Result<bool, ProxyError> {
         let digest = token_hash(access_token);
         let key = (tenant_id.to_string(), digest.clone());
         {
@@ -392,7 +388,12 @@ impl TokenVerifier {
     pub async fn poll_version(&self) -> Result<(), ProxyError> {
         let tenants: Vec<String> = {
             let mut t: Vec<String> = vec![self.default_tenant_id.clone()];
-            t.extend(self.seen_tenants.lock().expect("seen tenants poisoned").clone());
+            t.extend(
+                self.seen_tenants
+                    .lock()
+                    .expect("seen tenants poisoned")
+                    .clone(),
+            );
             t
         };
         for tenant in tenants {
@@ -486,7 +487,10 @@ pub async fn flush_pending_audit(
             .max()
             .unwrap_or(0)
             .saturating_add(1);
-        match client.ingest(tenant, period_start, period_end, k, recs).await {
+        match client
+            .ingest(tenant, period_start, period_end, k, recs)
+            .await
+        {
             Ok((seq, root_hash)) => {
                 tracing::info!(
                     tenant_id = tenant,
