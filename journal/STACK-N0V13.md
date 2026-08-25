@@ -89,16 +89,73 @@ powershell -ExecutionPolicy Bypass -File https://raw.githubusercontent.com/couca
 #   release-n0/release : release draft + binaires
 ```
 
-## Résultats
+## Résultats (complétés au fil de l'eau — session terminée)
 
-- **Code livré** : fichiers ci-dessus, commit local prêt (`git status`).
-- **Gates attendus** : CI `test-n0-os` vert sur Windows/macOS ; release-n0
-  produit 4 binaires testés ; `n0-release-assets.sh` publie 6 assets +
-  checksums ; **smoke test Windows réel** (cette machine) : install-n0.ps1 →
-  daemon → roundtrip mock LLM (masquage amont + restauration, zéro sentinelle
-  résiduelle).
-- **Vérifications en cours** : push + tag v0.3.0 + CI + assets + smoke test
-  (voir sections suivantes, complétées au fil de l'eau).
+- **Code livré** : `.github/workflows/release-n0.yml` (4 cibles natives + tests
+  OS réel + release), `ci.yml` (job `test-n0-os` Windows/macOS), `install-n0.sh`
+  (réécrit), `install-n0.ps1` (nouveau), `provision_ner_lite.sh` (téléchargement
+  par défaut, `--export` torch), `n0-release-assets.sh` (assemblage + upload),
+  `smoke-n0.ps1` (nouveau), `simulate_client.py` (nouveau, chantier ②),
+  `fsperm.rs` (portage Windows), docs (N0.md §2/§8, CONFIG, README).
+- **3 bugs réels découverts par la CI/smoke et corrigés** :
+  1. **Portage Windows du proxy** : `.mode(0o600)` + `std::os::unix` non
+     portables (E0599/E0433) → `fsperm.rs` (cfg-gated, 5 sites) — le proxy
+     n'avait JAMAIS compilé pour Windows avant cette session.
+  2. **Verrou redb sous Windows** : lecture du coffre pendant qu'il est ouvert
+     → ERROR_LOCK_VIOLATION (test e2e_n0 + smoke) → scan après fermeture.
+  3. **`Invoke-WebRequest` lève sur 401** (readiness smoke) + `\u27e6` invalide
+     en regex PS 5.1 + corps manglé par le passage d'arguments → smoke corrigé.
+- **CI** : `test-n0-os` Windows/macOS **verts** (preuve OS réelle continue) ;
+  `release-n0` produit les 4 binaires testés (macos-x64 compile+link sur
+  macos-14 — les runners Intel macos-13 sont indisponibles).
+- **Release v0.3.0 (monorepo, puis dépôt PUBLIC)** : voir §8.
+- **Smoke test Windows RÉEL (cette machine)** : **SUCCÈS (exit 0)** — daemon
+  N0 (coffre persistant, fail-loud, sel 0600), **NER léger embarqué actif**
+  (distilbert ONNX int8 + onnxruntime.dll chargés sur Windows), masquage amont
+  prouvé (sentinelles ⟦, PII absente), restauration client complète
+  (Xolani Ndlovu, téléphone), **ville généralisée `[VILLE_SN]`** (design N0),
+  coffre sans clair, embeddings 404.
+- **Chantier ② (premier client N3 + calibration)** : voir `journal/DEPLOY-11.md`.
+
+## §8 — Distribution : dépôt PUBLIC (découverte structurante)
+
+Le monorepo `coucagog/cloison` est **PRIVÉ** → les URLs
+`releases/download/...` 404 pour le grand public (GitHub masque par 404).
+**La distribution N0 doit vivre dans le dépôt PUBLIC open-core
+`coucagog/cloison-proxy`** (AGPL, l'open source est la condition de la
+promesse — charte §5.1) :
+
+- **Proxy re-publié v0.3.0** (procédure OPEN-CORE §4) : re-split, manifest
+  autonome (deps N0 keyring/ort/tokenizers — le Cargo.toml d'adaptation
+  v0.1.0 les omettait, corrigé), git deps core/audit **v0.2.5** (inchangés),
+  **LICENSE AGPL-3.0** (texte GNU, leçon v0.2.5), Cargo.lock épinglé,
+  `cargo check` sur le tag **vert**.
+- **Release publique v0.3.0** : 9 assets (4 binaires + bundle NER ONNX int8
+  avec notice AFL-3.0 + 3 libs onnxruntime 1.29.0 + checksums.txt).
+- **Téléchargements publics vérifiés (sans auth) : 200** sur
+  `github.com/coucagog/cloison-proxy/releases/download/v0.3.0/…`.
+- **Scripts d'install publiés à la racine du dépôt public** (install-n0.sh,
+  install-n0.ps1, smoke-n0.ps1, provision_ner_lite.sh) + guide dans le README.
+- **Exception macOS Intel** : microsoft ne publie plus d'onnxruntime
+  osx-x86_64 (≥1.27) → le binaire macos-x64 est fourni sans lib (dégradation
+  gracieuse N0 v1, warn) — documenté docs/N0.md §8.
+- `n0-release-assets.sh` paramétrable (`CLOISON_RELEASE_REPO`, défaut
+  cloison-proxy) — le release monorepo privé reste pour usage interne.
+
+## Porte de sortie (chantier ①) — ✅ ATTEINTE
+
+- [x] Scripts d'install (Linux/macOS + Windows) sans Rust ni torch, checksums
+      obligatoires, scripts publiés dans le dépôt public.
+- [x] CI release (4 cibles natives, testées sur l'OS réel) + CI continue
+      (test-n0-os Windows/macOS verts).
+- [x] Distribution PUBLIQUE fonctionnelle : release v0.3.0 sur
+      `coucagog/cloison-proxy` (9 assets), téléchargements 200 sans auth.
+- [x] Smoke test Windows réel : **SUCCÈS** (masquage amont + restauration +
+      NER + généralisation ville + coffre sans clair).
+- [x] Re-publication open-core proxy **v0.3.0** (cargo check vert, AGPL,
+      Cargo.lock) — les crates ont changé (fsperm, portage Windows).
+- [x] **Porte globale : un humain installe N0 en ≤ 10 min** — prouvée par les
+      scripts publics + téléchargements 200 + smoke Windows réussi.
 
 ## Invariants de sécurité vérifiés
 
