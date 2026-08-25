@@ -21,6 +21,7 @@ pub mod detect;
 pub mod engine;
 pub mod errors;
 pub mod handlers;
+pub mod light_ner;
 pub mod openai;
 pub mod passphrase;
 pub mod routes;

@@ -80,6 +80,44 @@ impl Generalizer {
         self.rules.insert(kind, rule);
     }
 
+    /// Applique une règle donnée à une valeur (sans l'ajouter au registre).
+    ///
+    /// Utilisé par `Engine::process_spans` quand la **politique** porte la
+    /// règle (ex. `Policy::n0_for` : ville_sn → `[VILLE_SN]`) — le
+    /// `Generalizer` par défaut ne connaît que ses règles intégrées (Date,
+    /// IP, carte) et rendrait la valeur brute sinon (bug corrigé : la ville
+    /// restait en clair en mode N0).
+    pub fn apply_rule(&self, rule: &GeneralizeRule, _kind: &DetectorKind, value: &str) -> String {
+        match rule {
+            GeneralizeRule::Mask {
+                keep_start,
+                keep_end,
+                mask_char,
+            } => {
+                let chars: Vec<char> = value.chars().collect();
+                let len = chars.len();
+                if *keep_start + *keep_end >= len {
+                    return value.to_string();
+                }
+                let mut result = String::with_capacity(len);
+                for (i, &c) in chars.iter().enumerate() {
+                    if i < *keep_start || i >= len - *keep_end {
+                        result.push(c);
+                    } else {
+                        result.push(*mask_char);
+                    }
+                }
+                result
+            }
+            GeneralizeRule::Range { prefix } => prefix.clone(),
+            GeneralizeRule::Replace { label } => label.clone(),
+            GeneralizeRule::AgeBucket => generalize_age_value(value),
+            GeneralizeRule::DateBucket => generalize_date_value(value),
+            GeneralizeRule::Suppress => suppress(),
+            GeneralizeRule::None => value.to_string(),
+        }
+    }
+
     /// Check if a rule exists for the given kind.
     pub fn has_rule(&self, kind: &DetectorKind) -> bool {
         self.rules.contains_key(kind)

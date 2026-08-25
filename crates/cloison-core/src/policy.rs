@@ -176,6 +176,11 @@ impl Policy {
     pub fn should_generalize(&self, kind: &DetectorKind) -> bool {
         self.generalization.contains_key(kind)
     }
+
+    /// Règle de généralisation de la politique pour un type (si posée).
+    pub fn generalize_rule(&self, kind: &DetectorKind) -> Option<&GeneralizeRule> {
+        self.generalization.get(kind)
+    }
 }
 
 impl Default for Policy {

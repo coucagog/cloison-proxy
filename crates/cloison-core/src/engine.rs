@@ -5,7 +5,7 @@
 //! - `restore`: scan for sentinels, verify registry + MAC, restore from vault
 
 use crate::alias::{AliasConfig, AliasExpander, SessionContext};
-use crate::detection::{Detector, Span};
+use crate::detection::{Detector, DetectorKind, Span};
 use crate::error::{CloisonError, CloisonResult};
 use crate::generalize::Generalizer;
 use crate::policy::Policy;
@@ -54,6 +54,13 @@ pub struct SessionOptions {
     pub enable_quasiid_gauge: bool,
     /// Seuil de la jauge (`score > seuil` strict) ; 1.0 = désactivée de fait.
     pub quasiid_threshold: f64,
+    /// **Fusion englobante NER (N0 v1.2, chantier ④)** : quand un span NER
+    /// externe (PERSON/LOC) **englobe** un span gazetteer partiel de même
+    /// famille sémantique (nom_sn → PERSON, ville_sn → LOC), le span NER
+    /// complet prime (le fragment est retiré). Défaut : non — hors mode N0,
+    /// le comportement de `merge_extra_spans` (B.1, chevauchement → ignoré)
+    /// reste bit-identique.
+    pub enable_enclosing_ner_fusion: bool,
 }
 
 impl Default for SessionOptions {
@@ -62,6 +69,7 @@ impl Default for SessionOptions {
             enable_alias_expansion: true,
             enable_quasiid_gauge: false,
             quasiid_threshold: 0.50,
+            enable_enclosing_ner_fusion: false,
         }
     }
 }
@@ -201,7 +209,15 @@ impl Engine {
         options: &SessionOptions,
     ) -> CloisonResult<TokenizeResult> {
         let mut spans = self.detector.detect_with_policy(text, &policy.detection);
-        merge_extra_spans(text, policy, &mut spans, extra);
+        if options.enable_enclosing_ner_fusion {
+            // Chantier ④ (N0 v1.2) : un span NER complet (PERSON/LOC) prime
+            // sur les fragments gazetteer qu'il englobe (même famille) —
+            // sinon `merge_extra_spans` les jetterait (chevauchement) et le
+            // NER embarqué n'apporterait rien (exact-match benchmark).
+            merge_enclosing_spans(text, policy, &mut spans, extra);
+        } else {
+            merge_extra_spans(text, policy, &mut spans, extra);
+        }
 
         // 2. Mentions canoniques (PERSON/LOC uniquement — jamais MAIL/TEL/…).
         for s in &spans {
@@ -251,11 +267,24 @@ impl Engine {
         let mut emitted = Vec::new();
 
         for span in spans {
-            // Step 2a: Check generalization
-            if policy.should_generalize(&span.entity_type)
-                || self.generalizer.has_rule(&span.entity_type)
-            {
-                let replacement = self.generalizer.generalize(&span.entity_type, &span.value);
+            // Step 2a: Check generalization — la politique N0 prime (elle
+            // porte la règle complète, ex. ville_sn → [VILLE_SN] absent du
+            // Generalizer par défaut — corrigé : appliquer la règle de la
+            // politique, sinon celle du Generalizer).
+            let generalized = match policy.generalize_rule(&span.entity_type) {
+                Some(rule) => Some(self.generalizer.apply_rule(
+                    rule,
+                    &span.entity_type,
+                    &span.value,
+                )),
+                None if policy.should_generalize(&span.entity_type)
+                    || self.generalizer.has_rule(&span.entity_type) =>
+                {
+                    Some(self.generalizer.generalize(&span.entity_type, &span.value))
+                }
+                None => None,
+            };
+            if let Some(replacement) = generalized {
                 text_out = replace_span(&text_out, span.start, span.end, &replacement);
                 continue;
             }
@@ -443,6 +472,85 @@ fn merge_extra_spans(text: &str, policy: &Policy, spans: &mut Vec<Span>, extra: 
             score: s.score,
             value: text[s.start..s.end].to_string(),
         });
+    }
+}
+
+/// Fusion **englobante** des spans NER externes (chantier ④, N0 v1.2 —
+/// activée uniquement par `SessionOptions.enable_enclosing_ner_fusion`).
+///
+/// Même validation que `merge_extra_spans` (type activé, bornes UTF-8,
+/// valeur re-tranchée), mais avec une règle supplémentaire : un span NER
+/// PERSON/LOC qui **englobe** un span gazetteer partiel de même famille
+/// sémantique (nom_sn → PERSON, ville_sn → LOC) **remplace** le fragment —
+/// le span complet prime (c'est le bénéfice du NER : « Dieynaba Sy » au lieu
+/// de « Dieynaba » + « Sy », exact-match benchmark).
+///
+/// Le reste des règles est inchangé : chevauchement partiel avec un span
+/// structuré (MAIL/TEL/CNI…) → le span NER est ignoré (le core prime) ;
+/// un span externe invalide est ignoré (jamais une erreur).
+fn merge_enclosing_spans(text: &str, policy: &Policy, spans: &mut Vec<Span>, extra: &[Span]) {
+    // 1) Valider les spans NER candidats (mêmes règles que merge_extra_spans).
+    let mut ner: Vec<Span> = Vec::new();
+    for s in extra {
+        if !policy.detection.is_enabled(&s.entity_type) {
+            continue;
+        }
+        if s.start >= s.end || s.end > text.len() {
+            continue;
+        }
+        if !text.is_char_boundary(s.start) || !text.is_char_boundary(s.end) {
+            continue;
+        }
+        ner.push(Span {
+            entity_type: s.entity_type.clone(),
+            start: s.start,
+            end: s.end,
+            score: s.score,
+            value: text[s.start..s.end].to_string(),
+        });
+    }
+
+    // 2) Déterminer la famille sémantique des spans retenus (core) et des NER.
+    //    PERSON ≡ Gazetteer(nom_sn) ; LOC ≡ Gazetteer(ville_sn).
+    fn semantic_family(kind: &DetectorKind) -> Option<&'static str> {
+        match kind {
+            DetectorKind::Person => Some("PERSON"),
+            DetectorKind::Gazetteer(n) if n == crate::detection::GAZETTEER_NOM_SN => Some("PERSON"),
+            DetectorKind::Location => Some("LOC"),
+            DetectorKind::Gazetteer(n) if n == crate::detection::GAZETTEER_VILLE_SN => Some("LOC"),
+            _ => None,
+        }
+    }
+
+    // 3) Retirer les spans core **englobés** par un span NER de même famille
+    //    (le span complet prime sur les fragments).
+    spans.retain(|c| {
+        !ner.iter().any(|n| {
+            semantic_family(&n.entity_type) == semantic_family(&c.entity_type)
+                && n.start <= c.start
+                && n.end >= c.end
+                && !(n.start == c.start && n.end == c.end)
+        })
+    });
+
+    // 4) Ajouter les spans NER : refusés s'ils chevauchent un span structuré
+    //    (hors famille PERSON/LOC — le core prime) ; dédup stricte sinon.
+    let structured: Vec<Span> = spans
+        .iter()
+        .filter(|c| semantic_family(&c.entity_type).is_none())
+        .cloned()
+        .collect();
+    for n in ner {
+        if structured
+            .iter()
+            .any(|s| n.start < s.end && s.start < n.end)
+        {
+            continue;
+        }
+        if spans.iter().any(|c| n.start < c.end && c.start < n.end) {
+            continue;
+        }
+        spans.push(n);
     }
 }
 
@@ -906,5 +1014,195 @@ mod tests {
         assert!(r.quasi_id.is_none());
         let restored = engine.restore(&r.text_out, "req-srv").unwrap();
         assert_eq!(restored.text_out, text);
+    }
+
+    // -----------------------------------------------------------------------
+    // N0 v1.2 — chantier ④ : fusion englobante NER (NER léger embarqué)
+    // -----------------------------------------------------------------------
+
+    /// Span NER externe PERSON complet (« Dieynaba Sy ») — le gazetteer core
+    /// détecte les fragments « Dieynaba » / « Sy » séparément.
+    fn ner_person_span(text: &str, name: &str) -> Span {
+        let start = text.find(name).expect("nom présent");
+        Span {
+            entity_type: DetectorKind::Person,
+            start,
+            end: start + name.len(),
+            score: 0.95,
+            value: String::new(),
+        }
+    }
+
+    #[test]
+    fn test_enclosing_ner_fusion_replaces_gazetteer_fragments() {
+        let keys = test_keys();
+        let mut engine = Engine::new(keys).unwrap();
+        let policy = Policy::default();
+        let options = SessionOptions {
+            enable_enclosing_ner_fusion: true,
+            ..Default::default()
+        };
+        let mut session = SessionContext::new();
+
+        // « Dieynaba Sy » : le gazetteer nom_sn détecte les fragments
+        // (nom_sn = PERSON sémantique) ; le span NER complet doit PRIMER
+        // (fusion englobante) — sinon le fragment seul échoue l'exact-match.
+        let text = "Dieynaba Sy est arrivée.";
+        let extra = vec![ner_person_span(text, "Dieynaba Sy")];
+        let r = engine
+            .tokenize_session(text, &policy, "req-fuse", &extra, &mut session, &options)
+            .unwrap();
+        assert!(
+            !r.text_out.contains("Dieynaba"),
+            "nom complet masqué : {}",
+            r.text_out
+        );
+        assert!(r.text_out.contains('⟦'), "sentinelle émise");
+        assert_eq!(r.emitted.len(), 1, "un seul jeton (le nom complet)");
+        assert_eq!(r.emitted[0].kind_tag, "PE", "tag PERSON");
+
+        // Roundtrip : restauration du nom complet.
+        let restored = engine.restore(&r.text_out, "req-fuse").unwrap();
+        assert_eq!(restored.text_out, text);
+        assert_eq!(restored.counters.blocked, 0);
+    }
+
+    #[test]
+    fn test_enclosing_ner_fusion_off_keeps_extra_span_ignored_on_overlap() {
+        // Option OFF (défaut) : comportement bit-identique au serveur — un
+        // span NER qui chevauche un span core (gazetteer) est IGNORÉ par
+        // `merge_extra_spans` (le fragment gazetteer reste, pas de fusion).
+        let keys = test_keys();
+        let mut engine = Engine::new(keys).unwrap();
+        let policy = Policy::default();
+        let options = SessionOptions::default(); // fusion OFF
+        let mut session = SessionContext::new();
+
+        let text = "Dieynaba Sy est arrivée.";
+        let extra = vec![ner_person_span(text, "Dieynaba Sy")];
+        let r = engine
+            .tokenize_session(text, &policy, "req-nofuse", &extra, &mut session, &options)
+            .unwrap();
+        // Sans fusion : le span NER est ignoré (chevauchement) ; le gazetteer
+        // a masqué les fragments (nom_sn actif par défaut) → aucun jeton PE.
+        assert!(
+            r.emitted.iter().all(|t| t.kind_tag != "PE"),
+            "aucun jeton PERSON NER sans fusion (chevauchement ignoré)"
+        );
+    }
+
+    #[test]
+    fn test_enclosing_ner_fusion_structured_overlap_ignored() {
+        // Un span NER qui chevauche un span STRUCTURÉ (email — le core
+        // prime) doit être ignoré même avec la fusion activée.
+        let keys = test_keys();
+        let mut engine = Engine::new(keys).unwrap();
+        let policy = Policy::default();
+        let options = SessionOptions {
+            enable_enclosing_ner_fusion: true,
+            ..Default::default()
+        };
+        let mut session = SessionContext::new();
+
+        let text = "Contactez user@example.com svp";
+        let start = text.find("user@example.com").unwrap();
+        let overlapping_person = Span {
+            entity_type: DetectorKind::Person,
+            start,
+            end: start + "user@example.com".len(),
+            score: 0.9,
+            value: String::new(),
+        };
+        let r = engine
+            .tokenize_session(
+                text,
+                &policy,
+                "req-fuse2",
+                &[overlapping_person],
+                &mut session,
+                &options,
+            )
+            .unwrap();
+        assert!(
+            !r.text_out.contains("user@example.com"),
+            "email masqué par le core"
+        );
+        assert_eq!(r.emitted.len(), 1, "un seul jeton (l'email)");
+        assert_eq!(r.emitted[0].kind_tag, "EM");
+    }
+
+    #[test]
+    fn test_enclosing_ner_fusion_loc_gazetteer_family() {
+        // Fusion englobante LOC : un span NER Location « Ziguinchor »
+        // englobant le fragment ville_sn du même toponyme → un seul span.
+        let keys = test_keys();
+        let mut engine = Engine::new(keys).unwrap();
+        let policy = Policy::default();
+        let options = SessionOptions {
+            enable_enclosing_ner_fusion: true,
+            ..Default::default()
+        };
+        let mut session = SessionContext::new();
+
+        let text = "Il habite à Ziguinchor depuis 2021.";
+        let start = text.find("Ziguinchor").unwrap();
+        let loc = Span {
+            entity_type: DetectorKind::Location,
+            start,
+            end: start + "Ziguinchor".len(),
+            score: 0.9,
+            value: String::new(),
+        };
+        let r = engine
+            .tokenize_session(text, &policy, "req-fuse3", &[loc], &mut session, &options)
+            .unwrap();
+        assert!(
+            !r.text_out.contains("Ziguinchor"),
+            "LOC masquée : {}",
+            r.text_out
+        );
+        let restored = engine.restore(&r.text_out, "req-fuse3").unwrap();
+        assert_eq!(restored.text_out, text);
+    }
+
+    // -----------------------------------------------------------------------
+    // N0 v1.2 — régression : la généralisation de la ville (Policy::n0_for)
+    // doit s'appliquer réellement (le Generalizer par défaut ne connaît pas
+    // ville_sn → la politique porte la règle, appliquée par process_spans).
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_n0_policy_ville_sn_generalized_not_tokenized() {
+        let keys = test_keys();
+        let mut engine = Engine::new(keys).unwrap();
+        let policy = Policy::n0_for("n0-local");
+
+        // « Dakar » (ville_sn) : en N0, généralisation [VILLE_SN] — JAMAIS un
+        // jeton (faible cardinalité, la fréquence trahirait — charte §6.1
+        // couche 5). Le Generalizer par défaut n'a pas la règle ville_sn :
+        // c'est la politique qui la porte (corrigé).
+        let text = "Il habite à Dakar, tel +221 77 123 45 67";
+        let r = engine.tokenize(text, &policy, "req-ville").unwrap();
+        assert!(
+            !r.text_out.contains("Dakar"),
+            "ville généralisée (plus en clair) : {}",
+            r.text_out
+        );
+        assert!(
+            r.text_out.contains("[VILLE_SN]"),
+            "remplacée par le label : {}",
+            r.text_out
+        );
+        assert!(
+            !r.text_out.contains('⟦') || !r.text_out.starts_with("Il habite à ⟦"),
+            "la ville ne doit pas être tokenisée (uniquement généralisée)"
+        );
+        // Le téléphone, lui, reste tokenisé (forte cardinalité).
+        assert!(r.text_out.contains('⟦'), "téléphone tokenisé");
+        // Aucun jeton émis pour la ville.
+        assert!(
+            r.emitted.iter().all(|t| t.kind_tag != "GZ"),
+            "aucun jeton gazetteer pour la ville (généralisée)"
+        );
     }
 }

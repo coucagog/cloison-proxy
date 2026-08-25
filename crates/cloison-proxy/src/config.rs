@@ -121,6 +121,11 @@ pub struct Config {
     /// quasi-id **in-core**. Actifs en mode N0 uniquement (le serveur garde
     /// son comportement bit-identique — jamais d'alias/jauge hors N0).
     pub session: SessionConfig,
+    /// NER léger embarqué (chantier ④, N0 v1.2) : modèle ONNX + tokenizer
+    /// locaux au daemon (jamais un sidecar Python). `None` = N0 v1 inchangé
+    /// (gazetteers + alias). La dégradation gracieuse est systématique
+    /// (modèle/lib absents → warn, jamais d'erreur).
+    pub light_ner: Option<LightNerConfig>,
 }
 
 /// Configuration de la session N0 v1.1 (alias intra-session R1–R7 + jauge
@@ -249,6 +254,34 @@ pub struct DetectConfig {
     pub timeout: Duration,
 }
 
+/// Configuration du NER léger embarqué (chantier ④, N0 v1.2 —
+/// `journal/ARBITRAGE-04-NER-LEGER.md`). Poser `CLOISON_NER_MODEL_ONNX` +
+/// `CLOISON_NER_TOKENIZER` active le NER léger **en mode N0 uniquement**.
+#[derive(Debug, Clone)]
+pub struct LightNerConfig {
+    /// Chemin du modèle ONNX int8 (`CLOISON_NER_MODEL_ONNX`).
+    pub model_path: PathBuf,
+    /// Chemin du tokenizer.json HF (`CLOISON_NER_TOKENIZER`).
+    pub tokenizer_path: PathBuf,
+    /// Chemin de la lib onnxruntime (`CLOISON_ONNX_LIB`) — `None` = chercher
+    /// `libonnxruntime.so` à côté du binaire puis dans le PATH.
+    pub onnx_lib: Option<PathBuf>,
+    /// Seuil de score minimal pour retenir un span (`CLOISON_NER_THRESHOLD`,
+    /// défaut 0.50 — calibration ARBITRAGE-04, balayage de seuils).
+    pub threshold: f64,
+}
+
+impl Default for LightNerConfig {
+    fn default() -> Self {
+        Self {
+            model_path: PathBuf::new(),
+            tokenizer_path: PathBuf::new(),
+            onnx_lib: None,
+            threshold: 0.50,
+        }
+    }
+}
+
 impl Default for DetectConfig {
     fn default() -> Self {
         Self {
@@ -301,6 +334,13 @@ impl std::fmt::Debug for Config {
             )
             .field("vault_keychain_service", &self.vault.keychain_service)
             .field("session", &self.session)
+            .field(
+                "light_ner_model",
+                &self
+                    .light_ner
+                    .as_ref()
+                    .map(|c| c.model_path.display().to_string()),
+            )
             .finish_non_exhaustive()
     }
 }
@@ -547,6 +587,28 @@ pub fn load() -> Result<Config, ProxyError> {
         mentions_max: env_usize("CLOISON_ALIAS_MAX_MENTIONS", 200)?.max(1),
     };
 
+    // N0 v1.2 — chantier ④ : NER léger embarqué (mode N0 uniquement).
+    // Poser CLOISON_NER_MODEL_ONNX + CLOISON_NER_TOKENIZER l'active ; la
+    // dégradation gracieuse (modèle/lib absents) est gérée au chargement.
+    let light_ner = {
+        let model = env("CLOISON_NER_MODEL_ONNX", "");
+        let tokenizer = env("CLOISON_NER_TOKENIZER", "");
+        if model.is_empty() || tokenizer.is_empty() {
+            None
+        } else {
+            let onnx_lib = match env("CLOISON_ONNX_LIB", "") {
+                s if s.is_empty() => None,
+                s => Some(PathBuf::from(s)),
+            };
+            Some(LightNerConfig {
+                model_path: PathBuf::from(model),
+                tokenizer_path: PathBuf::from(tokenizer),
+                onnx_lib,
+                threshold: env_f64("CLOISON_NER_THRESHOLD", 0.50)?.clamp(0.0, 1.0),
+            })
+        }
+    };
+
     Ok(Config {
         listen_addr,
         upstream,
@@ -563,6 +625,7 @@ pub fn load() -> Result<Config, ProxyError> {
         control,
         vault,
         session,
+        light_ner,
     })
 }
 

@@ -250,6 +250,8 @@ fn proxy_config(mock_url: &str, control_url: &str, audit_mode: bool) -> Config {
         vault: cloison_proxy::config::N0VaultConfig::default(),
         // N0 v1.1 : session désactivée (alias/jauge hors mode N0).
         session: cloison_proxy::config::SessionConfig::default(),
+        // N0 v1.2 : pas de NER léger dans ces tests (modèle absent → N0 v1).
+        light_ner: None,
     }
 }
 
