@@ -84,6 +84,25 @@ pub fn parse_authorization(header_value: &str) -> Result<CompositeKey, ProxyErro
     })
 }
 
+/// Tenant authentifié de la requête (résolu par `X-Cloison-Tenant` ou défaut).
+///
+/// Non sensible (charte §7.2) : il route la VÉRIFICATION du jeton vers le bon
+/// locataire ; un jeton ne passe que s'il appartient réellement à ce tenant
+/// (vérifié par hash auprès du contrôle — fail-closed). Inséré par le
+/// middleware d'auth pour les handlers (reçus d'audit par tenant).
+#[derive(Debug, Clone)]
+pub struct AuthenticatedTenant(pub String);
+
+/// Valide un identifiant de tenant présenté dans `X-Cloison-Tenant` : ASCII
+/// alphanumérique + `-`/`_`/`.` (borné 64) — jamais de métacaractère.
+fn sanitize_tenant(value: &str) -> Option<String> {
+    let v = value.trim();
+    if v.is_empty() || v.len() > 64 || !v.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.') {
+        return None;
+    }
+    Some(v.to_string())
+}
+
 /// Middleware axum : valide le header, insère `CompositeKey` dans les extensions.
 /// Échec → 401 `invalid_api_key`, **aucun** appel amont n'est fait.
 pub async fn auth_middleware(
@@ -113,16 +132,29 @@ pub async fn auth_middleware(
         Err(_) => return Err(fail()),
     };
 
+    // Tenant de la requête : header `X-Cloison-Tenant` (non secret, charte
+    // §7.2) sinon tenant par défaut configuré. Un header invalide (format)
+    // est rejeté (jamais de tenant arbitraire).
+    let tenant = match req
+        .headers()
+        .get("x-cloison-tenant")
+        .and_then(|v| v.to_str().ok())
+        .and_then(sanitize_tenant)
+    {
+        Some(t) => t,
+        None => state.control_cfg.tenant_id.clone(),
+    };
+
     // Deux modes d'auth (jamais les deux à la fois — le contrôle prime s'il est
     // configuré) :
     //   - wiring C (`CLOISON_CONTROL_URL` posé) : vérification par hash auprès du
-    //     contrôle (TokenVerifier, cache local + purge sur rotation). Panne du
-    //     contrôle et cache froid → fail-closed 401 (jamais d'acceptation par
-    //     défaut, invariant I8).
+    //     contrôle (TokenVerifier multi-tenant, cache local + purge sur
+    //     rotation). Panne du contrôle et cache froid → fail-closed 401 (jamais
+    //     d'acceptation par défaut, invariant I8).
     //   - N0/historique : comparaison à temps constant contre
     //     `CLOISON_EXPECTED_ACCESS_TOKEN` si configuré.
     if let Some(verifier) = &state.token_verifier {
-        match verifier.verify(key.access_token.as_str()).await {
+        match verifier.verify(&tenant, key.access_token.as_str()).await {
             Ok(true) => {}
             Ok(false) => return Err(fail()),
             Err(_) => return Err(fail()),
@@ -136,6 +168,7 @@ pub async fn auth_middleware(
     }
 
     req.extensions_mut().insert(key);
+    req.extensions_mut().insert(AuthenticatedTenant(tenant));
     Ok(next.run(req).await)
 }
 

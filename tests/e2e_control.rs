@@ -49,7 +49,8 @@ const PII_TEXT: &str = "Contactez user@example.com et +221 77 123 45 67 et IP 19
 
 #[derive(Default)]
 struct MockControlState {
-    valid_hashes: Mutex<HashSet<String>>,
+    /// Hashes valides PAR TENANT (auth multi-tenant, charte §7.2).
+    valid_hashes: Mutex<HashMap<String, HashSet<String>>>,
     version: Mutex<u64>,
     ingests: Mutex<Vec<Value>>,
     /// `true` = le contrôle répond 500 (panne simulée).
@@ -77,20 +78,30 @@ impl MockControl {
         format!("http://{}", self.addr)
     }
 
+    /// Autorise un jeton dans le tenant par défaut du proxy (TEST_TENANT).
     fn allow(&self, token: &str) {
+        self.allow_for(TEST_TENANT, token);
+    }
+
+    /// Autorise un jeton dans un tenant donné (multi-tenant).
+    fn allow_for(&self, tenant: &str, token: &str) {
         self.state
             .valid_hashes
             .lock()
             .unwrap()
+            .entry(tenant.to_string())
+            .or_default()
             .insert(token_hash(token));
     }
 
     fn revoke(&self, token: &str) {
-        self.state
-            .valid_hashes
-            .lock()
-            .unwrap()
-            .remove(&token_hash(token));
+        self.revoke_for(TEST_TENANT, token);
+    }
+
+    fn revoke_for(&self, tenant: &str, token: &str) {
+        if let Some(h) = self.state.valid_hashes.lock().unwrap().get_mut(tenant) {
+            h.remove(&token_hash(token));
+        }
         *self.state.version.lock().unwrap() += 1;
     }
 
@@ -125,11 +136,18 @@ fn mock_control_router(state: Arc<MockControlState>) -> Router {
                     );
                 }
                 let hash = req["token_hash"].as_str().unwrap_or_default().to_string();
-                let valid = s.valid_hashes.lock().unwrap().contains(&hash);
+                let tenant = req["tenant_id"].as_str().unwrap_or_default().to_string();
+                let valid = s
+                    .valid_hashes
+                    .lock()
+                    .unwrap()
+                    .get(&tenant)
+                    .map(|h| h.contains(&hash))
+                    .unwrap_or(false);
                 let version = *s.version.lock().unwrap();
                 (
                     StatusCode::OK,
-                    Json(json!({ "tenant_id": req["tenant_id"], "valid": valid, "version": version })),
+                    Json(json!({ "tenant_id": tenant, "valid": valid, "version": version })),
                 )
             }),
         )
@@ -287,6 +305,34 @@ async fn send_json(
 
 fn good_auth(token: &str) -> String {
     format!("{token}.{TEST_UPSTREAM_KEY}")
+}
+
+/// Comme `send_json` + header `X-Cloison-Tenant` (routage multi-tenant).
+async fn send_json_tenant(
+    app: &Router,
+    uri: &str,
+    auth: Option<&str>,
+    tenant: Option<&str>,
+    body: Option<Value>,
+) -> (StatusCode, axum::http::HeaderMap, String) {
+    let mut builder = Request::builder()
+        .method("POST")
+        .uri(uri)
+        .header(header::CONTENT_TYPE, "application/json");
+    if let Some(a) = auth {
+        builder = builder.header(header::AUTHORIZATION, format!("Bearer {a}"));
+    }
+    if let Some(t) = tenant {
+        builder = builder.header("x-cloison-tenant", t);
+    }
+    let req = builder
+        .body(Body::from(body.map(|v| v.to_string()).unwrap_or_default()))
+        .unwrap();
+    let resp = app.clone().oneshot(req).await.unwrap();
+    let status = resp.status();
+    let headers = resp.headers().clone();
+    let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+    (status, headers, String::from_utf8_lossy(&bytes).to_string())
 }
 
 fn chat_body() -> Value {
@@ -559,4 +605,165 @@ async fn receipt_session_ref_is_stable_per_token() {
             .unwrap_or(0)
             >= 1
     );
+}
+
+/// Multi-tenant (charte §7.2) : le header `X-Cloison-Tenant` route la
+/// vérification par hash vers le bon locataire. Un jeton n'est accepté que
+/// dans le tenant où il a été émis — jamais ailleurs (fail-closed).
+#[tokio::test]
+async fn tenant_header_routes_verification() {
+    const T1: &str = "tenant-1";
+    const T2: &str = "tenant-2";
+    const TOKEN_T1: &str = "mn_token_t1";
+    const TOKEN_T2: &str = "mn_token_t2";
+
+    let mock = MockControl::start().await;
+    mock.allow_for(T1, TOKEN_T1);
+    mock.allow_for(T2, TOKEN_T2);
+    let upstream = mock_upstream().await;
+    let (_state, app) = proxy_app(&upstream, &mock.url(), false).await;
+
+    // Jeton t1 + header t1 → 200.
+    let (s, _, _) = send_json_tenant(
+        &app,
+        "/v1/chat/completions",
+        Some(&good_auth(TOKEN_T1)),
+        Some(T1),
+        Some(chat_body()),
+    )
+    .await;
+    assert_eq!(s, StatusCode::OK, "jeton t1 dans le tenant t1 → 200");
+
+    // Jeton t1 + header t2 → 401 (le jeton n'appartient pas à t2).
+    let (s, _, _) = send_json_tenant(
+        &app,
+        "/v1/chat/completions",
+        Some(&good_auth(TOKEN_T1)),
+        Some(T2),
+        Some(chat_body()),
+    )
+    .await;
+    assert_eq!(
+        s,
+        StatusCode::UNAUTHORIZED,
+        "jeton t1 présenté au tenant t2 → 401"
+    );
+
+    // Jeton t2 + header t2 → 200 ; sans header → tenant par défaut (401 ici,
+    // le jeton t2 n'est pas dans le tenant par défaut).
+    let (s, _, _) = send_json_tenant(
+        &app,
+        "/v1/chat/completions",
+        Some(&good_auth(TOKEN_T2)),
+        Some(T2),
+        Some(chat_body()),
+    )
+    .await;
+    assert_eq!(s, StatusCode::OK, "jeton t2 dans le tenant t2 → 200");
+
+    let (s, _, _) = send_json_tenant(
+        &app,
+        "/v1/chat/completions",
+        Some(&good_auth(TOKEN_T2)),
+        None,
+        Some(chat_body()),
+    )
+    .await;
+    assert_eq!(
+        s,
+        StatusCode::UNAUTHORIZED,
+        "sans header → tenant par défaut → jeton t2 rejeté"
+    );
+
+    // Header mal formé (métacaractères) → repli sur le tenant par défaut.
+    let (s, _, _) = send_json_tenant(
+        &app,
+        "/v1/chat/completions",
+        Some(&good_auth(TOKEN_T2)),
+        Some("tenant-1/../../etc"),
+        Some(chat_body()),
+    )
+    .await;
+    assert_eq!(
+        s,
+        StatusCode::UNAUTHORIZED,
+        "header invalide → tenant par défaut (jamais un tenant arbitraire)"
+    );
+}
+
+/// Ingest multi-tenant : `flush_pending_audit` groupe les reçus PAR TENANT et
+/// soumet un lot par tenant (le contrôle rejette un reçu dont le tenant ne
+/// correspond pas au lot). Le curseur avance des reçus contigus ingérés.
+#[tokio::test]
+async fn flush_groups_receipts_by_tenant() {
+    let mock = MockControl::start().await;
+    let upstream = mock_upstream().await;
+    let (state, _app) = proxy_app(&upstream, &mock.url(), true).await;
+    let audit = state.audit.clone().expect("audit engine");
+    let control = state.control.clone().expect("control client");
+
+    // Deux reçus pour t1, un pour t2 (signés par l'agent de l'edge).
+    let mut counters1 = cloison_audit::receipt::Counters::default();
+    counters1.masked_by_type.insert("Email".to_string(), 3);
+    let r1 = audit.sign(audit.build_receipt(
+        "tenant-1".to_string(),
+        "h1".to_string(),
+        1000,
+        counters1.clone(),
+    ));
+    let r2 = audit.sign(audit.build_receipt(
+        "tenant-1".to_string(),
+        "h2".to_string(),
+        1001,
+        counters1,
+    ));
+    let mut counters2 = cloison_audit::receipt::Counters::default();
+    counters2.masked_by_type.insert("Email".to_string(), 2);
+    let r3 = audit.sign(audit.build_receipt(
+        "tenant-2".to_string(),
+        "h3".to_string(),
+        1002,
+        counters2,
+    ));
+    audit.record(r1).unwrap();
+    audit.record(r2).unwrap();
+    audit.record(r3).unwrap();
+
+    let n = flush_pending_audit(&audit, &control, "default", 5)
+        .await
+        .expect("flush ok");
+    assert_eq!(n, 3, "les 3 reçus sont ingérés (2 tenants)");
+
+    let ingests = mock.state.ingests.lock().unwrap().clone();
+    assert_eq!(ingests.len(), 2, "un lot PAR tenant");
+    let t1_batch = ingests
+        .iter()
+        .find(|i| i["tenant_id"] == "tenant-1")
+        .expect("lot tenant-1");
+    let t2_batch = ingests
+        .iter()
+        .find(|i| i["tenant_id"] == "tenant-2")
+        .expect("lot tenant-2");
+    assert_eq!(
+        t1_batch["receipts"].as_array().unwrap().len(),
+        2,
+        "2 reçus dans le lot tenant-1"
+    );
+    assert_eq!(
+        t2_batch["receipts"].as_array().unwrap().len(),
+        1,
+        "1 reçu dans le lot tenant-2"
+    );
+    // Chaque reçu est dans le bon lot (tenant du reçu == tenant du lot).
+    for i in &ingests {
+        let tenant = i["tenant_id"].as_str().unwrap();
+        for r in i["receipts"].as_array().unwrap() {
+            assert_eq!(r["tenant_id"], tenant, "reçu bien routé par tenant");
+        }
+    }
+    // Le curseur a avancé : un second flush ne renvoie rien.
+    let n2 = flush_pending_audit(&audit, &control, "default", 5)
+        .await
+        .expect("flush 2 ok");
+    assert_eq!(n2, 0, "plus rien de pendant après ingestion");
 }

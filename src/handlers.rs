@@ -22,7 +22,7 @@ use serde_json::Value;
 use tokio::sync::Mutex as AsyncMutex;
 use zeroize::Zeroizing;
 
-use crate::auth::CompositeKey;
+use crate::auth::{AuthenticatedTenant, CompositeKey};
 use crate::config::{Config, ControlConfig, StreamConfig};
 use crate::control::{flush_pending_audit, ControlClient, TokenVerifier};
 use crate::detect::DetectClient;
@@ -319,6 +319,7 @@ fn new_request_id() -> String {
 pub async fn chat_completions(
     State(state): State<Arc<AppState>>,
     Extension(key): Extension<CompositeKey>,
+    Extension(tenant): Extension<AuthenticatedTenant>,
     body: Bytes,
 ) -> Result<Response, ProxyError> {
     state.metrics.requests_total.fetch_add(1, Ordering::Relaxed);
@@ -333,7 +334,7 @@ pub async fn chat_completions(
     // STACK-4 : mode audit observe-only — détecter + compter SANS masquer.
     // Le corps est transmis amont tel quel ; un reçu signé est généré.
     if state.audit.is_some() {
-        return audit_chat_completions(state, key, req, request_id).await;
+        return audit_chat_completions(state, key, tenant.0, req, request_id).await;
     }
 
     let mut req_engine = RequestEngine::new(&state.keys, &request_id, state.vault.clone())?;
@@ -434,6 +435,7 @@ pub async fn chat_completions(
 pub async fn completions_legacy(
     State(state): State<Arc<AppState>>,
     Extension(key): Extension<CompositeKey>,
+    Extension(tenant): Extension<AuthenticatedTenant>,
     body: Bytes,
 ) -> Result<Response, ProxyError> {
     state.metrics.requests_total.fetch_add(1, Ordering::Relaxed);
@@ -455,7 +457,7 @@ pub async fn completions_legacy(
 
     // STACK-4 : mode audit observe-only (legacy, non-stream).
     if state.audit.is_some() {
-        return audit_completions_legacy(state, key, req, request_id).await;
+        return audit_completions_legacy(state, key, tenant.0, req, request_id).await;
     }
 
     let mut req_engine = RequestEngine::new(&state.keys, &request_id, state.vault.clone())?;
@@ -606,12 +608,15 @@ fn audit_count_response(value: &Value, audit: &AuditEngine, counters: &mut Count
 fn audit_build_and_record(
     audit: &AuditEngine,
     policy: &Policy,
+    tenant_id: &str,
     request_id: &str,
     session_ref: &str,
     counters: Counters,
 ) -> Receipt {
-    let tenant_id = policy.tenant_id.clone();
-    let session_ref_hashed = receipt::hash_session_ref(&tenant_id, session_ref);
+    // Tenant de la REQUÊTE (multi-tenant, charte §7.2) : le reçu est tagué
+    // avec le locataire authentifié (header X-Cloison-Tenant ou défaut) —
+    // l'ingest est groupé par tenant et le journal reflète chaque client.
+    let session_ref_hashed = receipt::hash_session_ref(tenant_id, session_ref);
     let ts_unix = receipt::now_unix();
     let unsigned = audit.build_receipt(tenant_id, session_ref_hashed, ts_unix, counters);
     let signed = audit.sign(&unsigned);
@@ -650,12 +655,13 @@ fn attach_receipt_header(resp: &mut Response, receipt: &Receipt) {
 async fn audit_chat_completions(
     state: Arc<AppState>,
     key: CompositeKey,
+    tenant: String,
     req: ChatCompletionRequest,
     request_id: String,
 ) -> Result<Response, ProxyError> {
     // Stream SSE : forward count-only (corps émis strictement identique).
     if req.stream {
-        return audit_chat_stream(state, key, req, request_id).await;
+        return audit_chat_stream(state, key, tenant, req, request_id).await;
     }
 
     let audit = state
@@ -695,6 +701,7 @@ async fn audit_chat_completions(
     let receipt = audit_build_and_record(
         &audit,
         &state.policy,
+        &tenant,
         &request_id,
         &key.access_token,
         counters,
@@ -708,6 +715,7 @@ async fn audit_chat_completions(
 async fn audit_completions_legacy(
     state: Arc<AppState>,
     key: CompositeKey,
+    tenant: String,
     req: CompletionRequest,
     request_id: String,
 ) -> Result<Response, ProxyError> {
@@ -748,6 +756,7 @@ async fn audit_completions_legacy(
     let receipt = audit_build_and_record(
         &audit,
         &state.policy,
+        &tenant,
         &request_id,
         &key.access_token,
         counters,
@@ -763,6 +772,7 @@ async fn audit_completions_legacy(
 async fn audit_chat_stream(
     state: Arc<AppState>,
     key: CompositeKey,
+    tenant: String,
     req: ChatCompletionRequest,
     request_id: String,
 ) -> Result<Response, ProxyError> {
@@ -871,8 +881,14 @@ fn audit_count_only_sse(
             yield Ok::<Bytes, std::convert::Infallible>(Bytes::from(frame));
         }
         // Clôture : reçu signé et accumulé (compteurs uniquement).
-        let _receipt =
-            audit_build_and_record(&audit, &state.policy, &request_id, &session_ref, counters);
+        let _receipt = audit_build_and_record(
+            &audit,
+            &state.policy,
+            &tenant,
+            &request_id,
+            &session_ref,
+            counters,
+        );
     });
     Response::builder()
         .header("content-type", "text/event-stream")

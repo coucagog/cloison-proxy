@@ -280,68 +280,104 @@ struct CachedDecision {
 /// rotation/révocation incrémente la version du tenant. Panne du contrôle :
 /// une entrée fraîche en cache est honorée, sinon **fail-closed** (401) —
 /// jamais d'acceptation par défaut (invariant I8 : échouer bruyamment).
+///
+/// **Multi-tenant (charte §7.2)** : la vérification se fait pour le tenant de
+/// la REQUÊTE (header `X-Cloison-Tenant`, non secret — ou le tenant par
+/// défaut si absent). Le cache est clé par `(tenant, digest)` ; le long-poll
+/// surveille le tenant par défaut + les tenants vus récemment (borné).
 pub struct TokenVerifier {
     client: ControlClient,
-    tenant_id: String,
+    default_tenant_id: String,
     ttl: Duration,
-    cache: Mutex<HashMap<String, CachedDecision>>,
-    version_seen: Mutex<Option<u64>>,
+    cache: Mutex<HashMap<(String, String), CachedDecision>>,
+    versions: Mutex<HashMap<String, u64>>,
+    seen_tenants: Mutex<Vec<String>>,
 }
 
+/// Nombre maximal de tenants « vus » surveillés par le long-poll (borné —
+/// chaque tenant vérifié est enregistré ; les plus anciens sortent).
+const MAX_SEEN_TENANTS: usize = 64;
+
 impl TokenVerifier {
-    /// Construit le vérificateur pour un tenant.
+    /// Construit le vérificateur pour le tenant par défaut.
     pub fn new(client: ControlClient, tenant_id: String, ttl: Duration) -> Self {
         Self {
             client,
-            tenant_id,
+            default_tenant_id: tenant_id,
             ttl,
             cache: Mutex::new(HashMap::new()),
-            version_seen: Mutex::new(None),
+            versions: Mutex::new(HashMap::new()),
+            seen_tenants: Mutex::new(Vec::new()),
         }
     }
 
-    /// Identifiant locataire vérifié (non sensible).
+    /// Identifiant locataire par défaut (non sensible).
     pub fn tenant_id(&self) -> &str {
-        &self.tenant_id
+        &self.default_tenant_id
     }
 
-    /// Vérifie un jeton présenté (résolution par hash auprès du contrôle).
+    /// Enregistre un tenant vérifié (pour le long-poll de rotation).
+    fn note_seen_tenant(&self, tenant_id: &str) {
+        if tenant_id == self.default_tenant_id {
+            return;
+        }
+        let mut seen = self.seen_tenants.lock().expect("seen tenants poisoned");
+        if seen.iter().any(|t| t == tenant_id) {
+            return;
+        }
+        seen.push(tenant_id.to_string());
+        if seen.len() > MAX_SEEN_TENANTS {
+            seen.drain(..seen.len() - MAX_SEEN_TENANTS);
+        }
+    }
+
+    /// Vérifie un jeton présenté pour le tenant de la requête (résolution par
+    /// hash auprès du contrôle).
     ///
     /// `Ok(true)` = jeton actif (ou en grâce) ; `Ok(false)` = inconnu/révoqué ;
     /// `Err` = contrôle injoignable et aucune décision fraîche en cache — le
     /// middleware d'auth traduit en 401 (fail-closed).
-    pub async fn verify(&self, access_token: &str) -> Result<bool, ProxyError> {
+    pub async fn verify(
+        &self,
+        tenant_id: &str,
+        access_token: &str,
+    ) -> Result<bool, ProxyError> {
         let digest = token_hash(access_token);
+        let key = (tenant_id.to_string(), digest.clone());
         {
             let cache = self.cache.lock().expect("verify cache poisoned");
-            if let Some(decision) = cache.get(&digest) {
+            if let Some(decision) = cache.get(&key) {
                 if decision.cached_at.elapsed() < self.ttl {
                     return Ok(decision.valid);
                 }
             }
         }
-        match self.client.verify(&self.tenant_id, &digest).await {
+        match self.client.verify(tenant_id, &digest).await {
             Ok((valid, version)) => {
                 self.cache.lock().expect("verify cache poisoned").insert(
-                    digest,
+                    key,
                     CachedDecision {
                         valid,
                         cached_at: Instant::now(),
                     },
                 );
-                *self.version_seen.lock().expect("version lock poisoned") = Some(version);
+                self.versions
+                    .lock()
+                    .expect("version lock poisoned")
+                    .insert(tenant_id.to_string(), version);
+                self.note_seen_tenant(tenant_id);
                 Ok(valid)
             }
             Err(e) => {
                 // Fail-closed : seule une décision fraîche en cache est honorée.
                 let cache = self.cache.lock().expect("verify cache poisoned");
-                if let Some(decision) = cache.get(&digest) {
+                if let Some(decision) = cache.get(&key) {
                     if decision.cached_at.elapsed() < self.ttl {
                         return Ok(decision.valid);
                     }
                 }
                 tracing::warn!(
-                    tenant_id = %self.tenant_id,
+                    tenant_id,
                     error = %e,
                     "contrôle injoignable et aucune décision fraîche — fail-closed (401)"
                 );
@@ -350,25 +386,47 @@ impl TokenVerifier {
         }
     }
 
-    /// Long-poll de `GET /v1/control/version` : si la version du tenant a
-    /// monté (rotation/révocation), le cache est purgé — la prochaine requête
-    /// re-vérifie auprès du contrôle.
+    /// Long-poll des versions : le tenant par défaut + les tenants vus (borné).
+    /// Si la version d'un tenant monte (rotation/révocation), le cache des
+    /// jetons de CE tenant est purgé — la prochaine requête re-vérifie.
     pub async fn poll_version(&self) -> Result<(), ProxyError> {
-        let version = self.client.tokens_version(&self.tenant_id).await?;
-        let mut seen = self.version_seen.lock().expect("version lock poisoned");
-        match *seen {
-            Some(prev) if prev != version => {
-                tracing::warn!(
-                    tenant_id = %self.tenant_id,
-                    prev_version = prev,
-                    version,
-                    "rotation/révocation détectée — purge du cache de jetons"
-                );
-                self.cache.lock().expect("verify cache poisoned").clear();
-                *seen = Some(version);
+        let tenants: Vec<String> = {
+            let mut t: Vec<String> = vec![self.default_tenant_id.clone()];
+            t.extend(self.seen_tenants.lock().expect("seen tenants poisoned").clone());
+            t
+        };
+        for tenant in tenants {
+            match self.client.tokens_version(&tenant).await {
+                Ok(version) => {
+                    let mut versions = self.versions.lock().expect("version lock poisoned");
+                    match versions.get(&tenant) {
+                        Some(prev) if *prev != version => {
+                            tracing::warn!(
+                                tenant_id = %tenant,
+                                prev_version = prev,
+                                version,
+                                "rotation/révocation détectée — purge du cache de jetons (tenant)"
+                            );
+                            self.cache
+                                .lock()
+                                .expect("verify cache poisoned")
+                                .retain(|(t, _), _| t != &tenant);
+                            versions.insert(tenant.clone(), version);
+                        }
+                        None => {
+                            versions.insert(tenant.clone(), version);
+                        }
+                        _ => {}
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        tenant_id = %tenant,
+                        error = %e,
+                        "long-poll version contrôle échoué (cache intact — fail-closed inchangé)"
+                    );
+                }
             }
-            None => *seen = Some(version),
-            _ => {}
         }
         Ok(())
     }
@@ -386,14 +444,18 @@ impl TokenVerifier {
 /// Flush un lot de reçus d'audit **pendants** vers le contrôle.
 ///
 /// - rien à envoyer → `Ok(0)` ;
-/// - succès → le curseur d'ingest avance (persisté à côté du JSONL) et le
-///   nombre de reçus ingérés est renvoyé ;
-/// - échec → `Err` (warn au tick suivant ; les reçus restent persistés et
-///   seront re-tentés — aucune perte de preuve).
+/// - les reçus sont **groupés par tenant** (le contrôle rejette un reçu dont
+///   le tenant ne correspond pas au lot — `api.rs` `receipt.tenant_id !=
+///   req.tenant_id` → chaque tenant est ingéré dans son propre lot, ordre
+///   préservé) ;
+/// - succès → le curseur d'ingest avance (persisté à côté du JSONL) du nombre
+///   de reçus **contigus** ingérés et le total est renvoyé ;
+/// - échec d'un groupe → on s'arrête (les groupes suivants restent pendants,
+///   re-tentés au tick suivant — aucune perte de preuve).
 pub async fn flush_pending_audit(
     audit: &AuditEngine,
     client: &ControlClient,
-    tenant_id: &str,
+    _default_tenant: &str,
     k: usize,
 ) -> Result<usize, ProxyError> {
     let pending = audit.pending_receipts();
@@ -401,25 +463,51 @@ pub async fn flush_pending_audit(
         return Ok(0);
     }
     let batch = &pending[..pending.len().min(MAX_INGEST_BATCH)];
-    let period_start = batch.iter().map(|r| r.ts_unix).min().unwrap_or(0);
-    let period_end = batch
-        .iter()
-        .map(|r| r.ts_unix)
-        .max()
-        .unwrap_or(0)
-        .saturating_add(1);
-    let (seq, root_hash) = client
-        .ingest(tenant_id, period_start, period_end, k, batch)
-        .await?;
-    tracing::info!(
-        tenant_id,
-        receipts = batch.len(),
-        seq,
-        root_hash = %root_hash,
-        "reçus d'audit ingérés au contrôle (transparence, compteurs uniquement)"
-    );
-    audit.mark_ingested(batch.len())?;
-    Ok(batch.len())
+    // Groupement par tenant (ordre du journal préservé — clones possédés).
+    let mut groups: Vec<(String, Vec<Receipt>)> = Vec::new();
+    for r in batch {
+        if let Some((tenant, recs)) = groups.last_mut() {
+            if tenant == &r.tenant_id {
+                recs.push(r.clone());
+                continue;
+            }
+        }
+        groups.push((r.tenant_id.clone(), vec![r.clone()]));
+    }
+    let mut ingested = 0usize;
+    for (tenant, recs) in &groups {
+        let period_start = recs.iter().map(|r| r.ts_unix).min().unwrap_or(0);
+        let period_end = recs
+            .iter()
+            .map(|r| r.ts_unix)
+            .max()
+            .unwrap_or(0)
+            .saturating_add(1);
+        match client.ingest(tenant, period_start, period_end, k, recs).await {
+            Ok((seq, root_hash)) => {
+                tracing::info!(
+                    tenant_id = tenant,
+                    receipts = recs.len(),
+                    seq,
+                    root_hash = %root_hash,
+                    "reçus d'audit ingérés au contrôle (transparence, compteurs uniquement)"
+                );
+                ingested += recs.len();
+            }
+            Err(e) => {
+                tracing::warn!(
+                    tenant_id = tenant,
+                    error = %e,
+                    "ingest d'un groupe échoué — re-tenté au tick suivant (reçus persistés, aucune perte)"
+                );
+                break;
+            }
+        }
+    }
+    if ingested > 0 {
+        audit.mark_ingested(ingested)?;
+    }
+    Ok(ingested)
 }
 
 #[cfg(test)]
