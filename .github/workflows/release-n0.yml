@@ -1,0 +1,120 @@
+# =============================================================================
+# CLOISON — Release N0 (packaging distributable, chantier RAPPORT §5.1 ①).
+#
+# Sur un tag `v*` : construit le binaire daemon N0 (`cloison-proxy`, mode N0)
+# en release pour Linux (x86_64), Windows (x86_64) et macOS (arm64 + x86_64),
+# PROUVE le comportement sur chaque OS réel (tests e2e N0 sur le runner natif),
+# puis crée la release GitHub avec les 4 binaires attachés.
+#
+# Les artefacts modèles (NER léger ONNX int8 + libs onnxruntime + checksums)
+# sont attachés à la MÊME release par `deploy/n0-release-assets.sh` (exécuté
+# depuis le VPS après cette CI — charte §12 : tout scripté, réexécutable).
+#
+# Doctrine (REPRISE-DEPLOIEMENT §7) : toolchain épinglée 1.97 (déterministe),
+# `--locked` (Cargo.lock versionné), tests bloquants avant publication.
+# Les binaires sont AGPL-3.0 (licence du proxy, charte §5.1).
+# =============================================================================
+name: release-n0
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Binaires par OS — builds NATIFS (pas de cross-compilation) + preuve OS réel.
+  # macOS : macos-13 = Intel (x86_64), macos-14 = Apple Silicon (arm64) — pas
+  # de Rosetta nécessaire, chaque binaire est testé sur son arch native.
+  # ---------------------------------------------------------------------------
+  binaries:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            bin: cloison-proxy
+          - name: windows-x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin: cloison-proxy.exe
+          - name: macos-arm64
+            os: macos-14
+            target: aarch64-apple-darwin
+            bin: cloison-proxy
+          - name: macos-x64
+            os: macos-13
+            target: x86_64-apple-darwin
+            bin: cloison-proxy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain épinglée (1.97, doctrine DEPLOY-4/5)
+        uses: dtolnay/rust-toolchain@1.97.0
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build release (binaire daemon N0)
+        run: cargo build --release -p cloison-proxy --locked --target ${{ matrix.target }}
+
+      # Preuve « OS réel » (priorité ④ du rapport) : les tests e2e N0
+      # (coffre, fail-loud, roundtrip, keychain, embeddings 404) s'exécutent
+      # sur le runner natif de l'OS cible — pas seulement une compilation.
+      - name: Preuve OS réel — tests e2e N0 sur ${{ matrix.name }}
+        run: cargo test -p cloison-proxy --test e2e_n0 --locked --target ${{ matrix.target }}
+
+      - name: Upload binaire
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloison-proxy-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/${{ matrix.bin }}
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Release GitHub — uniquement sur tag (les binaires du workflow_dispatch ne
+  # créent pas de release). Les artefacts modèles sont ajoutés ensuite depuis
+  # le VPS (deploy/n0-release-assets.sh).
+  # ---------------------------------------------------------------------------
+  release:
+    needs: binaries
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Créer la release + attacher les binaires
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          name: CLOISON N0 — ${{ github.ref_name }}
+          body: |
+            ## CLOISON N0 — daemon desktop (moteur Rust seul)
+
+            Binaires du proxy de confidentialité PII compatible OpenAI (mode N0 :
+            `localhost:8787`, coffre chiffré local, auth 100 % locale).
+
+            **Installation (≤ 10 min, sans Rust ni torch)** :
+            - Linux / macOS : `bash <(curl -fsSL https://raw.githubusercontent.com/coucagog/cloison/main/deploy/install-n0.sh)`
+            - Windows : `powershell -ExecutionPolicy Bypass -File https://raw.githubusercontent.com/coucagog/cloison/main/deploy/install-n0.ps1`
+            - Guide : `docs/N0.md` (dépôt coucagog/cloison).
+
+            **Artefacts modèles** (NER léger ONNX int8 + libs onnxruntime +
+            checksums) : attachés à cette release par le pipeline de déploiement
+            (`deploy/n0-release-assets.sh`) — ré-essayez l'installation une fois
+            les artefacts présents, ou vérifiez `checksums.txt`.
+
+            Licence : AGPL-3.0 (binaires) — le code source est public.
+          draft: true
