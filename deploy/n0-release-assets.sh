@@ -75,7 +75,7 @@ dl_win()  { curl -fsSL -o "$WORK/ort-win.zip"  "https://github.com/microsoft/onn
 dl_osx()  { curl -fsSL -o "$WORK/ort-osx.tgz"  "https://github.com/microsoft/onnxruntime/releases/download/v$ORT_VER/onnxruntime-osx-$1-$ORT_VER.tgz"; }
 
 dl_win
-unzip -o -q "$WORK/ort-win.zip" -d "$WORK/win" "onnxruntime-win-x64-$ORT_VER/lib/onnxruntime.dll"
+python3 -c 'import zipfile,sys; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])' "$WORK/ort-win.zip" "$WORK/win"
 cp "$WORK/win/onnxruntime-win-x64-$ORT_VER/lib/onnxruntime.dll" "$WORK/onnxruntime.dll"
 tar -czf "$WORK/cloison-n0-onnxruntime-x86_64-pc-windows-msvc.tar.gz" -C "$WORK" onnxruntime.dll
 
