@@ -92,8 +92,16 @@ echo "==> checksums…"
 (cd "$WORK" && sha256sum cloison-n0-ner-lite.tar.gz cloison-n0-onnxruntime-*.tar.gz > checksums.txt)
 
 # --- 4. Publication via l'API GitHub ------------------------------------------
-RELEASE_ID="$(curl -fsSL -H "Authorization: token $TOKEN" "$API/releases/tags/$TAG" | sed -nE 's/.*"id": ([0-9]+),.*/\1/p' | head -1)"
+# NB : `GET /releases/tags/{tag}` ne renvoie PAS les releases en DRAFT
+# (comportement GitHub) — chercher dans la liste des releases.
+RELEASE_ID="$(curl -fsSL -H "Authorization: token $TOKEN" "$API/releases?per_page=30" | python3 -c '
+import json, sys
+for r in json.load(sys.stdin):
+    if r.get("tag_name") == "'"$TAG"'":
+        print(r["id"]); break
+')"
 [[ -n "$RELEASE_ID" ]] || { echo "❌ release $TAG introuvable (la CI l'a-t-elle créée ?)" >&2; exit 1; }
+echo "release $TAG : id=$RELEASE_ID"
 
 upload() { # upload <fichier>
   local f="$1" name
