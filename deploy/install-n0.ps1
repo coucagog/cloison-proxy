@@ -1,4 +1,4 @@
-﻿<#
+<#
 =============================================================================
 CLOISON N0 — Installation du daemon desktop (Windows), DEPUIS LES RELEASES.
 
@@ -30,8 +30,11 @@ if ($arch -eq "AMD64") { $Target = "x86_64-pc-windows-msvc" }
 elseif ($arch -eq "ARM64") { $Target = "aarch64-pc-windows-msvc" }
 else { Write-Error "Architecture non supportée : $arch (AMD64 attendu pour la v1)" }
 
-$Base  = "https://github.com/coucagog/cloison/releases/download"
-$Latest = "https://github.com/coucagog/cloison/releases/latest/download"
+# Distribution N0 GRAND PUBLIC : dépôt public open-core (le monorepo est
+# privé — les téléchargements 404 pour le public). Binaires AGPL-3.0.
+$ReleaseRepo = "coucagog/cloison-proxy"
+$Base  = "https://github.com/$ReleaseRepo/releases/download"
+$Latest = "https://github.com/$ReleaseRepo/releases/latest/download"
 function Get-AssetUrl([string]$name) {
   if ($Version -eq "latest") { return "$Latest/$name" }
   return "$Base/$Version/$name"

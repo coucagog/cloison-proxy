@@ -25,7 +25,9 @@
 set -euo pipefail
 
 TAG="${1:?usage: n0-release-assets.sh <tag, ex. v0.3.0>}"
-REPO="coucagog/cloison"
+# Dépôt cible : public (cloison-proxy — la distribution N0 grand public, le
+# monorepo étant privé) ; surchargeable pour tests via CLOISON_RELEASE_REPO.
+REPO="${CLOISON_RELEASE_REPO:-coucagog/cloison-proxy}"
 API="https://api.github.com/repos/$REPO"
 ORT_VER="1.29.0"   # épinglé : version validée du modèle exporté (DEPLOY-8/10)
 WORK="$(mktemp -d)"

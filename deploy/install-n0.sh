@@ -33,8 +33,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-BASE_URL="https://github.com/coucagog/cloison/releases/download"
-LATEST_URL="https://github.com/coucagog/cloison/releases/latest/download"
+# Distribution N0 GRAND PUBLIC : dépôt public open-core (le monorepo est
+# privé — les téléchargements 404 pour le public). Binaires AGPL-3.0.
+RELEASE_REPO="coucagog/cloison-proxy"
+BASE_URL="https://github.com/$RELEASE_REPO/releases/download"
+LATEST_URL="https://github.com/$RELEASE_REPO/releases/latest/download"
 REPO_RAW="https://raw.githubusercontent.com/coucagog/cloison/main"
 
 # --- Détection OS / arch → cible de release ---------------------------------
