@@ -134,11 +134,24 @@ attrapé le bug que les 70 tests ne voyaient pas).
 > **✅ N0 v1.1 chantier ③ (STACK-N0V11)** : module navigateur `@cloison/core`
 > (`cloison-wasm` ré-exporte les bindings, coffre in-memory, zéro secret,
 > page de démo `deploy/wasm-demo/`).
-> **Prochaine session = arbitrage ④ NER léger embarqué** (GO/NO-GO à
-> arbitrer ; re-validation grille v1.1 si le benchmark est touché) +
-> open-core v0.2.5 (proxy + wasm) — **voir `journal/N0V12-PREP.md`** ;
-> **GPU toujours en attente** (aucun GPU disponible — décision reportée ;
-> baseline ONNX de DEPLOY-8 comme référence).
+> **✅ N0 v1.2 chantier ④ (STACK-N0V12, 26/08/2026)** : **NER léger
+> embarqué** — arbitrage pré-enregistré **GO** (`ARBITRAGE-04-NER-LEGER.md`) :
+> distilbert HRL ONNX int8 (135 Mo, provisionné — jamais committé) détecte
+> PERSON/LOC **in-core** (`ort` 2.0.0-rc.13 load-dynamic + `tokenizers`,
+> jamais un sidecar Python), fusion englobante N0, **bug corrigé** (la
+> généralisation ville_sn de `Policy::n0_for` n'était pas appliquée).
+> Mesures STACK-1 : PERSON 0 → 0.62, LOC +0.18, spécificité 83 % (amendement
+> C3 documenté : FP = toponymes réels du jeu, tension STACK-8), latence
+> ~11 ms/doc. Dégradation gracieuse (N0 v1 inchangé si modèle absent).
+> **Open-core v0.2.5 publié EN CASCADE** (core → audit → proxy + wasm,
+> leçon DEPLOY-10 — Cargo.lock épinglés) + **licence proxy AGPL corrigée**
+> (régression v0.2.x : `LICENSE` écrasé par l'Apache du workspace ; texte
+> GNU restauré, commit `67203b2`). Portes : 286 tests, clippy 0, fmt 0,
+> WASM ok, preuve e2e réelle.
+> **Prochaine session : dettes transverses** (GPU, DNS `dsh.wonkom.ai`,
+> calibration seuils prod, IndexedDB navigateur) + déclinaison mobile —
+> voir `journal/STACK-N0V12.md` ; **GPU toujours en attente** (aucun GPU
+> disponible — décision reportée ; baseline ONNX de DEPLOY-8).
 
 ### ① Dette 71/75 — ✅ RÉSOLUE (DEPLOY-9 + DEPLOY-10)
 

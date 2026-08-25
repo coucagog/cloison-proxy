@@ -189,11 +189,22 @@ de conformité k-anonyme, journal public restylé (design system de référence)
   repli env avec warn, fail-loud, jamais en clair par CLOISON ;
   ③ **`cloison-wasm` navigateur ✅ LIVRÉ (STACK-N0V11)** — module
   `@cloison/core` (tokenize/restore in-browser, coffre in-memory, zéro
-  secret) + page de démo `deploy/wasm-demo/` ; reste à arbitrer :
-  ④ NER léger embarqué (voie ONNX, GO/NO-GO). Open-core v0.2.4 publié
-  (core/audit/proxy) ; open-core **v0.2.5** (proxy + wasm) à faire.
-  **Prochaine session = arbitrage ④ + open-core v0.2.5 — voir
-  `journal/N0V12-PREP.md`.**
+  secret) + page de démo `deploy/wasm-demo/`.
+- **④ NER léger embarqué ✅ LIVRÉ (STACK-N0V12, 26/08/2026)** — arbitrage
+  pré-enregistré **GO** (`journal/ARBITRAGE-04-NER-LEGER.md`) : distilbert
+  HRL ONNX int8 (135 Mo, provisionné — jamais committé) détecte PERSON/LOC
+  **in-core** (ONNX Runtime Rust `ort` 2.0.0-rc.13 `load-dynamic` +
+  `tokenizers`), fusion englobante N0 (un nom complet prime sur les
+  fragments gazetteer), **bug corrigé** (la généralisation ville_sn de
+  `Policy::n0_for` n'était pas appliquée — la ville restait en clair).
+  Mesures STACK-1 : PERSON 0 → 0.62, LOC +0.18, spécificité 83 %
+  (amendement C3 documenté : FP = toponymes réels, tension de conception
+  STACK-8), latence ~11 ms/doc court. Dégradation gracieuse si modèle
+  absent (N0 v1 inchangé). **Open-core v0.2.5 publié en cascade**
+  (core → audit → proxy + wasm, leçon DEPLOY-10) + **licence proxy AGPL
+  corrigée** (régression v0.2.x réparée). Prochaine session : dettes
+  transverses (GPU, DNS dsh, calibration prod, IndexedDB) + déclinaison
+  mobile — voir `journal/STACK-N0V12.md`.
 - **GPU (dette ②)** : en attente (aucun GPU disponible, décision reportée —
   baseline ONNX de DEPLOY-8 comme référence).
 - **✅ RESOLUES (DEPLOY-10)** : **dette documentaire** (attribution TEL
