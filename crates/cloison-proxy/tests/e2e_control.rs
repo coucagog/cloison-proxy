@@ -13,7 +13,7 @@
 //!   composite → même `session_ref_hashed` dans les reçus ; clé différente →
 //!   hash différent ; jamais le clair du jeton dans le reçu.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -705,26 +705,14 @@ async fn flush_groups_receipts_by_tenant() {
     // Deux reçus pour t1, un pour t2 (signés par l'agent de l'edge).
     let mut counters1 = cloison_audit::receipt::Counters::default();
     counters1.masked_by_type.insert("Email".to_string(), 3);
-    let r1 = audit.sign(audit.build_receipt(
-        "tenant-1".to_string(),
-        "h1".to_string(),
-        1000,
-        counters1.clone(),
-    ));
-    let r2 = audit.sign(audit.build_receipt(
-        "tenant-1".to_string(),
-        "h2".to_string(),
-        1001,
-        counters1,
-    ));
+    let unsigned1 = audit.build_receipt("tenant-1".to_string(), "h1".to_string(), 1000, counters1.clone());
+    let r1 = audit.sign(&unsigned1);
+    let unsigned2 = audit.build_receipt("tenant-1".to_string(), "h2".to_string(), 1001, counters1);
+    let r2 = audit.sign(&unsigned2);
     let mut counters2 = cloison_audit::receipt::Counters::default();
     counters2.masked_by_type.insert("Email".to_string(), 2);
-    let r3 = audit.sign(audit.build_receipt(
-        "tenant-2".to_string(),
-        "h3".to_string(),
-        1002,
-        counters2,
-    ));
+    let unsigned3 = audit.build_receipt("tenant-2".to_string(), "h3".to_string(), 1002, counters2);
+    let r3 = audit.sign(&unsigned3);
     audit.record(r1).unwrap();
     audit.record(r2).unwrap();
     audit.record(r3).unwrap();
