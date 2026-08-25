@@ -162,11 +162,19 @@ attrapé le bug que les 70 tests ne voyaient pas).
 > **ledger 3→13 lignes (seq 12)**, rapport k-anonyme **publiable** (redaction
 > < k prouvée : DriverLicense 1→0), chaîne vérifiée `ok=true` 13 entrées,
 > calibration 1218 TP / **0 FP mono-source** (consensus tient). **Dettes
-> découvertes** : auth edge **mono-tenant** (résolution par requête à
-> implémenter, charte §7.2), **image edge périmée si `up -d` sans `--build`**,
-> docs CLI (`token-issue` plat). **③ en attente pilote** : GPU, DNS dsh
-> (action opérateur anycast.me), IndexedDB, formats PP/DL (recherche 2026 —
-> aucune source normative publique ; détection contextuelle conservée), mobile.
+> découvertes** : ~~auth edge **mono-tenant**~~ → **SOLDÉE (v0.3.1)** :
+> header `X-Cloison-Tenant` (charte §7.2) route la vérification par hash,
+> cache par tenant, reçus tagués au tenant, ingest groupé par tenant —
+> déployé et **prouvé en production** (jeton client-demo + header → 200 ;
+> mauvais tenant / sans header → 401) ; **image edge périmée si `up -d`
+> sans `--build`** ; docs CLI (`token-issue` plat). **③ en attente pilote** :
+> GPU, DNS dsh (action opérateur anycast.me), IndexedDB, formats PP/DL
+> (recherche 2026 — aucune source normative publique ; détection contextuelle
+> conservée), mobile. **⚠️ Panne d'infrastructure GitHub Actions** (depuis
+> 25/08 19:52, « pas de runner » sur tous les jobs) : la distribution binaire
+> **v0.3.1** (multi-tenant) est en cours — linux binaire construit et uploadé
+> (draft), checksums régénérés ; Windows/macOS en attente de la reprise des
+> runners, puis transfert + publication.
 > **Prochaine session : dettes transverses** (GPU, DNS `dsh.wonkom.ai`,
 > calibration seuils prod, IndexedDB navigateur) + déclinaison mobile —
 > voir `journal/STACK-N0V12.md` ; **GPU toujours en attente** (aucun GPU
