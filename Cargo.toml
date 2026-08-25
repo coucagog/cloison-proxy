@@ -29,6 +29,9 @@ rand = "0.8"
 # Wiring C — hash des jetons `mn_` (même domaine que le contrôle : le clair ne
 # quitte jamais le bord, seul le digest SHA-256 circule).
 sha2 = "0.10"
+# N0 v1.1 — chantier ② : passphrase du coffre via le keychain OS
+# (Windows Credential Manager / macOS Keychain / Linux Secret Service).
+keyring = "3"
 cloison-core = { path = "../cloison-core" }
 cloison-audit = { path = "../cloison-audit" }
 

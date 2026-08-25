@@ -109,14 +109,12 @@ impl AppState {
         // N0 — coffre persistant local : clé dérivée de la passphrase (HKDF,
         // jamais persistée), fail-loud au boot (mauvaise passphrase ou coffre
         // corrompu → refus de démarrer, jamais de recréation silencieuse).
+        // Chantier ② : la passphrase vient du keychain OS (si configuré) avec
+        // repli `CLOISON_VAULT_PASSPHRASE` — jamais persistée en clair.
         let vault = match &config.vault.path {
             Some(path) => {
-                let passphrase = config.vault.passphrase.as_ref().ok_or_else(|| {
-                    ProxyError::new(
-                        ErrorKind::Internal,
-                        "CLOISON_VAULT_PASSPHRASE required in N0 mode (fail-loud)",
-                    )
-                })?;
+                let passphrase = crate::passphrase::PassphraseProvider::from_config(&config.vault)
+                    .load(config.vault.passphrase.as_ref())?;
                 let key = derive_key_from_passphrase(passphrase.as_bytes()).map_err(|e| {
                     ProxyError::new(ErrorKind::Internal, "failed to derive N0 vault key")
                         .with_field("detail", e.to_string())

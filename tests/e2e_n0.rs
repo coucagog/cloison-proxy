@@ -164,6 +164,8 @@ fn n0_config(mock_url: &str, dir: &Path, passphrase: &str) -> Config {
             passphrase: Some(Zeroizing::new(passphrase.to_string())),
             ttl_secs: 3600,
             session_salt_file: Some(salt_file),
+            keychain_service: None,
+            keychain_user: "default".to_string(),
         },
         session: SessionConfig::default(),
     }
@@ -516,5 +518,38 @@ async fn n0_quasi_id_gauge_flags_dense_text() {
             .load(std::sync::atomic::Ordering::Relaxed),
         0,
         "jauge opt-in : désactivée → aucun drapeau"
+    );
+}
+
+/// N0 v1.1 — chantier ② : `CLOISON_VAULT_KEYCHAIN_SERVICE` posé → le daemon
+/// résout la passphrase via le fournisseur keychain (repli env au premier
+/// démarrage : l'env est stockée dans le keychain si disponible, sinon
+/// utilisée telle quelle — jamais persistée en clair par CLOISON). Boot +
+/// roundtrip identiques au mode env.
+#[tokio::test]
+async fn n0_keychain_service_roundtrip() {
+    let mock = MockUpstream::start().await;
+    let dir = tempfile::tempdir().unwrap();
+    let mut config = n0_config(&mock.url(), dir.path(), TEST_PASSPHRASE);
+    config.vault.keychain_service = Some("cloison-e2e-n0".to_string());
+    config.vault.keychain_user = "e2e".to_string();
+
+    let state = Arc::new(AppState::new(&config).expect("boot avec keychain + env"));
+    let app = router(state.clone());
+
+    let (status, resp_body) = one_chat(&app).await;
+    assert_eq!(status, StatusCode::OK);
+    let resp: Value = serde_json::from_str(&resp_body).unwrap();
+    let content = resp["choices"][0]["message"]["content"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(
+        content.contains("Aminata Diop"),
+        "roundtrip keychain: {content}"
+    );
+    assert!(
+        !content.contains('\u{27E6}'),
+        "aucune sentinelle résiduelle: {content}"
     );
 }
