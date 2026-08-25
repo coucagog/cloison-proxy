@@ -1,4 +1,4 @@
-<#
+﻿<#
 =============================================================================
 CLOISON N0 — Installation du daemon desktop (Windows), DEPUIS LES RELEASES.
 
