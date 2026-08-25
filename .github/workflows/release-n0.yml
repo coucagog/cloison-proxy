@@ -82,11 +82,18 @@ jobs:
         if: matrix.test == '1'
         run: cargo test -p cloison-proxy --test e2e_n0 --locked --target ${{ matrix.target }}
 
+      - name: Renommer le binaire (nom d'asset DISTINCT par cible — les 4
+          binaires partagent le même nom de fichier ; sans renommage,
+          download-artifact + merge les écraserait)
+        shell: bash
+        run: |
+          cp "target/${{ matrix.target }}/release/${{ matrix.bin }}" "cloison-proxy-${{ matrix.target }}"
+
       - name: Upload binaire
         uses: actions/upload-artifact@v4
         with:
           name: cloison-proxy-${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/${{ matrix.bin }}
+          path: cloison-proxy-${{ matrix.target }}
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------

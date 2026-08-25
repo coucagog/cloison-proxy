@@ -107,10 +107,11 @@ upload() { # upload <fichier>
   local f="$1" name
   name="$(basename "$f")"
   echo "==> upload $name ($(du -h "$f" | cut -f1))"
+  # Les uploads d'assets passent par uploads.github.com (pas api.github.com).
   curl -fsSL -X POST -H "Authorization: token $TOKEN" \
     -H "Content-Type: application/octet-stream" \
     --data-binary "@$f" \
-    "$API/releases/$RELEASE_ID/assets?name=$name" >/dev/null
+    "https://uploads.github.com/repos/$REPO/releases/$RELEASE_ID/assets?name=$name" >/dev/null
 }
 
 for f in "$WORK"/cloison-n0-ner-lite.tar.gz "$WORK"/cloison-n0-onnxruntime-*.tar.gz "$WORK"/checksums.txt; do
