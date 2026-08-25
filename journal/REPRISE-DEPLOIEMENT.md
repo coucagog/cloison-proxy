@@ -131,8 +131,11 @@ attrapé le bug que les 70 tests ne voyaient pas).
 > jauge quasi-id **in-core** livrés (serveur bit-identique).
 > **✅ N0 v1.1 chantier ② (STACK-N0V11)** : **keychain OS** pour la passphrase
 > du coffre (`keyring` v3, repli env avec warn, fail-loud, jamais en clair).
-> **Prochaine session = N0 v1.1 chantier ③** (`cloison-wasm` navigateur),
-> puis ④ NER léger embarqué (GO/NO-GO à arbitrer) ;
+> **✅ N0 v1.1 chantier ③ (STACK-N0V11)** : module navigateur `@cloison/core`
+> (`cloison-wasm` ré-exporte les bindings, coffre in-memory, zéro secret,
+> page de démo `deploy/wasm-demo/`).
+> **Prochaine session = arbitrage ④ NER léger embarqué** (GO/NO-GO à
+> arbitrer ; re-validation grille v1.1 si le benchmark est touché) ;
 > **GPU toujours en attente** (aucun GPU disponible — décision reportée ;
 > baseline ONNX de DEPLOY-8 comme référence).
 

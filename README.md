@@ -79,7 +79,9 @@ persistant (la session survit aux redémarrages), généralisation des faibles
 cardinalités active, `/v1/embeddings` **bloqué**, limites honnêtes
 documentées (`docs/N0.md`). **N0 v1.1 : alias intra-session in-core (R1–R7,
 jamais les pronoms) + jauge quasi-id in-core (opt-in, signal sans
-résolution) + keychain OS pour la passphrase du coffre (jamais en clair)**.
+résolution) + keychain OS pour la passphrase du coffre (jamais en clair) +
+module navigateur `@cloison/core` (tokenize/restore in-browser, coffre
+in-memory, zéro secret — démo `deploy/wasm-demo/`)**.
 Preuve e2e locale : roundtrip hors-ligne, persistance après redémarrage,
 fail-loud sur mauvaise passphrase, masquage d'un diminutif inter-requêtes,
 drapeau jauge sur densité élevée, boot avec keychain.

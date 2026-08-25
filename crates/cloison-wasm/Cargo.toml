@@ -4,5 +4,14 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
+description = "CLOISON — module navigateur @cloison/core : tokenize/restore in-browser (wasm-bindgen), coffre in-memory (0 valeur persistée en clair)."
 
 [dependencies]
+# Le moteur (détection, jetons, restauration) — les bindings `cloison*`
+# (cloisonInitSession, cloisonTokenize, cloisonRestore, …) vivent dans
+# `cloison-core::wasm` (gated target_arch = "wasm32") ; ce crate les
+# ré-exporte pour un packaging navigateur propre.
+cloison-core = { path = "../cloison-core", features = ["wasm"] }
+
+[target."cfg(target_arch = \"wasm32\")".dependencies]
+wasm-bindgen = "0.2"

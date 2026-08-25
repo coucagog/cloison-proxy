@@ -28,10 +28,10 @@ session séparées de la `Policy` (serveur bit-identique), wiring proxy (mode
 N0 : mention store par daemon, drapeau jauge → compteur + log), tests
 unitaires + invariants + e2e N0, docs (N0.md, CONFIG.md, README), journal.
 
-**Hors :** `cloison-wasm` navigateur (③), NER léger embarqué ONNX (④ — à
-arbitrer), alias côté serveur (les paliers serveur restent portés par le
-sidecar Python). Le chantier ② (keychain OS) a été **livré dans cette
-session** (voir « Chantier ② »).
+**Hors :** NER léger embarqué ONNX (④ — à arbitrer), alias côté serveur (les
+paliers serveur restent portés par le sidecar Python). Les chantiers ②
+(keychain OS) et ③ (`cloison-wasm` navigateur) ont été **livrés dans cette
+session** (voir sections dédiées).
 
 ## Décisions (N0V11-PREP §4 tranchées en ouverture)
 
@@ -137,6 +137,29 @@ prouvée, fallback env, la passphrase jamais persistée en clair »).
   NoEntry sans env → fail-loud, roundtrip) + 1 e2e N0 (boot + roundtrip avec
   service keychain posé).
 
+## Chantier ③ — module navigateur `@cloison/core` (cloison-wasm)
+
+Livré dans cette session (N0V11-PREP §2.3 : périmètre minimal — tokenize/
+restore in-browser, coffre in-memory, page d'exemple, zéro secret).
+
+### `cloison-wasm` — packaging navigateur
+- `Cargo.toml` : dépend `cloison-core` (feature `wasm`) + `wasm-bindgen`
+  (cible wasm32) — le crate devient la **source du module navigateur**.
+- `lib.rs` : ré-export `pub use cloison_core::wasm::*;` (gated
+  `target_arch = "wasm32"`) — les bindings `cloisonInitSession`,
+  `cloisonTokenize`, `cloisonTokenizeWithPolicy`, `cloisonRestore`,
+  `cloisonDestroySession`, `cloisonDetect`, `cloisonValidateSentinel`,
+  `cloisonDeriveKeys` (déjà présents dans le core, STACK-2) sont exposés.
+  **Coffre in-memory** : `Engine::new` sans coffre → registre d'émission
+  par requête, **0 valeur persistée en clair** (charte §9.1).
+- Page de démo : `deploy/wasm-demo/index.html` — tokenize/restore
+  in-browser, **clé locataire générée côté client** (crypto.getRandomValues,
+  aucun secret embarqué), thème clair/sombre, notes de sécurité. Build :
+  `wasm-pack build --target web --out-dir ../../deploy/wasm-demo/pkg`.
+- Vérification : porte `cargo check -p cloison-core -p cloison-verify
+  --features wasm -p cloison-wasm --target wasm32-unknown-unknown` (déjà
+  dans les gates STACK-N0 — le câblage ③ la confirme).
+
 ## Comment lancer / tester
 
 ```bash
@@ -200,10 +223,12 @@ cargo test -p cloison-proxy --test e2e_n0   # e2e N0 (7/7)
   utilisé qu'en mode N0 (décision §4, à re-évaluer avec l'usage réel).
 - **NER léger embarqué (④)** : toujours à arbitrer (GO/NO-GO — re-validation
   grille v1.1 obligatoire si le benchmark est touché).
-- **`cloison-wasm` (③)** : piste v1.1 suivante (non livrée).
-- **Open-core proxy** : le chantier ② ajoute `keyring` au proxy → la
-  re-publication open-core du proxy (v0.2.5, deps + tag) est **à faire**
-  quand le proxy sera re-publié.
+- **Open-core proxy/wasm** : les chantiers ② (keyring) et ③ (wasm) touchent
+  le proxy et le crate wasm → re-publication open-core **v0.2.5** (proxy +
+  wasm, deps + tag) **à faire**.
+- **Coffre navigateur IndexedDB chiffré** : décision reportée (le module ③
+  est volontairement **in-memory** — 0 valeur persistée ; IndexedDB chiffré
+  poserait la question de la clé navigateur sans keychain, prépa §2.3).
 - Limite honnête N0 conservée : un nom **hors gazetteer** et jamais
   mentionné peut partir en clair (docs/N0.md §4.1).
 
@@ -219,9 +244,14 @@ cargo test -p cloison-proxy --test e2e_n0   # e2e N0 (7/7)
 - [x] **Keychain OS opérationnel (chantier ②)** : crate `keyring` v3 (trois
       plates-formes), fallback env avec warn, fail-loud si ni keychain ni
       env ; passphrase jamais persistée en clair par CLOISON.
+- [x] **Module navigateur `@cloison/core` (chantier ③)** : `cloison-wasm`
+      ré-exporte les bindings (tokenize/restore in-browser), coffre
+      in-memory (0 valeur persistée), page de démo `deploy/wasm-demo/`
+      (zéro secret), porte `wasm32-unknown-unknown` verte.
 - [x] **Docs** : `docs/N0.md` (§3, §4, §7), `docs/CONFIG.md`, `README.md`,
       `deploy/install-n0.sh`.
-- [x] **Journal + push** (commits `f9a3bb2a`, `76437e65`, + session ②).
+- [x] **Journal + push** (commits `f9a3bb2a`, `76437e65`, `f1906bce`, +
+      session ③).
 - [x] **Re-publication open-core v0.2.4** — core/audit/proxy publiés et
       **vérifiés** (cargo test des tags publiés, rust 1.97, deps git taguées
       v0.2.4 ; le tag core embarque `alias.rs` + `quasi_id.rs`). Procédure
@@ -229,8 +259,7 @@ cargo test -p cloison-proxy --test e2e_n0   # e2e N0 (7/7)
 
 ## Prochaine étape
 
-**Chantier ③ — `cloison-wasm` navigateur** (tokenize/restore in-browser,
-coffre in-memory, page de démo — N0V11-PREP §2.3), puis arbitrage ④ NER
-léger embarqué (ONNX, GO/NO-GO en ouverture — re-validation grille v1.1 si
-le benchmark est touché), puis re-publication open-core du proxy (v0.2.5,
-le chantier ② ajoute `keyring`).
+**Arbitrage ④ — NER léger embarqué** (ONNX, GO/NO-GO en ouverture —
+re-validation grille v1.1 obligatoire si le benchmark est touché), puis
+re-publication open-core du proxy (v0.2.5 : le chantier ② ajoute `keyring`,
+le chantier ③ touche `cloison-wasm`).

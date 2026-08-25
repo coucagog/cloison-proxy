@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLOISON — démo navigateur (module @cloison/core)</title>
+<style>
+  :root {
+    --bg: #f7f8fa; --fg: #1c2333; --line: #d3d8e0; --accent: #0b5cab;
+    --panel: #ffffff; --muted: #5b6472; --good: #1c7c3c; --bad: #a63d2f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14181f; --fg: #e7ebf2; --line: #2c3542; --accent: #7ab8f5;
+      --panel: #1c222b; --muted: #9aa4b2; --good: #6fcf8a; --bad: #e0705f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.55 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+  header { padding: 14px 22px; border-bottom: 1px solid var(--line); display: flex;
+           align-items: baseline; gap: 12px; }
+  header h1 { font-size: 18px; margin: 0; }
+  header span { color: var(--muted); font-size: 13px; }
+  main { max-width: 760px; margin: 22px auto; padding: 0 18px; }
+  textarea { width: 100%; min-height: 110px; resize: vertical; padding: 10px;
+             border: 1px solid var(--line); border-radius: 8px; background: var(--panel);
+             color: var(--fg); font: 14px/1.5 ui-monospace, monospace; }
+  button { padding: 9px 16px; border: 1px solid var(--line); border-radius: 8px;
+           background: var(--panel); color: var(--fg); cursor: pointer; font-size: 14px; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .row { display: flex; gap: 10px; margin: 12px 0; flex-wrap: wrap; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+           padding: 14px; margin-top: 14px; }
+  .panel h2 { font-size: 14px; margin: 0 0 8px; color: var(--muted); text-transform: uppercase;
+              letter-spacing: .05em; }
+  pre { white-space: pre-wrap; word-break: break-word; margin: 0; font-size: 13px; }
+  .ok { color: var(--good); } .bad { color: var(--bad); }
+  .note { color: var(--muted); font-size: 12.5px; margin-top: 8px; }
+  .status { font-size: 13px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CLOISON — démo navigateur</h1>
+  <span>module <code>@cloison/core</code> (wasm-bindgen) · tokenize / restore in-browser</span>
+</header>
+<main>
+  <textarea id="input" placeholder="Texte contenant des PII (noms, emails, téléphones +221, CNI…)">Contact: Aminata Diop, user@example.com, tel +221 77 123 45 67</textarea>
+  <div class="row">
+    <button id="btn-tok" class="primary" disabled>Pseudonymiser (aller)</button>
+    <button id="btn-res" disabled>Restaurer (retour)</button>
+    <button id="btn-new" disabled>Nouvelle session (clé locale)</button>
+  </div>
+  <div class="panel">
+    <h2>Résultat</h2>
+    <pre id="output">(module en cours de chargement…)</pre>
+    <div class="status" id="status"></div>
+  </div>
+  <p class="note">
+    <strong>Sécurité :</strong> la clé locataire est générée <em>dans la page</em>
+    (crypto.getRandomValues) — aucun secret embarqué, rien n'est persisté (coffre
+    <strong>in-memory</strong> : le registre d'émission vit dans la session WASM).
+    La restauration n'accepte que les jetons émis par CETTE requête (registre + MAC).
+    Le texte reste dans votre navigateur.
+  </p>
+  <p class="note">
+    <strong>Build du module :</strong> <code>cd crates/cloison-wasm &amp;&amp; wasm-pack build
+    --target web --out-dir ../../deploy/wasm-demo/pkg</code> puis servir ce dossier.
+    Vérification de compilation WASM : <code>cargo check -p cloison-wasm --target
+    wasm32-unknown-unknown</code>.
+  </p>
+</main>
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const out = $('output'), status = $('status');
+  const btnTok = $('btn-tok'), btnRes = $('btn-res'), btnNew = $('btn-new');
+
+  let wasm = null, sessionId = null, lastTokenized = null;
+
+  function b64(bytes) {
+    let s = '';
+    for (const b of bytes) s += String.fromCharCode(b);
+    return btoa(s);
+  }
+
+  async function newSession() {
+    const key = new Uint8Array(32);
+    crypto.getRandomValues(key);               // clé locataire locale, jamais embarquée
+    sessionId = wasm.cloisonInitSession(b64(key));
+    lastTokenized = null;
+    status.textContent = `session WASM #${sessionId} (clé locataire aléatoire locale)`;
+    out.textContent = '(session prête — entrez du texte puis « Pseudonymiser »)';
+    btnRes.disabled = true;
+  }
+
+  function tokenize() {
+    const text = $('input').value;
+    if (!text.trim()) return;
+    const res = JSON.parse(wasm.cloisonTokenize(sessionId, text));
+    lastTokenized = res;
+    out.textContent = res.text;
+    status.innerHTML = `<span class="ok">aller OK</span> — ${res.tokens.length} jeton(s) émis (registre de la requête)`;
+    btnRes.disabled = false;
+  }
+
+  function restore() {
+    if (!lastTokenized) return;
+    const restored = wasm.cloisonRestore(sessionId, lastTokenized.text);
+    out.textContent = restored;
+    status.innerHTML = `<span class="ok">retour OK</span> — PII restaurée, aucune sentinelle résiduelle`;
+  }
+
+  try {
+    wasm = await import('./pkg/cloison_wasm.js');
+    await wasm.default();
+    btnTok.disabled = false; btnNew.disabled = false;
+    await newSession();
+  } catch (e) {
+    out.textContent = 'Module WASM introuvable. Construisez-le d\'abord (voir note "Build du module").';
+    status.innerHTML = `<span class="bad">${e}</span>`;
+  }
+
+  btnTok.onclick = tokenize;
+  btnRes.onclick = restore;
+  btnNew.onclick = newSession;
+</script>
+</body>
+</html>

@@ -559,6 +559,10 @@ dependencies = [
 [[package]]
 name = "cloison-wasm"
 version = "0.1.0"
+dependencies = [
+ "cloison-core",
+ "wasm-bindgen",
+]
 
 [[package]]
 name = "colorchoice"

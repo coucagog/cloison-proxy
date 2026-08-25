@@ -186,9 +186,12 @@ de conformité k-anonyme, journal public restylé (design system de référence)
   pronoms, scores plafonnés, jauge signal-only opt-in, serveur
   bit-identique) ; ② **keychain OS ✅ LIVRÉ (STACK-N0V11)** — passphrase du
   coffre via `keyring` v3 (Credential Manager / Keychain / Secret Service),
-  repli env avec warn, fail-loud, jamais en clair par CLOISON ; restent
-  documentés : ③ `cloison-wasm` (navigateur), ④ NER léger embarqué (voie
-  ONNX, GO/NO-GO à arbitrer). Open-core v0.2.4 publié (core/audit/proxy).
+  repli env avec warn, fail-loud, jamais en clair par CLOISON ;
+  ③ **`cloison-wasm` navigateur ✅ LIVRÉ (STACK-N0V11)** — module
+  `@cloison/core` (tokenize/restore in-browser, coffre in-memory, zéro
+  secret) + page de démo `deploy/wasm-demo/` ; reste à arbitrer :
+  ④ NER léger embarqué (voie ONNX, GO/NO-GO). Open-core v0.2.4 publié
+  (core/audit/proxy) ; open-core **v0.2.5** (proxy + wasm) à faire.
 - **GPU (dette ②)** : en attente (aucun GPU disponible, décision reportée —
   baseline ONNX de DEPLOY-8 comme référence).
 - **✅ RESOLUES (DEPLOY-10)** : **dette documentaire** (attribution TEL
