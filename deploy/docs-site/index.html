@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="CLOISON — proxy de confidentialité PII compatible OpenAI. Pseudonymisez vos données personnelles avant qu'elles n'atteignent un LLM, restaurez-les dans la réponse. La promesse est vérifiable : code ouvert + journal de transparence." />
+<title>CLOISON — La confidentialité PII, vérifiable</title>
+<link rel="stylesheet" href="assets/docs.css" />
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>CLOISON <small>proxy de confidentialité</small></a>
+    <div class="right">
+      <nav>
+        <a href="produit.html">Le produit</a>
+        <a href="install-n0.html">Installer N0</a>
+        <a href="mobile.html">Mobile</a>
+        <a href="api.html">API</a>
+        <a href="journal.html">Journal</a>
+        <a href="open-core.html">Open-core</a>
+        <a href="faq.html">FAQ</a>
+      </nav>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Basculer thème clair / sombre" aria-pressed="false" title="Thème clair / sombre">
+        <svg class="ic ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        <svg class="ic ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v2.6M12 19.4V22M2 12h2.6M19.4 12H22M4.8 4.8l1.9 1.9M17.3 17.3l1.9 1.9M19.2 4.8l-1.9 1.9M6.7 17.3l-1.9 1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Proxy de confidentialité PII · compatible OpenAI</div>
+    <h1>Vos données personnelles n'atteignent <span class="hl">jamais</span> le modèle. Et c'est <span class="hl">vérifiable</span>.</h1>
+    <p class="lede">CLOISON s'intercale entre votre interface IA et le fournisseur de LLM :
+      il <strong>pseudonymise</strong> la PII en jetons <code>⟦…⟧</code> avant l'envoi et
+      <strong>restaure</strong> les vraies valeurs dans la réponse. Le moteur descend chez
+      vous ; le cloud n'est qu'un plan de contrôle <em>aveugle</em> — code ouvert, journal
+      de transparence, aucune confiance demandée.</p>
+    <div class="note">
+      <span class="k">Promesse</span>
+      <div>Le fournisseur ne reçoit <b>que des jetons</b>. L'opérateur ne voit que des
+        <b>compteurs k-anonymes signés</b>. Vous pouvez le <b>vérifier</b> : le code est
+        public et le journal se valide dans votre navigateur.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 1 -->
+<section class="band">
+  <div class="wrap">
+    <div class="head">
+      <div class="idx">01 — Le produit</div>
+      <h2>Un proxy, pas un produit de plus</h2>
+      <p class="intro">Branchez votre interface IA existante (Open WebUI, LibreChat,
+        bolt.diy, agents…) avec deux champs. Rien à réécrire : CLOISON parle le
+        protocole OpenAI.</p>
+    </div>
+    <div class="grid">
+      <div class="tile">
+        <span class="k">Aller</span>
+        <h3>Pseudonymisation</h3>
+        <p>Noms, téléphones, emails, CNI, lieux… remplacés par des jetons <code>⟦…⟧</code>
+          <strong>avant</strong> d'atteindre le fournisseur. Le modèle ne voit jamais la
+          donnée en clair.</p>
+      </div>
+      <div class="tile">
+        <span class="k">Retour</span>
+        <h3>Restauration</h3>
+        <p>Les vraies valeurs reviennent dans la réponse que vous recevez. La conversation
+          reste naturelle, la coréférence est conservée (« Aminata » reste « Aminata »).</p>
+      </div>
+      <div class="tile">
+        <span class="k">Contrôle</span>
+        <h3>Plan de contrôle aveugle</h3>
+        <p>Le cloud ne manipule que des compteurs agrégés signés (Ed25519), jamais de texte.
+          Une fenêtre d'audit = une entrée de journal publique, vérifiable.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="band">
+  <div class="wrap">
+    <div class="head">
+      <div class="idx">02 — Trois niveaux</div>
+      <h2>Où tourne le moteur ?</h2>
+      <p class="intro">Le niveau de cloisonnement détermine ce que l'opérateur peut lire.
+        N0 = la promesse absolue : le clair ne quitte jamais votre poste.</p>
+    </div>
+    <div class="grid">
+      <div class="tile">
+        <span class="k">N0 — Local</span>
+        <h3>Le moteur chez vous</h3>
+        <p>Daemon desktop Rust seul (<code>localhost:8787</code>), coffre chiffré persistant,
+          auth 100&nbsp;% locale. L'opérateur ne lit <strong>rien</strong>.</p>
+        <a class="cta" href="install-n0.html">Installer en ≤ 10 min →</a>
+      </div>
+      <div class="tile">
+        <span class="k">N1 — Site</span>
+        <h3>Le moteur sur votre serveur</h3>
+        <p>Vous déployez le proxy dans votre infrastructure. Le clair reste chez vous.</p>
+      </div>
+      <div class="tile">
+        <span class="k">N3 — Hébergé</span>
+        <h3>api.wonkom.ai</h3>
+        <p>Le moteur tourne à la frontière de l'éditeur : le clair ne quitte pas l'edge,
+          le cloud ne voit que des compteurs. Clé composite + rapport de conformité.</p>
+        <a class="cta" href="api.html">Guide API →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="band">
+  <div class="wrap">
+    <div class="head">
+      <div class="idx">03 — La preuve</div>
+      <h2>Comment vérifier que personne ne lit ?</h2>
+      <p class="intro">Nous ne demandons aucune confiance. Trois preuves, toutes publiques.</p>
+    </div>
+    <div class="card">
+      <div class="tag">1 · Journal de transparence</div>
+      <h3>journal.wonkom.ai</h3>
+      <p>Chaque fenêtre d'audit y est enregistrée : compteurs k-anonymes, chaîne de
+        hachage, signatures Ed25519. La page <strong>vérifie la chaîne dans votre
+        navigateur</strong> (WASM <code>cloison-verify</code>) — aucune donnée ne quitte
+        la page, aucune confiance n'est demandée.</p>
+      <p><a href="journal.html">Comprendre le journal →</a></p>
+    </div>
+    <div class="card">
+      <div class="tag">2 · Code ouvert</div>
+      <h3>github.com/coucagog/cloison-*</h3>
+      <p>Le moteur, la passerelle (AGPL-3.0), le journal, le vérificateur, l'audit, le
+        contrôle, le CLI, le WASM, le NER et le harnais de benchmark sont publiés.
+        Auditez, faites auditer, comparez.</p>
+      <p><a href="open-core.html">Composition open-core →</a></p>
+    </div>
+    <div class="card">
+      <div class="tag">3 · Rapport de conformité</div>
+      <h3>k-anonyme, signé, publiable</h3>
+      <p>En mode audit (observe-only), un rapport par tenant : compteurs k-anonymes par
+        type de PII, restaurations incomplètes, cellules &lt; k <strong>redactées</strong>.
+        Présentable à votre DPO ou auditeur.</p>
+      <p><a href="api.html#audit">Lire la section audit →</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="band">
+  <div class="wrap">
+    <div class="head">
+      <div class="idx">04 — Commencer</div>
+      <h2>Deux chemins</h2>
+    </div>
+    <div class="grid">
+      <div class="tile">
+        <span class="k">Particulier / équipe</span>
+        <h3>Installez N0 localement</h3>
+        <p>Binaire par OS, sans Rust ni torch, NER léger embarqué, coffre chiffré.
+          Installation vérifiée par checksums : <strong>≤ 10 minutes</strong>.</p>
+        <a class="cta" href="install-n0.html">Guide d'installation →</a>
+      </div>
+      <div class="tile">
+        <span class="k">Entreprise</span>
+        <h3>Pointez votre interface sur api.wonkom.ai</h3>
+        <p>Deux champs : Base URL + clé composite. Multi-tenant, rapport k-anonyme,
+          onboarding scripté.</p>
+        <a class="cta" href="api.html">Guide API + clé composite →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div class="col">
+        <span class="t">Produit</span>
+        <a href="produit.html">Architecture &amp; promesse</a>
+        <a href="faq.html">FAQ + limites honnêtes</a>
+        <a href="journal.html">Journal de transparence</a>
+      </div>
+      <div class="col">
+        <span class="t">Commencer</span>
+        <a href="install-n0.html">Installer N0</a>
+        <a href="mobile.html">Guide mobile Android</a>
+        <a href="api.html">API + clé composite</a>
+      </div>
+      <div class="col">
+        <span class="t">Vérifier</span>
+        <a href="journal.html">journal.wonkom.ai</a>
+        <a href="open-core.html">Code ouvert</a>
+      </div>
+    </div>
+    <div>CLOISON — proxy de confidentialité PII. <span class="pill">open-core</span></div>
+    <div class="mono">docs.wonkom.ai · api.wonkom.ai · journal.wonkom.ai</div>
+  </div>
+</footer>
+
+<script src="assets/theme.js"></script>
+</body>
+</html>

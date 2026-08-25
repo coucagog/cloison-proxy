@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="CLOISON — open-core : les 10 composants publiés, licences (Apache-2.0, AGPL-3.0), pourquoi l'open source est la condition de la promesse." />
+<title>Open-core — CLOISON</title>
+<link rel="stylesheet" href="assets/docs.css" />
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>CLOISON <small>proxy de confidentialité</small></a>
+    <div class="right">
+      <nav>
+        <a href="produit.html">Le produit</a>
+        <a href="install-n0.html">Installer N0</a>
+        <a href="mobile.html">Mobile</a>
+        <a href="api.html">API</a>
+        <a href="journal.html">Journal</a>
+        <a href="open-core.html" aria-current="page">Open-core</a>
+        <a href="faq.html">FAQ</a>
+      </nav>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Basculer thème clair / sombre" aria-pressed="false" title="Thème clair / sombre">
+        <svg class="ic ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        <svg class="ic ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v2.6M12 19.4V22M2 12h2.6M19.4 12H22M4.8 4.8l1.9 1.9M17.3 17.3l1.9 1.9M19.2 4.8l-1.9 1.9M6.7 17.3l-1.9 1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Open-core · la condition de la promesse</div>
+    <h1>« Nous ne lisons pas » — <span class="hl">vérifiez le code</span>.</h1>
+    <p class="lede">Un client ne fait pas confiance à un contrat : il vérifie le code.
+      Tous les composants vérifiables sont publiés sous
+      <code>github.com/coucagog/cloison-*</code>, avec leur licence et leur version.</p>
+  </div>
+</section>
+
+<div class="doc">
+  <div class="wrap">
+
+    <h2>1 · Les dépôts publics</h2>
+    <table>
+      <tr><th>Composant</th><th>Dépôt public</th><th>Licence</th></tr>
+      <tr><td>Moteur (détection, jetons, coffre)</td><td><code>coucagog/cloison-core</code></td><td>Apache-2.0</td></tr>
+      <tr><td>Passerelle OpenAI (le produit visible)</td><td><code>coucagog/cloison-proxy</code></td><td><strong>AGPL-3.0</strong></td></tr>
+      <tr><td>Journal de transparence</td><td><code>coucagog/cloison-ledger</code></td><td>Apache-2.0</td></tr>
+      <tr><td>Vérificateur public (WASM)</td><td><code>coucagog/cloison-verify</code></td><td>Apache-2.0</td></tr>
+      <tr><td>Mode audit / reçus signés</td><td><code>coucagog/cloison-audit</code></td><td>Apache-2.0</td></tr>
+      <tr><td>Plan de contrôle aveugle</td><td><code>coucagog/cloison-control</code></td><td>Apache-2.0</td></tr>
+      <tr><td>Outillage CLI</td><td><code>coucagog/cloison-cli</code></td><td>Apache-2.0</td></tr>
+      <tr><td>Wrapper WASM navigateur</td><td><code>coucagog/cloison-wasm</code></td><td>Apache-2.0</td></tr>
+      <tr><td>Sidecar NER (paliers serveur)</td><td><code>coucagog/cloison-detect</code></td><td>Apache-2.0</td></tr>
+      <tr><td>Harnais de benchmark + scoring</td><td><code>coucagog/cloison-bench</code></td><td>Apache-2.0</td></tr>
+    </table>
+    <p>La passerelle est le <strong>seul</strong> composant en AGPL-3.0 : c'est le seul
+      dont un fork hébergé pourrait profiter de l'effort sans contribuer. L'AGPL impose la
+      publication du code aux utilisateurs en réseau (compatible SaaS). Les composants
+      vérifiables restent Apache-2.0 — le code n'est pas le produit, la confiance l'est.</p>
+
+    <h2>2 · Le corpus reste privé</h2>
+    <p>Les gazetteers détaillés, les spécifications CNI, les tables de fréquence, les
+      générateurs synthétiques, les jeux d'évaluation et le catalogue des non-détections
+      (<code>cloison-corpus</code>) sont <strong>propriétaires et ne seront jamais
+      publiés</strong>. Les listes de noms/toponymes <em>embarquées dans le code</em>
+      (nécessaires au produit) sont publiques et distinctes du corpus.</p>
+
+    <h2>3 · Versions publiées</h2>
+    <ul>
+      <li><strong>v0.1.0</strong> — première publication (10 dépôts).</li>
+      <li><strong>v0.2.0 → v0.2.5</strong> — cascade : ONNX, préfixes 71/75, couverture
+        étendue (fixes 30-36, passeport, permis, matricules), coffre N0, alias/jauge
+        in-core, NER léger embarqué, licences corrigées.</li>
+      <li><strong>v0.3.x (cloison-proxy)</strong> — packaging N0 : binaires par OS
+        (Linux/Windows/macOS), install scripts, checksums, portage Windows du proxy,
+        auth edge multi-tenant.</li>
+    </ul>
+
+    <h2>4 · Auditer, pas croire</h2>
+    <ol>
+      <li>Clonez le dépôt qui vous intéresse (ex. <code>cloison-proxy</code>).</li>
+      <li>Vérifiez la version/tag, lisez le code de la passerelle et du moteur.</li>
+      <li>Comparez avec le comportement observé sur <code>api.wonkom.ai</code>.</li>
+      <li>Surveillez le <a href="journal.html">journal public</a> : la chaîne doit rester
+        valide et s'enrichir régulièrement.</li>
+    </ol>
+
+    <div class="note">
+      <span class="k">Suite</span>
+      <div>Des questions ? La <a href="faq.html">FAQ</a> répond — y compris sur les
+        <strong>limites honnêtes</strong> du produit.</div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div class="col">
+        <span class="t">Produit</span>
+        <a href="produit.html">Architecture &amp; promesse</a>
+        <a href="faq.html">FAQ + limites honnêtes</a>
+        <a href="journal.html">Journal de transparence</a>
+      </div>
+      <div class="col">
+        <span class="t">Commencer</span>
+        <a href="install-n0.html">Installer N0</a>
+        <a href="mobile.html">Guide mobile Android</a>
+        <a href="api.html">API + clé composite</a>
+      </div>
+      <div class="col">
+        <span class="t">Vérifier</span>
+        <a href="journal.html">journal.wonkom.ai</a>
+        <a href="open-core.html">Code ouvert</a>
+      </div>
+    </div>
+    <div>CLOISON — proxy de confidentialité PII. <span class="pill">open-core</span></div>
+    <div class="mono">docs.wonkom.ai · api.wonkom.ai · journal.wonkom.ai</div>
+  </div>
+</footer>
+
+<script src="assets/theme.js"></script>
+</body>
+</html>

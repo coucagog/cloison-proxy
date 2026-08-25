@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="CLOISON — FAQ et limites honnêtes : confidentialité, vérification, quasi-identifiants, poste compromis, PII hallucinée, embeddings, restauration." />
+<title>FAQ &amp; limites honnêtes — CLOISON</title>
+<link rel="stylesheet" href="assets/docs.css" />
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>CLOISON <small>proxy de confidentialité</small></a>
+    <div class="right">
+      <nav>
+        <a href="produit.html">Le produit</a>
+        <a href="install-n0.html">Installer N0</a>
+        <a href="mobile.html">Mobile</a>
+        <a href="api.html">API</a>
+        <a href="journal.html">Journal</a>
+        <a href="open-core.html">Open-core</a>
+        <a href="faq.html" aria-current="page">FAQ</a>
+      </nav>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Basculer thème clair / sombre" aria-pressed="false" title="Thème clair / sombre">
+        <svg class="ic ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        <svg class="ic ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v2.6M12 19.4V22M2 12h2.6M19.4 12H22M4.8 4.8l1.9 1.9M17.3 17.3l1.9 1.9M19.2 4.8l-1.9 1.9M6.7 17.3l-1.9 1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">FAQ · transparence totale</div>
+    <h1>Les questions qu'on nous pose — et les limites qu'on <span class="hl">nous assume</span>.</h1>
+    <p class="lede">Charte du projet : la promesse se vérifie, les limites se disent.
+      Rien de ce qui suit n'est caché dans une clause.</p>
+  </div>
+</section>
+
+<div class="doc">
+  <div class="wrap">
+
+    <h2>Confidentialité</h2>
+
+    <h3>Vos serveurs voient-ils mes données ?</h3>
+    <p>Non. Le moteur de pseudonymisation tourne à la frontière (<code>edge</code>) : le
+      texte clair y est traité en mémoire, puis seul le texte tokenisé part chez le
+      fournisseur. Le plan de contrôle ne stocke que des hash de jetons et des compteurs
+      agrégés — jamais de contenu, jamais de compteur isolé &lt; seuil k. En N0 (local),
+      le clair ne quitte même pas votre poste.</p>
+
+    <h3>Comment vérifier que vous ne lisez pas ?</h3>
+    <p>Par construction et par audit :</p>
+    <ul>
+      <li><strong>Journal public</strong> : <a href="journal.html">journal.wonkom.ai</a> —
+        chaque fenêtre d'audit y est enregistrée (compteurs k-anonymes, chaîne de hachage,
+        signatures Ed25519). La page vérifie la chaîne <strong>dans votre navigateur</strong>
+        (WASM) : aucune confiance requise.</li>
+      <li><strong>Code ouvert</strong> : la passerelle et les composants vérifiables sont
+        publiés (<a href="open-core.html">github.com/coucagog/cloison-*</a>) — auditez,
+        faites auditer, comparez.</li>
+      <li><strong>Rapport de conformité</strong> : en mode audit (observe-only), rapport
+        k-anonyme signé, présentable à votre DPO/auditeur.</li>
+    </ul>
+
+    <h3>Que se passe-t-il si la restauration échoue (jeton tronqué, coupé) ?</h3>
+    <p>Le proxy échoue <strong>bruyamment</strong> : marqueur neutre
+      (<code>[REDACTED]</code>) + compteur — jamais de jeton brut, jamais de mauvaise
+      valeur en silence. Le compteur est visible dans le rapport de conformité.</p>
+
+    <h3>Vos modèles comprennent-ils le français d'Afrique de l'Ouest ?</h3>
+    <p>Oui — c'est notre spécialité (noms sénégalais, formats de CNI, toponymie, numéros
+      +221). Le détecteur combine un moteur déterministe (regex + gazetteers +
+      validations Luhn) et un NER transformer entraîné sur MasakhaNER (afroxlmr), validé
+      par un benchmark public contre une baseline Presidio forte (verdict GO :
+      PERSON 0.94, LOC 0.84, macro 0.95).</p>
+
+    <h2>Limites honnêtes (charte §11)</h2>
+
+    <h3>Quasi-identifiants</h3>
+    <p>« Le patient de 42 ans opéré le 3 mars à Ziguinchor » ré-identifie sans nom. Nous
+      les <strong>signalons</strong> (jauge quasi-id, opt-in en N0), nous ne prétendons
+      pas les résoudre. C'est une limite assumée de tout proxy — pas une promesse
+      déguisée.</p>
+
+    <h3>Poste compromis</h3>
+    <p>En N0, un malware ou un vol de la machine sort du périmètre : le coffre et les clés
+      y vivent. La protection vaut contre le <em>fournisseur et l'opérateur</em>, pas
+      contre un attaquant local sur votre poste.</p>
+
+    <h3>PII hallucinée par le modèle</h3>
+    <p>Le modèle peut inventer une PII <strong>sans jeton</strong> (problème de
+      grounding) — non résoluble par un proxy seul (recherche ouverte documentée). Les
+      sentinelles forgées ne sont <strong>jamais</strong> restaurées (registre d'émission +
+      MAC, invariant I3).</p>
+
+    <h3>Rappel PERSON/LOC en N0 sans NER</h3>
+    <p>En N0, le moteur est Rust seul : sans le NER léger embarqué, la détection des noms
+      et lieux <em>hors gazetteers</em> en texte libre est réduite par rapport aux paliers
+      serveur. Le NER embarqué (installé par défaut) comble l'essentiel du fossé
+      (PERSON 0 → 0.62, LOC +0.18, spécificité 83 %). Les emails, téléphones, CNI, cartes,
+      IP, dates, passeports/permis/matricules et les noms/toponymes des gazetteers sont
+      couverts dans tous les cas.</p>
+
+    <h3>Embeddings</h3>
+    <p><code>/v1/embeddings</code> est <strong>bloqué</strong> (404) : un embedding de PII
+      reste dérivé de PII (charte §7.1). Piste documentée : tokeniser avant embedding
+      (perte de sens assumée) — non livrée.</p>
+
+    <h3>Restauration bornée à la requête</h3>
+    <p>On ne restaure que les jetons émis pour la requête en cours (registre + MAC) : un
+      jeton d'une requête antérieure n'est jamais restauré (anti-collision, invariant I3).
+      Après rotation du sel de session, l'ancien contenu n'est plus restaurable (marqueur
+      neutre).</p>
+
+    <h2>Produit &amp; usage</h2>
+
+    <h3>Quelle interface IA puis-je brancher ?</h3>
+    <p>Tout client compatible OpenAI : Open WebUI, LibreChat, bolt.diy, agents type
+      Hermes, curl… Deux champs : Base URL + clé composite. Voir le
+      <a href="api.html">guide API</a>.</p>
+
+    <h3>Quelle est la différence entre N0, N1 et N3 ?</h3>
+    <p>Où tourne le moteur : chez vous (N0), sur votre serveur (N1), chez l'éditeur (N3).
+      Plus le moteur est proche de vous, plus la promesse est absolue. Voir
+      <a href="produit.html">le produit</a>.</p>
+
+    <h3>Le mode audit est-il actif par défaut ?</h3>
+    <p>Non. En N0, <code>CLOISON_AUDIT_MODE=0</code> par défaut : aucun reçu ne sort de la
+      machine. Le journal public n'est alimenté que par les tenants qui activent l'audit
+      (opt-in) — toujours en compteurs k-anonymes signés, jamais de texte.</p>
+
+    <h3>L'installation N0 est-elle vraiment sans toolchain ?</h3>
+    <p>Oui : binaires par OS, checksums SHA-256 vérifiés, NER léger inclus — ni Rust, ni
+      Python, ni torch. <a href="install-n0.html">Installer en ≤ 10 minutes</a>.</p>
+
+    <div class="note">
+      <span class="k">Suite</span>
+      <div>Envie de vérifier par vous-même ? <a href="journal.html">Le journal</a> et
+        <a href="open-core.html">le code</a> sont ouverts.</div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div class="col">
+        <span class="t">Produit</span>
+        <a href="produit.html">Architecture &amp; promesse</a>
+        <a href="faq.html">FAQ + limites honnêtes</a>
+        <a href="journal.html">Journal de transparence</a>
+      </div>
+      <div class="col">
+        <span class="t">Commencer</span>
+        <a href="install-n0.html">Installer N0</a>
+        <a href="mobile.html">Guide mobile Android</a>
+        <a href="api.html">API + clé composite</a>
+      </div>
+      <div class="col">
+        <span class="t">Vérifier</span>
+        <a href="journal.html">journal.wonkom.ai</a>
+        <a href="open-core.html">Code ouvert</a>
+      </div>
+    </div>
+    <div>CLOISON — proxy de confidentialité PII. <span class="pill">open-core</span></div>
+    <div class="mono">docs.wonkom.ai · api.wonkom.ai · journal.wonkom.ai</div>
+  </div>
+</footer>
+
+<script src="assets/theme.js"></script>
+</body>
+</html>

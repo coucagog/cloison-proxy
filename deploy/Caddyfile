@@ -58,3 +58,20 @@ journal.wonkom.ai {
         }
     }
 }
+
+# Documentation publique (STACK-N0V13 §12, slug acté 28/08/2026) : site
+# STATIQUE servi par Caddy (file_server) — zéro conteneur, zéro log d'accès,
+# zéro secret (contenu public pur). Déploiement : deploy/deploy-docs.sh.
+docs.wonkom.ai {
+    root * /var/www/docs.wonkom.ai
+    encode gzip
+    file_server
+    tls {
+        issuer acme {
+            dir https://acme-v02.api.letsencrypt.org/directory
+        }
+        issuer acme {
+            dir https://acme.zerossl.com/v2/DV90
+        }
+    }
+}

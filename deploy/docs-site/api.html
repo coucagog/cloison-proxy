@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="CLOISON — API OpenAI-compatible, clé composite, multi-tenant, CLI ops, rapport de conformité k-anonyme, variables de configuration." />
+<title>API &amp; clé composite — CLOISON</title>
+<link rel="stylesheet" href="assets/docs.css" />
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>CLOISON <small>proxy de confidentialité</small></a>
+    <div class="right">
+      <nav>
+        <a href="produit.html">Le produit</a>
+        <a href="install-n0.html">Installer N0</a>
+        <a href="mobile.html">Mobile</a>
+        <a href="api.html" aria-current="page">API</a>
+        <a href="journal.html">Journal</a>
+        <a href="open-core.html">Open-core</a>
+        <a href="faq.html">FAQ</a>
+      </nav>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Basculer thème clair / sombre" aria-pressed="false" title="Thème clair / sombre">
+        <svg class="ic ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        <svg class="ic ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v2.6M12 19.4V22M2 12h2.6M19.4 12H22M4.8 4.8l1.9 1.9M17.3 17.3l1.9 1.9M19.2 4.8l-1.9 1.9M6.7 17.3l-1.9 1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Intégration · API OpenAI-compatible</div>
+    <h1>Deux champs, <span class="hl">zéro réécriture</span>.</h1>
+    <p class="lede">Pointez votre interface IA sur <code>api.wonkom.ai</code> : Base URL +
+      clé composite. Le protocole est celui d'OpenAI — tout client compatible fonctionne.</p>
+  </div>
+</section>
+
+<div class="doc">
+  <div class="wrap">
+
+    <h2>1 · En deux champs</h2>
+    <table>
+      <tr><th>Champ</th><th>Valeur</th></tr>
+      <tr><td><strong>Base URL</strong></td><td><code>https://api.wonkom.ai/v1</code></td></tr>
+      <tr><td><strong>Clé</strong></td><td><code>mn_&lt;jeton&gt;.&lt;clé_amont_du_client&gt;</code> (clé composite fournie à l'onboarding)</td></tr>
+    </table>
+    <p>Exemple (curl, CLI) :</p>
+    <pre><code>curl https://api.wonkom.ai/v1/chat/completions \
+  -H "Authorization: Bearer mn_&lt;jeton&gt;.&lt;clé_amont&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"openai/gpt-4o-mini","messages":[{"role":"user",
+       "content":"Bonjour, je m'appelle Aminata Diop, mon téléphone est le 77 123 45 67."}]}'</code></pre>
+    <ul>
+      <li>Open WebUI : <em>Settings → Connections → OpenAI API</em> → Base URL + clé.</li>
+      <li>LibreChat : endpoint OpenAI personnalisé, même couple.</li>
+      <li>La clé composite est découpée sur le <strong>premier point</strong> : le jeton
+        <code>mn_…</code> (auth) et la clé amont (réinjectée <strong>uniquement en
+        header</strong> vers votre fournisseur — jamais en URL, jamais en log).</li>
+    </ul>
+
+    <h2>2 · Multi-tenant (intégration directe)</h2>
+    <p>Votre jeton est émis pour un tenant. Si votre jeton appartient à un autre tenant que
+      la plateforme, ajoutez le header de routage (non secret) :</p>
+    <pre><code>X-Cloison-Tenant: &lt;votre-tenant&gt;</code></pre>
+    <p>Un jeton n'est accepté que dans son tenant — <strong>fail-closed</strong>, jamais de
+      fuite inter-tenant (charte §7.2).</p>
+
+    <h2>3 · Endpoints</h2>
+    <table>
+      <tr><th>Endpoint</th><th>Rôle</th></tr>
+      <tr><td><code>POST /v1/chat/completions</code></td><td>chat (stream + non-stream, tool-calls) — le corps est tokenisé à l'aller, restauré au retour</td></tr>
+      <tr><td><code>POST /v1/completions</code></td><td>legacy non-stream</td></tr>
+      <tr><td><code>GET /v1/models</code></td><td>pass-through amont après auth</td></tr>
+      <tr><td><code>GET /v1/audit/report?period=…</code></td><td>rapport de conformité k-anonyme (mode audit observe-only)</td></tr>
+    </table>
+    <p>Erreurs normalisées (shape OpenAI) : <code>401 invalid_api_key</code> ·
+      <code>400 invalid_request_error</code> · <code>413 request_too_large</code> ·
+      <code>429 rate_limit_exceeded</code> · <code>502 upstream_error</code> —
+      le <code>message</code> ne contient <strong>jamais</strong> de secret.</p>
+
+    <h2 id="audit">4 · Rapport de conformité (k-anonyme)</h2>
+    <p>Sur demande (mode audit observe-only activé pour votre tenant), le rapport
+      <code>GET /v1/audit/report</code> fournit, par période
+      (<code>hourly|daily|weekly|all</code>) :</p>
+    <ul>
+      <li>compteurs k-anonymes par type de PII détectée ;</li>
+      <li>restaurations incomplètes et sorties bloquées ;</li>
+      <li>jauges quasi-id — <strong>signés</strong> (Ed25519, vérifiables avec le code
+        public) et <strong>présentables</strong> : aucun texte, aucune valeur isolée &lt; k
+        (les cellules &lt; k sont <strong>redactées</strong>).</li>
+    </ul>
+
+    <h2>5 · CLI ops (<code>cloison-cli</code>)</h2>
+    <p>Outillage d'administration pour l'opérateur (provisioning de tenant, jetons,
+      politiques, licences, santé du journal). Le clair <code>mn_</code> n'est affiché
+      <strong>qu'une seule fois</strong>, à l'émission — jamais journalisé :</p>
+    <pre><code>cloison-cli provision acme --nom "Acme SARL" --plan pro
+cloison-cli token issue acme               # clair affiché UNE fois
+cloison-cli token verify acme mn_&lt;jeton&gt;   # seul le hash transite
+cloison-cli token rotate acme tok-&lt;id&gt;     # ancien jeton: grâce de 300 s
+cloison-cli token revoke acme tok-&lt;id&gt;     # révocation immédiate
+cloison-cli policy set acme policy.json
+cloison-cli license add acme --plan enterprise --expires_at 1893456000
+cloison-cli ledger root                    # santé du journal public</code></pre>
+    <p>Flux d'onboarding scripté : <code>deploy/onboard_client.sh</code> (provision →
+      émission → vérification par hash → livraison de la clé composite).</p>
+
+    <h2 id="config">6 · Variables de configuration (N0)</h2>
+    <p>Référence des principales variables <code>CLOISON_*</code> (mode daemon local) :</p>
+    <table>
+      <tr><th>Variable</th><th>Rôle</th></tr>
+      <tr><td><code>CLOISON_VAULT_PATH</code></td><td><strong>active le mode N0</strong> — coffre redb persistant chiffré AES-256-GCM</td></tr>
+      <tr><td><code>CLOISON_VAULT_PASSPHRASE</code></td><td>clé du coffre (HKDF) — requise, jamais stockée en clair</td></tr>
+      <tr><td><code>CLOISON_EXPECTED_ACCESS_TOKEN</code></td><td>jeton <code>mn_*</code> local — comparé à temps constant, zéro appel au plan de contrôle</td></tr>
+      <tr><td><code>CLOISON_UPSTREAM_BASE_URL</code></td><td>votre fournisseur LLM</td></tr>
+      <tr><td><code>CLOISON_AUDIT_MODE</code></td><td><strong>0 par défaut</strong> — l'audit k-anonyme vers le journal est opt-in (<code>=1</code>)</td></tr>
+      <tr><td><code>CLOISON_VAULT_KEYCHAIN_SERVICE</code></td><td>posé = passphrase via le keychain OS (jamais en clair par CLOISON)</td></tr>
+      <tr><td><code>CLOISON_NER_MODEL_ONNX</code> + <code>CLOISON_NER_TOKENIZER</code></td><td>NER léger embarqué (PERSON/LOC in-core)</td></tr>
+      <tr><td><code>CLOISON_ALIAS_EXPANSION</code></td><td>alias intra-session (1 par défaut — R1–R7, jamais les pronoms)</td></tr>
+      <tr><td><code>CLOISON_QUASI_ID_GAUGE</code></td><td>jauge quasi-id (0 par défaut, opt-in — signal, jamais de résolution)</td></tr>
+    </table>
+
+    <div class="note">
+      <span class="k">Suite</span>
+      <div>Vérifiez la transparence : <a href="journal.html">le journal public</a> · la
+        preuve de confiance : <a href="open-core.html">le code ouvert</a>.</div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div class="col">
+        <span class="t">Produit</span>
+        <a href="produit.html">Architecture &amp; promesse</a>
+        <a href="faq.html">FAQ + limites honnêtes</a>
+        <a href="journal.html">Journal de transparence</a>
+      </div>
+      <div class="col">
+        <span class="t">Commencer</span>
+        <a href="install-n0.html">Installer N0</a>
+        <a href="mobile.html">Guide mobile Android</a>
+        <a href="api.html">API + clé composite</a>
+      </div>
+      <div class="col">
+        <span class="t">Vérifier</span>
+        <a href="journal.html">journal.wonkom.ai</a>
+        <a href="open-core.html">Code ouvert</a>
+      </div>
+    </div>
+    <div>CLOISON — proxy de confidentialité PII. <span class="pill">open-core</span></div>
+    <div class="mono">docs.wonkom.ai · api.wonkom.ai · journal.wonkom.ai</div>
+  </div>
+</footer>
+
+<script src="assets/theme.js"></script>
+</body>
+</html>

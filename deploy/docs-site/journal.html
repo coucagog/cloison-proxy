@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="CLOISON — journal de transparence : compteurs k-anonymes signés, chaîne de hachage, vérification WASM dans le navigateur. journal.wonkom.ai." />
+<title>Journal de transparence — CLOISON</title>
+<link rel="stylesheet" href="assets/docs.css" />
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>CLOISON <small>proxy de confidentialité</small></a>
+    <div class="right">
+      <nav>
+        <a href="produit.html">Le produit</a>
+        <a href="install-n0.html">Installer N0</a>
+        <a href="mobile.html">Mobile</a>
+        <a href="api.html">API</a>
+        <a href="journal.html" aria-current="page">Journal</a>
+        <a href="open-core.html">Open-core</a>
+        <a href="faq.html">FAQ</a>
+      </nav>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Basculer thème clair / sombre" aria-pressed="false" title="Thème clair / sombre">
+        <svg class="ic ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        <svg class="ic ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v2.6M12 19.4V22M2 12h2.6M19.4 12H22M4.8 4.8l1.9 1.9M17.3 17.3l1.9 1.9M19.2 4.8l-1.9 1.9M6.7 17.3l-1.9 1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Transparence · preuve sans donnée vue</div>
+    <h1>Le journal qui prouve que <span class="hl">personne ne lit</span>.</h1>
+    <p class="lede">Chaque fenêtre d'audit y est enregistrée : des compteurs
+      k-anonymisés, signés par le contrôle, liés en chaîne de hachage. Aucun texte,
+      aucune PII — <em>preuve sans donnée vue</em> (invariant I9).</p>
+    <div class="note">
+      <span class="k">Vérification</span>
+      <div>La chaîne est validée <b>dans votre navigateur</b> (WASM
+        <code>cloison-verify</code>) : aucune donnée ne quitte la page, aucune confiance
+        n'est demandée.</div>
+    </div>
+  </div>
+</section>
+
+<div class="doc">
+  <div class="wrap">
+
+    <h2>1 · Accéder au journal</h2>
+    <p>Le journal public vit sur <a href="https://journal.wonkom.ai"><strong>journal.wonkom.ai</strong></a>
+      — page de vérification interactive + données brutes :</p>
+    <table>
+      <tr><th>Ressource</th><th>Contenu</th></tr>
+      <tr><td><code>https://journal.wonkom.ai</code></td><td>page : état de la chaîne, verdict, preuve d'inclusion</td></tr>
+      <tr><td><code>https://journal.wonkom.ai/ledger.jsonl</code></td><td>les entrées brutes (genèse + séquence)</td></tr>
+      <tr><td><code>https://journal.wonkom.ai/control_pubkey.hex</code></td><td>la clé publique du contrôle (Ed25519)</td></tr>
+    </table>
+
+    <h2>2 · Comment c'est construit</h2>
+    <ul>
+      <li><strong>Append-only</strong> : chaque entrée lie la précédente par
+        <code>prev_hash</code> ; la signature Ed25519 du contrôle scelle l'ensemble.</li>
+      <li><strong>Contenu</strong> : des <strong>compteurs k-anonymes</strong> par type de
+        PII (CniSn, Email, PhoneSn, Gazetteer nom/ville…), par tenant, par fenêtre —
+        jamais de texte, jamais de compteur isolé &lt; k.</li>
+      <li><strong>Chaîne de hachage</strong> : toute altération — même d'un octet — casse
+        la chaîne. La vérification re-compute genèse, séquence, hachages et signatures,
+        depuis la genèse jusqu'à la tête.</li>
+      <li><strong>Preuve d'inclusion</strong> : un <code>payload_hash</code> figure-t-il
+        dans le journal ? Calculé dans votre navigateur.</li>
+    </ul>
+
+    <h2>3 · Vérifier soi-même (sans la page)</h2>
+    <pre><code># Récupérer le journal et la clé publique :
+curl -s https://journal.wonkom.ai/ledger.jsonl -o ledger.jsonl
+curl -s https://journal.wonkom.ai/control_pubkey.hex -o control_pubkey.hex
+
+# Vérifier la chaîne avec le CLI (ou le WASM sur la page) :
+cloison-cli ledger check            # ok=true · N entrées · head_seq=…
+# Alternative : la page web fait la même vérification en WASM, localement.</code></pre>
+
+    <h2>4 · Ce que le journal ne contient pas</h2>
+    <ul>
+      <li><strong>Aucun texte client</strong> : ni messages, ni extraits, ni valeurs.</li>
+      <li><strong>Aucun compteur isolé &lt; k</strong> : les cellules sous le seuil de
+        k-anonymat sont redactées (prouvé en conditions réelles : une cellule brute = 1
+        est sortie à 0).</li>
+      <li><strong>Aucun secret</strong> : ni jetons, ni clés, ni hash de données
+        personnelles.</li>
+    </ul>
+
+    <div class="note">
+      <span class="k">Suite</span>
+      <div>Le code qui produit et vérifie ce journal est public :
+        <a href="open-core.html">composition open-core →</a></div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div class="col">
+        <span class="t">Produit</span>
+        <a href="produit.html">Architecture &amp; promesse</a>
+        <a href="faq.html">FAQ + limites honnêtes</a>
+        <a href="journal.html">Journal de transparence</a>
+      </div>
+      <div class="col">
+        <span class="t">Commencer</span>
+        <a href="install-n0.html">Installer N0</a>
+        <a href="mobile.html">Guide mobile Android</a>
+        <a href="api.html">API + clé composite</a>
+      </div>
+      <div class="col">
+        <span class="t">Vérifier</span>
+        <a href="journal.html">journal.wonkom.ai</a>
+        <a href="open-core.html">Code ouvert</a>
+      </div>
+    </div>
+    <div>CLOISON — proxy de confidentialité PII. <span class="pill">open-core</span></div>
+    <div class="mono">docs.wonkom.ai · api.wonkom.ai · journal.wonkom.ai</div>
+  </div>
+</footer>
+
+<script src="assets/theme.js"></script>
+</body>
+</html>

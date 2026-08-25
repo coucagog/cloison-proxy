@@ -25,6 +25,11 @@ Le moteur descend **chez le client** (edge) ; le cloud n'est qu'un **plan de con
 | [`docs/N0.md`](docs/N0.md) | **N0 — daemon desktop local** (installation, limites honnêtes) |
 | [`journal/`](journal/) | Journal de développement STACK-N / DEPLOY-N |
 
+> **Documentation publique** : le site docs.wonkom.ai (promesse vérifiable,
+> install N0 ≤ 10 min, mobile Android, API + clé composite, journal,
+> open-core, FAQ + limites honnêtes) est déployé depuis `deploy/docs-site/` —
+> voir `deploy/deploy-docs.sh` (STACK-N0V13 §12, slug acté 28/08/2026).
+
 ## Structure
 
 ```

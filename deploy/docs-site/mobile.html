@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="CLOISON Mobile Android — app WebView + moteur WASM : pseudonymisation in-app, coffre in-memory, chat + LLM configurable. Comment compiler l'APK et l'utiliser." />
+<title>Mobile Android — CLOISON</title>
+<link rel="stylesheet" href="assets/docs.css" />
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>CLOISON <small>proxy de confidentialité</small></a>
+    <div class="right">
+      <nav>
+        <a href="produit.html">Le produit</a>
+        <a href="install-n0.html">Installer N0</a>
+        <a href="mobile.html" aria-current="page">Mobile</a>
+        <a href="api.html">API</a>
+        <a href="journal.html">Journal</a>
+        <a href="open-core.html">Open-core</a>
+        <a href="faq.html">FAQ</a>
+      </nav>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Basculer thème clair / sombre" aria-pressed="false" title="Thème clair / sombre">
+        <svg class="ic ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        <svg class="ic ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v2.6M12 19.4V22M2 12h2.6M19.4 12H22M4.8 4.8l1.9 1.9M17.3 17.3l1.9 1.9M19.2 4.8l-1.9 1.9M6.7 17.3l-1.9 1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Déclinaison mobile · Android d'abord</div>
+    <h1>CLOISON dans votre poche : <span class="hl">même moteur, aucune PII hors de l'app</span>.</h1>
+    <p class="lede">Une app Android (WebView + moteur WASM <code>@cloison/core</code>) qui
+      pseudonymise <strong>in-app</strong> : votre message est tokenisé avant d'être envoyé
+      au fournisseur LLM, la réponse est restaurée dans l'app. Coffre <strong>in-memory</strong>,
+      rien n'est persisté.</p>
+    <div class="note">
+      <span class="k">État</span>
+      <div>La source v1 est livrée. L'APK se compile avec <b>wasm-pack</b> + le <b>SDK Android</b>
+        (procédure ci-dessous). iOS viendra plus tard — même moteur WASM.</div>
+    </div>
+  </div>
+</section>
+
+<div class="doc">
+  <div class="wrap">
+
+    <h2>1 · Ce que fait l'app (v1)</h2>
+    <ol>
+      <li><strong>Pseudonymisation in-app</strong> : votre message est tokenisé
+        <strong>dans l'app</strong> (WASM, clé locataire aléatoire générée côté client)
+        avant d'être envoyé au fournisseur LLM — le fournisseur ne reçoit <strong>que des
+        jetons</strong> <code>⟦…⟧</code>, jamais la PII en clair.</li>
+      <li><strong>Restauration in-app</strong> : la réponse du LLM est restaurée dans l'app
+        (jetons émis par la requête en cours uniquement — registre + MAC).</li>
+      <li><strong>Coffre in-memory</strong> : rien n'est persisté (choix pilote) ; la
+        session WASM (clé locataire + registre) vit dans la mémoire de l'app et meurt à la
+        fermeture.</li>
+      <li><strong>Configuration</strong> : endpoint LLM (Base URL + clé) + modèle — stockés
+        dans les préférences de l'app (votre clé amont, jamais transmise ailleurs).</li>
+    </ol>
+
+    <h2>2 · Compiler l'APK</h2>
+    <p>Prérequis : <strong>JDK 17</strong>, <strong>Android SDK</strong> (Android Studio
+      recommandé), <strong>Rust cible wasm32</strong> pour l'artefact WASM (une seule fois) :</p>
+    <pre><code># 1. Artefact WASM (à la racine du dépôt CLOISON) :
+cd crates/cloison-wasm
+wasm-pack build --target web --out-dir ../../mobile/android/app/src/main/assets/cloison/pkg
+#    (ou copier un pkg construit : cp -r deploy/wasm-demo/pkg …/assets/cloison/pkg)
+#    Vérification de compilation WASM :
+#    cargo check -p cloison-wasm --target wasm32-unknown-unknown
+
+# 2. APK (ouvrir mobile/android dans Android Studio → Run, ou CLI) :
+cd mobile/android
+gradle assembleDebug        # → app/build/outputs/apk/debug/app-debug.apk</code></pre>
+    <p>L'APK de <strong>release signé</strong> nécessite un keystore ; l'APK debug est
+      installable directement (<code>adb install</code>).</p>
+
+    <h2>3 · Sécurité (invariants)</h2>
+    <ul>
+      <li><strong>Zéro PII persistée</strong> : clé locataire aléatoire en mémoire, coffre
+        in-memory, rien sur disque (hors votre clé LLM dans les préférences — nécessaire
+        pour appeler votre fournisseur).</li>
+      <li><strong>Zéro secret embarqué</strong> : aucun secret dans le code/l'APK.</li>
+      <li><strong>Restauration bornée</strong> : registre d'émission de la requête + MAC
+        (invariant I3) — une sentinelle forgée n'est jamais restaurée.</li>
+      <li><strong>Honnêteté</strong> : ne protège pas contre un poste compromis (même limite
+        que N0) ; quasi-identifiants signalés, jamais résolus.</li>
+    </ul>
+
+    <h2>4 · Limites v1</h2>
+    <ul>
+      <li><strong>Mode N0-local uniquement</strong> : l'app tokenise in-app vers un
+        fournisseur LLM direct (OpenRouter, DeepSeek…). Le mode « clé composite N3 »
+        (pseudonymisation par l'edge CLOISON) est une piste v1.1.</li>
+      <li><strong>iOS</strong> : plus tard (date pilote à venir) — même moteur WASM.</li>
+      <li>La session est <strong>perdue à la fermeture</strong> de l'app (in-memory assumé) —
+        chaque lancement crée une nouvelle clé locataire (non-liabilité).</li>
+    </ul>
+
+    <h2>5 · Récupérer la source</h2>
+    <p>Le monorepo <code>coucagog/cloison</code> est privé ; la source mobile est livrée
+      dans le dépôt de la passerelle publique (open-core) : <code>mobile/android/</code>
+      dans <code>github.com/coucagog/cloison-proxy</code> (AGPL-3.0).</p>
+
+    <div class="note">
+      <span class="k">Suite</span>
+      <div>Découvrez le moteur desktop : <a href="install-n0.html">installer N0 en ≤ 10 min</a>.</div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div class="col">
+        <span class="t">Produit</span>
+        <a href="produit.html">Architecture &amp; promesse</a>
+        <a href="faq.html">FAQ + limites honnêtes</a>
+        <a href="journal.html">Journal de transparence</a>
+      </div>
+      <div class="col">
+        <span class="t">Commencer</span>
+        <a href="install-n0.html">Installer N0</a>
+        <a href="mobile.html">Guide mobile Android</a>
+        <a href="api.html">API + clé composite</a>
+      </div>
+      <div class="col">
+        <span class="t">Vérifier</span>
+        <a href="journal.html">journal.wonkom.ai</a>
+        <a href="open-core.html">Code ouvert</a>
+      </div>
+    </div>
+    <div>CLOISON — proxy de confidentialité PII. <span class="pill">open-core</span></div>
+    <div class="mono">docs.wonkom.ai · api.wonkom.ai · journal.wonkom.ai</div>
+  </div>
+</footer>
+
+<script src="assets/theme.js"></script>
+</body>
+</html>

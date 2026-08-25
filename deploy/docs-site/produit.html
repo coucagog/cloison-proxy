@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="CLOISON — comment ça marche : pseudonymisation PII avant le LLM, restauration dans la réponse, plan de contrôle aveugle, niveaux N0/N1/N3." />
+<title>Le produit — CLOISON</title>
+<link rel="stylesheet" href="assets/docs.css" />
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>CLOISON <small>proxy de confidentialité</small></a>
+    <div class="right">
+      <nav>
+        <a href="produit.html" aria-current="page">Le produit</a>
+        <a href="install-n0.html">Installer N0</a>
+        <a href="mobile.html">Mobile</a>
+        <a href="api.html">API</a>
+        <a href="journal.html">Journal</a>
+        <a href="open-core.html">Open-core</a>
+        <a href="faq.html">FAQ</a>
+      </nav>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Basculer thème clair / sombre" aria-pressed="false" title="Thème clair / sombre">
+        <svg class="ic ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        <svg class="ic ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v2.6M12 19.4V22M2 12h2.6M19.4 12H22M4.8 4.8l1.9 1.9M17.3 17.3l1.9 1.9M19.2 4.8l-1.9 1.9M6.7 17.3l-1.9 1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Le produit · architecture</div>
+    <h1>Un proxy entre votre interface et le modèle : <span class="hl">rien d'autre ne change</span>.</h1>
+    <p class="lede">CLOISON est compatible OpenAI : la plupart des interfaces IA se
+      branchent en deux champs. Ce qui change, c'est ce que le fournisseur reçoit —
+      et ce que l'opérateur peut prouver.</p>
+  </div>
+</section>
+
+<div class="doc">
+  <div class="wrap">
+
+    <h2>1 · Le flux</h2>
+    <pre><code>Interface IA ──▶ CLOISON edge ──▶ Fournisseur LLM
+                 pseudonymise PII      ne reçoit QUE des jetons ⟦…⟧
+                 restaure valeurs ◀─── réponse
+                 (côté client)</code></pre>
+    <ul>
+      <li><strong>À l'aller</strong> : noms, téléphones, emails, CNI, lieux… sont remplacés
+        par des jetons <code>⟦…⟧</code> <strong>avant</strong> d'atteindre le fournisseur.
+        Le modèle ne voit jamais la donnée personnelle en clair.</li>
+      <li><strong>Au retour</strong> : les vraies valeurs sont restaurées dans la réponse
+        que vous recevez. La conversation reste naturelle et cohérente — les jetons
+        déterministes gardent la coréférence.</li>
+      <li><strong>L'opérateur ne voit rien</strong> : le plan de contrôle ne manipule que
+        des <strong>compteurs k-anonymes signés</strong>, jamais de texte (invariant I9).</li>
+    </ul>
+
+    <h2>2 · Le moteur de détection</h2>
+    <p>La détection combine plusieurs sources, calibrées sur le français d'Afrique de
+      l'Ouest (noms sénégalais, formats de CNI, toponymie, numéros +221) :</p>
+    <ul>
+      <li><strong>Moteur déterministe</strong> (regex + gazetteers + validations Luhn) :
+        téléphones (+221 70/71/72/75/76/77/78/79, fixes 30/32/33/36), CNI, emails,
+        cartes bancaires, IP, dates, passeports/permis/matricules (contextuels).</li>
+      <li><strong>NER transformer</strong> (<code>afroxlmr</code>, MasakhaNER) pour
+        PERSON/LOC en texte libre — validé par un benchmark public contre une baseline
+        Presidio forte : verdict <strong>GO</strong> (PERSON 0.94 · LOC 0.84 · macro 0.95).</li>
+      <li><strong>Consensus</strong> : une source seule sous seuil est refusée
+        (spécificité mesurée 77 %).</li>
+      <li><strong>Généralisation des faibles cardinalités</strong> : date → <code>YYYY-MM</code>,
+        IP → <code>[IP]</code>, carte → <code>•••••••••1234</code>, ville → <code>[VILLE_SN]</code>
+        — jamais tokenisées (la fréquence trahirait le jeton).</li>
+    </ul>
+
+    <h2>3 · Les niveaux de cloisonnement</h2>
+    <table>
+      <tr><th>Niveau</th><th>Où tourne le moteur</th><th>Ce que l'opérateur lit</th></tr>
+      <tr><td><strong>N0</strong> local</td><td>votre poste (daemon desktop Rust)</td><td>rien — la promesse absolue</td></tr>
+      <tr><td><strong>N1</strong> site</td><td>votre serveur</td><td>seulement vous, chez vous</td></tr>
+      <tr><td><strong>N3</strong> hébergé</td><td>chez l'éditeur (<code>api.wonkom.ai</code>)</td><td>le clair ne quitte pas l'edge ; le cloud ne voit que des compteurs</td></tr>
+    </table>
+
+    <h2>4 · La promesse, vérifiable</h2>
+    <p>« Nous ne lisons pas » n'est pas une clause contractuelle : c'est une propriété
+      <strong>auditable</strong>.</p>
+    <ul>
+      <li><strong>Code ouvert</strong> : la passerelle (AGPL-3.0) et tous les composants
+        vérifiables sont publiés sur <code>github.com/coucagog/cloison-*</code>.</li>
+      <li><strong>Journal public</strong> : <a href="journal.html">journal.wonkom.ai</a> —
+        chaque fenêtre d'audit est enregistrée (compteurs k-anonymes, chaîne de hachage,
+        signatures Ed25519) et <strong>vérifiée dans votre navigateur</strong> (WASM),
+        sans qu'aucune donnée ne quitte la page.</li>
+      <li><strong>Rapport de conformité</strong> : en mode audit (observe-only), rapport
+        k-anonyme signé par tenant, présentable à un DPO/auditeur.</li>
+    </ul>
+
+    <h2>5 · Des limites, dites honnêtement</h2>
+    <p>Charte du projet : la transparence inclut les limites. Elles sont détaillées dans
+      la <a href="faq.html">FAQ</a> — en résumé :</p>
+    <ul>
+      <li><strong>Quasi-identifiants</strong> (« le patient de 42 ans opéré le 3 mars à
+        Ziguinchor ») peuvent ré-identifier sans nom : nous les <strong>signalons</strong>
+        (jauge), nous ne prétendons pas les résoudre.</li>
+      <li><strong>Poste compromis</strong> : en N0, un malware sur la machine sort du
+        périmètre — le coffre et les clés y vivent.</li>
+      <li><strong>PII hallucinée</strong> : le modèle peut inventer une PII sans jeton
+        (grounding) — non résoluble par un proxy seul ; les sentinelles forgées ne sont
+        jamais restaurées (registre + MAC).</li>
+    </ul>
+
+    <div class="note">
+      <span class="k">Suite</span>
+      <div>Prêt à essayer ? <a href="install-n0.html">Installez N0 en ≤ 10 min</a> — ou
+        <a href="api.html">branchez votre interface sur api.wonkom.ai</a>.</div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div class="col">
+        <span class="t">Produit</span>
+        <a href="produit.html">Architecture &amp; promesse</a>
+        <a href="faq.html">FAQ + limites honnêtes</a>
+        <a href="journal.html">Journal de transparence</a>
+      </div>
+      <div class="col">
+        <span class="t">Commencer</span>
+        <a href="install-n0.html">Installer N0</a>
+        <a href="mobile.html">Guide mobile Android</a>
+        <a href="api.html">API + clé composite</a>
+      </div>
+      <div class="col">
+        <span class="t">Vérifier</span>
+        <a href="journal.html">journal.wonkom.ai</a>
+        <a href="open-core.html">Code ouvert</a>
+      </div>
+    </div>
+    <div>CLOISON — proxy de confidentialité PII. <span class="pill">open-core</span></div>
+    <div class="mono">docs.wonkom.ai · api.wonkom.ai · journal.wonkom.ai</div>
+  </div>
+</footer>
+
+<script src="assets/theme.js"></script>
+</body>
+</html>

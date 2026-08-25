@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="CLOISON N0 — installer le daemon desktop local en ≤ 10 minutes, sans Rust ni torch : Linux, macOS, Windows. Configuration, vérification, limites." />
+<title>Installer N0 (≤ 10 min) — CLOISON</title>
+<link rel="stylesheet" href="assets/docs.css" />
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>CLOISON <small>proxy de confidentialité</small></a>
+    <div class="right">
+      <nav>
+        <a href="produit.html">Le produit</a>
+        <a href="install-n0.html" aria-current="page">Installer N0</a>
+        <a href="mobile.html">Mobile</a>
+        <a href="api.html">API</a>
+        <a href="journal.html">Journal</a>
+        <a href="open-core.html">Open-core</a>
+        <a href="faq.html">FAQ</a>
+      </nav>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Basculer thème clair / sombre" aria-pressed="false" title="Thème clair / sombre">
+        <svg class="ic ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        <svg class="ic ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v2.6M12 19.4V22M2 12h2.6M19.4 12H22M4.8 4.8l1.9 1.9M17.3 17.3l1.9 1.9M19.2 4.8l-1.9 1.9M6.7 17.3l-1.9 1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">N0 — le moteur chez vous</div>
+    <h1>Installer CLOISON N0 en <span class="hl">≤ 10 minutes</span>.</h1>
+    <p class="lede">Un daemon local compatible OpenAI sur <code>localhost:8787</code>.
+      Votre interface IA s'y branche avec deux champs. <strong>Le clair ne quitte jamais
+      votre poste</strong> — coffre chiffré persistant, auth 100&nbsp;% locale.</p>
+    <div class="note">
+      <span class="k">Prérequis</span>
+      <div>Aucun : pas de toolchain Rust, pas de Python, pas de torch. Les binaires par OS
+        sont téléchargés et <b>vérifiés par checksums SHA-256</b> (échec bruyant si
+        l'intégrité n'est pas prouvée).</div>
+    </div>
+  </div>
+</section>
+
+<div class="doc">
+  <div class="wrap">
+
+    <h2>1 · Linux / macOS</h2>
+    <p>Une seule commande (le script détecte l'OS/arch, télécharge binaire + NER léger +
+      lib onnxruntime, vérifie les checksums, crée <code>~/.cloison</code> et génère la
+      clé locataire affichée une fois) :</p>
+    <pre><code>bash &lt;(curl -fsSL https://raw.githubusercontent.com/coucagog/cloison-proxy/main/install-n0.sh)</code></pre>
+
+    <h2>2 · Windows (PowerShell)</h2>
+    <pre><code>powershell -ExecutionPolicy Bypass -File https://raw.githubusercontent.com/coucagog/cloison-proxy/main/install-n0.ps1</code></pre>
+    <p>Équivalent Windows : binaire <code>cloison-proxy.exe</code>, Credential Manager
+      pour la passphrase en option.</p>
+
+    <h2>3 · Options communes</h2>
+    <table>
+      <tr><th>Option</th><th>Effet</th></tr>
+      <tr><td><code>--version v0.3.0</code></td><td>installe une version précise (défaut : <code>latest</code>)</td></tr>
+      <tr><td><code>--prefix DIR</code></td><td>répertoire d'installation (défaut <code>~/.cloison</code>)</td></tr>
+      <tr><td><code>--skip-ner</code> / <code>-SkipNer</code></td><td>sans le NER léger (gazetteers + alias seuls — la limite « texte libre » de §6 reste alors assumée)</td></tr>
+    </table>
+
+    <h2>4 · Composants installés</h2>
+    <table>
+      <tr><th>Élément</th><th>Chemin</th><th>Rôle</th></tr>
+      <tr><td>binaire</td><td><code>~/.cloison/cloison-proxy(.exe)</code></td><td>le daemon (AGPL-3.0)</td></tr>
+      <tr><td>NER léger</td><td><code>~/.cloison/ner/model-int8.onnx</code> + <code>tokenizer.json</code> + <code>label_map.json</code></td><td>PERSON/LOC in-core (N0 v1.2, licence AFL-3.0 — notice dans le bundle)</td></tr>
+      <tr><td>lib onnxruntime</td><td><code>~/.cloison/ner/libonnxruntime.{so,dylib,dll}</code></td><td>chargée dynamiquement (jamais embarquée)</td></tr>
+    </table>
+
+    <h2>5 · Configuration minimale</h2>
+    <p>Le mode N0 s'active en posant <code>CLOISON_VAULT_PATH</code> :</p>
+    <pre><code>export CLOISON_ROLE=edge
+export CLOISON_LISTEN_ADDR=127.0.0.1:8787          # local uniquement
+export CLOISON_UPSTREAM_BASE_URL=https://openrouter.ai/api/v1   # votre fournisseur
+export CLOISON_VAULT_PATH=~/.cloison/vault.redb    # coffre persistant
+export CLOISON_VAULT_PASSPHRASE='votre-passphrase' # clé du coffre (jamais persistée)
+export CLOISON_EXPECTED_ACCESS_TOKEN=mon_jeton      # jeton mn_ local
+export CLOISON_TENANT_KEY_HEX=$(openssl rand -hex 32)  # clé locataire
+cloison-proxy</code></pre>
+    <p>Puis, dans votre interface IA (Open WebUI, LibreChat, bolt.diy, agents…) :</p>
+    <pre><code>Base URL : http://localhost:8787/v1
+Clé      : mn_&lt;jeton_local&gt;.&lt;clé_amont&gt;</code></pre>
+    <p>Référence complète des variables <code>CLOISON_*</code> : <a href="api.html#config">section API</a>.</p>
+
+    <h3>Comportements garantis</h3>
+    <ul>
+      <li><strong>Fail-loud au boot</strong> : passphrase absente, mauvaise passphrase ou
+        coffre corrompu → le daemon <strong>refuse de démarrer</strong> (jamais de
+        recréation silencieuse).</li>
+      <li><strong>Keychain OS</strong> (optionnel) : <code>CLOISON_VAULT_KEYCHAIN_SERVICE</code>
+        posé → la passphrase est stockée chiffrée par l'OS (Credential Manager / Keychain /
+        Secret Service) — jamais en clair par CLOISON.</li>
+      <li><strong>Sel de session persistant</strong> : vos conversations restent
+        restaurables à travers les redémarrages. Rotation : supprimer
+        <code>&lt;prefix&gt;/.salt</code> puis redémarrer.</li>
+      <li><strong>Généralisation</strong> : date → <code>YYYY-MM</code>, IP → <code>[IP]</code>,
+        carte → <code>•••••••••1234</code>, ville → <code>[VILLE_SN]</code>.</li>
+    </ul>
+
+    <h2>6 · Limites honnêtes de N0 (à lire)</h2>
+    <ol>
+      <li><strong>Rappel PERSON/LOC réduit en texte libre</strong> sans NER léger.
+        Avec le NER embarqué (installé par défaut), le fossé mesuré est comblé en grande
+        partie (PERSON 0 → 0.62, LOC +0.18, spécificité 83 %). Un nom hors gazetteer et
+        jamais mentionné reste un risque de clair — documenté, jamais caché.</li>
+      <li><strong>Poste compromis</strong> : N0 ne protège pas contre un malware ou un vol
+        de la machine — le coffre et la clé y vivent.</li>
+      <li><strong>Quasi-identifiants</strong> : signalés (jauge, opt-in), jamais résolus.</li>
+      <li><strong>PII hallucinée</strong> : le modèle peut inventer une PII sans jeton —
+        non résoluble par le proxy seul ; les sentinelles forgées ne sont jamais restaurées.</li>
+      <li><strong><code>/v1/embeddings</code> bloqué</strong> (404) : un embedding de PII
+        reste dérivé de PII.</li>
+      <li><strong>Restauration bornée à la requête</strong> : un jeton d'une requête
+        antérieure n'est jamais restauré (registre + MAC).</li>
+    </ol>
+
+    <h2>7 · Vérifier que ça marche</h2>
+    <pre><code>curl -s http://localhost:8787/v1/chat/completions \
+  -H "Authorization: Bearer mn_&lt;jeton&gt;.&lt;clé_amont&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"x","messages":[{"role":"user","content":
+       "Contact: Aminata Diop, user@example.com, tel +221 77 123 45 67"}]}'
+# → la réponse contient « Aminata Diop, user@example.com, +221 77 123 45 67 »
+#   (restaurés) et aucune sentinelle ⟦…⟧ résiduelle.</code></pre>
+    <p>Le coffre (<code>~/.cloison/vault.redb</code>) ne contient <strong>aucune valeur en
+      clair</strong> (chiffré AES-256-GCM) : <code>grep Aminata ~/.cloison/vault.redb</code>
+      ne trouve rien.</p>
+
+    <h2>8 · Mise à jour &amp; avancé</h2>
+    <ul>
+      <li><strong>Mise à jour</strong> : re-exécuter le script (il écrase le binaire ; le
+        coffre et le sel sont conservés — vos conversations restent restaurables).</li>
+      <li><strong>Depuis le code</strong> : <code>cargo build --release -p cloison-proxy</code>
+        puis <code>bash deploy/provision_ner_lite.sh</code> (NER : téléchargement par
+        défaut, <code>--export</code> torch pour la voie d'export avancée).</li>
+      <li><strong>macOS Intel</strong> : microsoft ne publie plus de lib onnxruntime
+        osx-x86_64 → le binaire macos-x64 fonctionne en N0 v1 (gazetteers + alias, warn) ;
+        Apple Silicon est la cible macOS recommandée (NER complet).</li>
+      <li><strong>Audit k-anonyme opt-in</strong> : par défaut, aucun reçu ne sort de la
+        machine. <code>CLOISON_AUDIT_MODE=1</code> + wiring contrôle → alimentation du
+        journal public (compteurs signés, jamais de texte).</li>
+    </ul>
+
+    <div class="note">
+      <span class="k">Suite</span>
+      <div>Vous préférez le mobile ? Voir le <a href="mobile.html">guide Android</a> —
+        même moteur, dans une app WebView.</div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div class="col">
+        <span class="t">Produit</span>
+        <a href="produit.html">Architecture &amp; promesse</a>
+        <a href="faq.html">FAQ + limites honnêtes</a>
+        <a href="journal.html">Journal de transparence</a>
+      </div>
+      <div class="col">
+        <span class="t">Commencer</span>
+        <a href="install-n0.html">Installer N0</a>
+        <a href="mobile.html">Guide mobile Android</a>
+        <a href="api.html">API + clé composite</a>
+      </div>
+      <div class="col">
+        <span class="t">Vérifier</span>
+        <a href="journal.html">journal.wonkom.ai</a>
+        <a href="open-core.html">Code ouvert</a>
+      </div>
+    </div>
+    <div>CLOISON — proxy de confidentialité PII. <span class="pill">open-core</span></div>
+    <div class="mono">docs.wonkom.ai · api.wonkom.ai · journal.wonkom.ai</div>
+  </div>
+</footer>
+
+<script src="assets/theme.js"></script>
+</body>
+</html>
