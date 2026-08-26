@@ -29,9 +29,11 @@ echo "=== 1. bundle du repo -> clone open-core ==="
 cd "$REPO"
 git bundle create /tmp/pub-proxy.bundle main >/dev/null 2>&1
 cd "$OC"
-git checkout -q main 2>/dev/null || true
 git fetch /tmp/pub-proxy.bundle refs/heads/main:refs/remotes/bundle/main 2>/dev/null
-git merge --ff-only refs/remotes/bundle/main
+# reset --hard (pas merge ff) : le monorepo est la SOURCE DE VÉRITÉ — les
+# commits locaux de publication du clone (scripts à la racine) sont re-générés
+# par l'overlay ci-dessous (ils vivent dans deploy/ du monorepo).
+git reset --hard -q refs/remotes/bundle/main
 git update-ref -d refs/remotes/bundle/main
 git log --oneline -1
 
