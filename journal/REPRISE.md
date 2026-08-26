@@ -261,6 +261,18 @@ de conformité k-anonyme, journal public restylé (design system de référence)
   réel en attente** (pas de macOS/Xcode ; runners en panne). **Découverte
   honnêteté** : `mobile/` N'EST PAS publié dans `cloison-proxy` (vérifié API
   GitHub) — affirmations corrigées, dette de publication consignée.
+- **SESSION 29/08/2026 (6 dettes — ✅ RÉGLÉES)** : voir
+  `journal/STACK-N0V16.md` — ① `mobile/` (android+ios) **PUBLIÉ dans
+  cloison-proxy** + **réparation critique** : les scripts d'install/README
+  étaient **404 sur main** (écrasés par le push -f v0.3.1, leçon v0.2.5
+  récidivée) — `deploy/publish-proxy-public.sh` re-split + overlay racine
+  complet (7/7 URLs → 200) ; ⑤ **CLI imbriqué** (token issue/rotate/revoke/
+  verify, policy set, license add — prouvé --help, tests/clippy/fmt verts) ;
+  ④ doctrine `up -d --build` dans DEPLOY.md ; ② workflow `mobile-build.yml`
+  PRÊT (APK Android + iOS Simulator) ; ③ release v0.3.1 vérifiée (caveat
+  macOS documenté) ; ⑥ calibration prête (attente trafic réel). **Restent
+  bloqués par les runners GitHub (toujours en panne)** : builds mobiles
+  réels, binaires macOS v0.3.1, re-publication cloison-cli public.
 - **Distribution N0** : les binaires/artefacts/scripts vivent dans le dépôt
   PUBLIC `coucagog/cloison-proxy` (le monorepo est privé — 404 pour le
   public). Install : `install-n0.sh`/`install-n0.ps1` à la racine de ce dépôt.

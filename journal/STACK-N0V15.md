@@ -134,5 +134,19 @@ xcodebuild -project Cloison.xcodeproj -scheme Cloison \
 ## Prochaine étape
 
 À la reprise des runners GitHub : **builds mobiles réels** (APK Android +
-app iOS via CI) puis **binaires macOS v0.3.1**. Décision pilote : publication
-de `mobile/` dans l'open-core.
+app iOS via CI — workflow `mobile-build.yml` PRÊT) puis **binaires macOS
+v0.3.1**. Décision pilote : publication de `mobile/` dans l'open-core —
+**✅ EXÉCUTÉE (29/08, dette ① réglée)** : `deploy/publish-proxy-public.sh`
+a publié `mobile/` (android+ios) + README + scripts d'install dans
+`cloison-proxy` (voir STACK-N0V16).
+
+## STACK-N0V16 — Règlement des 6 dettes (29/08/2026)
+
+> Suite de cette session — voir le journal dédié `STACK-N0V16.md` pour le
+> détail. Résumé : ① publication mobile open-core RÉPARÉE (scripts d'install
+> et README étaient 404 sur main — écrasés par le push -f v0.3.1, leçon
+> v0.2.5 récidivée) ; ⑤ CLI imbriqué (token issue/rotate/revoke/verify,
+> policy set, license add) — prouvé ; ④ doctrine `up -d --build` dans
+> DEPLOY.md ; ② workflow `mobile-build.yml` prêt (APK + iOS Simulator) ;
+> ③ release v0.3.1 vérifiée (caveat macOS) ; ⑥ calibration prête (attente
+> trafic réel).

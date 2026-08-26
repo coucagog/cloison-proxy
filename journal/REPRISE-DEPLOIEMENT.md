@@ -199,6 +199,15 @@ attrapé le bug que les 70 tests ne voyaient pas).
 > runners en panne). **Dette découverte** : `mobile/` pas encore publié dans
 > `cloison-proxy` (vérifié API) — publication à faire.
 > **Binaires macOS v0.3.1** : idem — en attente de la reprise des runners.
+> **✅ 6 DETTES RÉGLÉES (29/08, `journal/STACK-N0V16.md`)** : ① `mobile/`
+> (android+ios) **publié dans cloison-proxy** + **réparation critique** —
+> scripts d'install/README étaient **404 sur main** (push -f v0.3.1 a écrasé
+> la racine, leçon v0.2.5 récidivée) : `deploy/publish-proxy-public.sh`
+> (re-split + overlay racine, 7/7 URLs 200) ; ⑤ CLI imbriqué (token/policy/
+> license, prouvé) ; ④ doctrine `--build` dans DEPLOY.md ; ② workflow
+> `mobile-build.yml` prêt ; ③ v0.3.1 vérifiée ; ⑥ calibration prête.
+> **Restent bloqués** (runners toujours en panne) : builds mobiles réels,
+> binaires macOS v0.3.1, re-publication cloison-cli public (forme imbriquée).
 
 ### ① Dette 71/75 — ✅ RÉSOLUE (DEPLOY-9 + DEPLOY-10)
 
