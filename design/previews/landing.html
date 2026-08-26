@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLOISON — Landing (aperçu)</title>
+<style>
+  /* ===== DESIGN.md tokens (palette officielle clair) ===== */
+  :root{
+    --ink:#191C27;--ink-soft:#535868;--ink-faint:#8A8F9E;
+    --paper:#E7E9EE;--paper-2:#DEE1E8;--panel:#FFFFFF;
+    --line:#CFD3DC;--line-2:#E3E6EC;
+    --jeton:#0B7A85;--jeton-bg:#E1F0F1;--jeton-line:#bfe0e3;
+    --edge:#1E7A4D;--edge-deep:#1c4c36;--edge-bg:#E3F1E9;--edge-line:#c4e2d2;
+    --clair:#A9640C;--clair-bg:#F6ECDD;--clair-line:#e4cfae;
+    --danger:#AD3B3B;--danger-bg:#F6E4E2;
+    --field-bg:#F4F6F9;--field-line:#e0e4ea;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --shadow:rgba(25,28,39,.16);
+    --wrap:1080px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--paper);
+       -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .wrap{max-width:var(--wrap);margin:0 auto;padding:0 24px}
+  a{color:var(--edge-deep)}
+  /* ===== header ===== */
+  header.top{position:sticky;top:0;z-index:10;background:rgba(231,233,238,.88);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .topbar{display:flex;align-items:center;gap:20px;height:62px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.01em}
+  .brand .dot{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,var(--edge),var(--jeton));display:grid;place-items:center;color:#fff;font-size:13px}
+  .brand small{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--ink-faint);text-transform:uppercase;display:block;font-weight:500}
+  .topbar nav{margin-left:auto;display:flex;gap:20px}
+  .topbar nav a{color:var(--ink-soft);text-decoration:none;font-size:14px;font-weight:500}
+  .topbar nav a:hover{color:var(--ink)}
+  .btn{display:inline-block;padding:10px 18px;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none;cursor:pointer;border:none}
+  .btn.primary{background:var(--edge);color:#fff}
+  .btn.primary:hover{opacity:.9}
+  .btn.ghost{background:var(--panel);border:1px solid var(--line);color:var(--ink)}
+  .topbar .cta{font-size:13.5px}
+  /* ===== hero ===== */
+  .hero{padding:70px 0 56px;position:relative;overflow:hidden}
+  .hero::before{content:"";position:absolute;inset:0;background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:26px 26px;opacity:.5;
+    -webkit-mask-image:linear-gradient(180deg,#000,transparent 82%);mask-image:linear-gradient(180deg,#000,transparent 82%)}
+  .hero .wrap{position:relative;z-index:1;display:grid;grid-template-columns:1.1fr 1fr;gap:40px;align-items:center}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
+  .hero h1{font-size:clamp(30px,4.6vw,48px);line-height:1.06;letter-spacing:-.035em;font-weight:800;margin:16px 0 0}
+  .hero h1 em{color:var(--jeton);font-style:normal}
+  .hero p.lede{margin:20px 0 0;color:var(--ink-soft);font-size:18px;line-height:1.62;max-width:52ch}
+  .hero .acts{display:flex;gap:12px;margin-top:28px}
+  .hero .illu{display:grid;place-items:center;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 24px 50px -36px var(--shadow)}
+  /* ===== trust band ===== */
+  .trust{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--paper-2);padding:20px 0}
+  .trust .wrap{display:flex;gap:38px;justify-content:center;flex-wrap:wrap}
+  .trust .ti{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--ink-soft)}
+  .trust .ti b{color:var(--ink);font-weight:700}
+  .trust .ki{width:30px;height:30px;border-radius:9px;background:var(--edge-bg);border:1px solid var(--edge-line);display:grid;place-items:center;color:var(--edge-deep)}
+  /* ===== sections ===== */
+  section.band{padding:64px 0}
+  .band .head{max-width:56ch}
+  .band h2{font-size:clamp(24px,3.2vw,34px);letter-spacing:-.028em;line-height:1.1;font-weight:800;margin:12px 0 0}
+  .band p.intro{margin:14px 0 0;color:var(--ink-soft);font-size:16.5px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px;margin-top:30px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 14px 34px -30px var(--shadow)}
+  .tile .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)}
+  .tile h3{margin:10px 0 6px;font-size:16.5px;letter-spacing:-.01em}
+  .tile p{margin:0;color:var(--ink-soft);font-size:14.5px;line-height:1.55}
+  .tile .ico{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:18px}
+  .tile.teal .ico{background:var(--jeton-bg);border:1px solid var(--jeton-line);color:var(--jeton)}
+  .tile.edge .ico{background:var(--edge-bg);border:1px solid var(--edge-line);color:var(--edge-deep)}
+  .tile.clair .ico{background:var(--clair-bg);border:1px solid var(--clair-line);color:var(--clair)}
+  /* ===== proof / how ===== */
+  .how{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .step{position:relative;padding:22px 20px 20px;background:var(--panel);border:1px solid var(--line);border-radius:16px}
+  .step .n{font-family:var(--mono);font-size:12px;color:var(--jeton)}
+  .step h3{margin:10px 0 6px;font-size:16px;letter-spacing:-.01em}
+  .step p{margin:0;color:var(--ink-soft);font-size:14px;line-height:1.55}
+  .step .code{font-family:var(--mono);font-size:12px;color:var(--jeton);background:var(--jeton-bg);border:1px solid var(--jeton-line);border-radius:7px;padding:2px 7px}
+  /* ===== closing ===== */
+  .close{text-align:center;background:var(--edge);color:#fff;padding:60px 24px;border-radius:24px}
+  .close h2{font-size:clamp(24px,3.2vw,34px);letter-spacing:-.028em;margin:0}
+  .close p{color:#E3F1E9;margin:14px 0 26px;font-size:16.5px}
+  .close .btn{border:1px solid #fff;background:transparent;color:#fff;font-size:15px;padding:12px 26px}
+  .close .btn:hover{background:rgba(255,255,255,.12)}
+  /* ===== footer ===== */
+  footer{padding:40px 0 60px;color:var(--ink-soft)}
+  footer .wrap{display:flex;flex-wrap:wrap;gap:20px;align-items:baseline;justify-content:space-between}
+  footer .mono{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);letter-spacing:.04em}
+  @media(prefers-color-scheme:dark){
+    :root{--ink:#E7E9EF;--ink-soft:#A9AFBE;--ink-faint:#79808F;--paper:#0E1119;--paper-2:#141824;
+      --panel:#191F2C;--line:#2A3141;--line-2:#232A38;--jeton:#37B5C0;--jeton-bg:#0E2A2E;
+      --jeton-line:#1E4A50;--edge:#3FB878;--edge-deep:#A7DCBD;--edge-bg:#12271B;--edge-line:#2A5540;
+      --clair:#E2A24C;--danger:#E06A63;--field-bg:#12161F;--field-line:#2A3141;--shadow:rgba(0,0,0,.6)}
+    header.top{background:rgba(14,17,25,.88)}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap topbar">
+    <div class="brand"><span class="dot">⟦⟧</span><span>CLOISON<small>confidentialité PII</small></span></div>
+    <nav>
+      <a href="#product">Produit</a>
+      <a href="#proof">Preuve</a>
+      <a href="#install">Installer</a>
+    </nav>
+    <a class="btn primary cta" href="#install">Commencer →</a>
+  </div>
+</header>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow">Proxy de confidentialité · compatible OpenAI</div>
+      <h1>Vos données n'atteignent <em>jamais</em> le modèle. Et c'est vérifiable.</h1>
+      <p class="lede">CLOISON pseudonymise la PII en jetons ⟦…⟧ avant l'envoi, restaure les vraies
+        valeurs au retour. Le moteur descend chez vous ; le cloud n'est qu'un plan de contrôle aveugle.</p>
+      <div class="acts">
+        <a class="btn primary" href="#install">Installer N0 · ≤ 10 min</a>
+        <a class="btn ghost" href="#proof">Vérifier la promesse</a>
+      </div>
+    </div>
+    <div class="illu">
+      <!-- extract hero-flow -->
+      <svg width="360" height="240" viewBox="0 0 360 240" aria-label="flux CLOISON">
+        <rect width="360" height="240" rx="14" fill="var(--paper-2)"/>
+        <g font-family="var(--mono)" font-size="11" fill="var(--ink-soft)">
+          <rect x="26" y="72" width="76" height="90" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+          <text x="42" y="110">Interface IA</text>
+          <text x="42" y="130" font-size="9">Aminata, +221</text>
+          <rect x="142" y="66" width="72" height="102" rx="12" fill="var(--jeton)"/>
+          <text x="158" y="108" fill="#fff" font-size="16">⟦⟧</text>
+          <text x="158" y="132" fill="#fff" font-size="9">masquage actif</text>
+          <rect x="254" y="72" width="80" height="90" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+          <text x="270" y="110">Fournisseur LLM</text>
+          <text x="270" y="130" font-size="9">⟦…⟧ only</text>
+          <path d="M106 118 H138" stroke="var(--ink-soft)" stroke-width="2" fill="none"/>
+          <path d="M134 112 L142 118 L134 124" fill="none" stroke="var(--ink-soft)" stroke-width="2"/>
+          <path d="M218 118 H250" stroke="var(--jeton)" stroke-width="2" fill="none"/>
+          <path d="M246 112 L254 118 L246 124" fill="none" stroke="var(--jeton)" stroke-width="2"/>
+        </g>
+        <rect x="60" y="182" width="240" height="30" rx="8" fill="var(--edge-bg)" stroke="var(--edge-line)"/>
+        <text x="88" y="201" font-family="var(--mono)" font-size="10.5" fill="var(--edge-deep)">retour : vraies valeurs restaurées</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- Trust band -->
+<div class="trust">
+  <div class="wrap">
+    <div class="ti"><span class="ki">🔒</span><b>0</b> donnée vue</div>
+    <div class="ti"><span class="ki">✓</span><b>Vérifiable</b> code ouvert</div>
+    <div class="ti"><span class="ki">⟦⟧</span><b>Jetons</b> jamais en clair</div>
+    <div class="ti"><span class="ki">🌍</span><b>Afrique de l'Ouest</b> calibré</div>
+  </div>
+</div>
+
+<!-- Product -->
+<section class="band" id="product">
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">Le produit</div>
+      <h2>Un proxy, pas un produit de plus</h2>
+      <p class="intro">Branchez votre interface IA existante avec deux champs. Rien à réécrire.</p>
+    </div>
+    <div class="grid">
+      <div class="tile teal"><div class="ico">⇤</div><h3>Pseudonymisation</h3><p>Noms, téléphones, emails, CNI, lieux → jetons ⟦…⟧ avant le fournisseur.</p></div>
+      <div class="tile edge"><div class="ico">⇥</div><h3>Restauration</h3><p>Les vraies valeurs reviennent dans votre réponse. Conversation naturelle.</p></div>
+      <div class="tile clair"><div class="ico">✓</div><h3>Control aveugle</h3><p>Le cloud ne manipule que des compteurs k-anonymes signés, jamais de texte.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Proof -->
+<section class="band" id="proof" style="background:var(--paper-2)">
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">La preuve</div>
+      <h2>Vérifier, pas croire</h2>
+      <p class="intro">Trois preuves publiques — aucune confiance demandée.</p>
+    </div>
+    <div class="how">
+      <div class="step"><span class="n">01</span><h3>Journal de transparence</h3><p>Compteurs k-anonymes signés Ed25519, chaîne vérifiée <b>dans votre navigateur</b>.</p><p class="code">journal.wonkom.ai</p></div>
+      <div class="step"><span class="n">02</span><h3>Code ouvert</h3><p>La passerelle et les composants vérifiables sont publics. Auditez.</p><p class="code">github.com/coucagog</p></div>
+      <div class="step"><span class="n">03</span><h3>Rapport de conformité</h3><p>k-anonyme, signé, présentable à votre DPO. Cellules &lt; k redactées.</p><p class="code">/v1/audit/report</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Install -->
+<section class="band" id="install">
+  <div class="wrap">
+    <div class="close">
+      <h2>Installez N0 en ≤ 10 minutes</h2>
+      <p>Aucun prérequis : ni Rust, ni Python, ni torch. Binaire par OS + NER léger embarqué, checksums vérifiés.</p>
+      <a class="btn" href="https://docs.wonkom.ai/install-n0.html">Guide d'installation</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>CLOISON — proxy de confidentialité PII · open-core</div>
+    <div class="mono">docs.wonkom.ai</div>
+  </div>
+</footer>
+</body>
+</html>
