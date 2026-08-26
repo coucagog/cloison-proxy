@@ -66,23 +66,47 @@ pub enum Command {
     Provision(ProvisionArgs),
     /// Détail d'un tenant.
     TenantGet(TenantGetArgs),
-    /// Émet un jeton `mn_` pour un tenant (clair affiché UNE fois).
-    TokenIssue(TokenIssueArgs),
-    /// Rotation d'un jeton (l'ancien passe en période de grâce).
-    TokenRotate(TokenRotateArgs),
-    /// Révocation immédiate d'un jeton.
-    TokenRevoke(TokenRevokeArgs),
-    /// Vérifie un jeton par hash (le clair ne quitte jamais le CLI).
-    TokenVerify(TokenVerifyArgs),
-    /// Publie une politique JSON par locataire.
-    PolicySet(PolicySetArgs),
-    /// Ajoute une licence (plan + expiration optionnelle).
-    LicenseAdd(LicenseAddArgs),
+    /// Gestion des jetons `mn_` (`issue`/`rotate`/`revoke`/`verify`).
+    #[command(subcommand)]
+    Token(TokenCmd),
+    /// Politiques par locataire (`set`).
+    #[command(subcommand)]
+    Policy(PolicyCmd),
+    /// Licences (`add`).
+    #[command(subcommand)]
+    License(LicenseCmd),
     /// Racine courante du journal / vérification hors-ligne (`ledger`).
     #[command(subcommand)]
     Ledger(LedgerCmd),
     /// Statistiques d'un tenant (version de jeton + racine du journal).
     Stats(StatsArgs),
+}
+
+/// Sous-commandes `token` (jetons `mn_`).
+#[derive(Debug, Subcommand)]
+pub enum TokenCmd {
+    /// Émet un jeton `mn_` pour un tenant (clair affiché UNE fois).
+    Issue(TokenIssueArgs),
+    /// Rotation d'un jeton (l'ancien passe en période de grâce).
+    Rotate(TokenRotateArgs),
+    /// Révocation immédiate d'un jeton.
+    Revoke(TokenRevokeArgs),
+    /// Vérifie un jeton par hash (le clair ne quitte jamais le CLI).
+    Verify(TokenVerifyArgs),
+}
+
+/// Sous-commandes `policy`.
+#[derive(Debug, Subcommand)]
+pub enum PolicyCmd {
+    /// Publie une politique JSON par locataire.
+    Set(PolicySetArgs),
+}
+
+/// Sous-commandes `license`.
+#[derive(Debug, Subcommand)]
+pub enum LicenseCmd {
+    /// Ajoute une licence (plan + expiration optionnelle).
+    Add(LicenseAddArgs),
 }
 
 /// Sous-commandes `ledger` (journal de transparence).

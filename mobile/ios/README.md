@@ -97,8 +97,7 @@ de chat. Pour le chargement WASM depuis `file://`, le contrôleur active
 
 ## Récupérer la source
 
-La source mobile vit dans le monorepo privé `coucagog/cloison`
-(`mobile/android/` + `mobile/ios/`), consultable sur demande. La publication
-du dossier `mobile/` dans le dépôt public open-core
-`github.com/coucagog/cloison-proxy` (AGPL-3.0) est prévue — la promesse
-« le code est ouvert » porte pour l'instant sur le moteur et la passerelle.
+La source mobile est publiée dans le dépôt public open-core
+`github.com/coucagog/cloison-proxy` (AGPL-3.0) : `mobile/ios/` — visible
+sans authentification (commit `deploy/publish-proxy-public.sh`, session
+29/08/2026).

@@ -26,6 +26,7 @@ il vérifie le code. La charte §5.1 en fait la condition de la promesse.
 | Wrapper WASM navigateur | `cloison-wasm` | Apache-2.0 | **public** (à publier) |
 | Sidecar NER lourd | `services/cloison-detect` | Apache-2.0 | **public** (à publier) |
 | Harnais de benchmark + scoring | `bench/cloison-bench` | Apache-2.0 | **public** (méthodologie publique, charte §5.1) |
+| **Apps mobiles v1 (Android + iOS)** | `mobile/` **dans `cloison-proxy`** | **AGPL-3.0** (dépôt passerelle) | **public** (29/08/2026 — dette ① réglée, `deploy/publish-proxy-public.sh`) |
 | **Corpus** (gazetteers étendus, specs CNI, tables de fréquence, jeux d'éval, catalogue des non-détections) | `cloison-corpus` (dépôt séparé) | **PROPRIÉTAIRE** | **privé** (jamais publié) |
 
 ### Pourquoi AGPL-3.0 pour la passerelle uniquement
@@ -128,6 +129,14 @@ correctes)**.
   main:LICENSE` (Apache du workspace) écrase la licence AGPL du proxy —
   pour `cloison-proxy`, `LICENSE` doit être le texte
   `crates/cloison-proxy/LICENSE-AGPL-3.0` (GNU), pas le `LICENSE` racine.
+- **Règle de re-publication (leçon 29/08/2026, dette ①)** : le `push -f`
+  de la branche split (sous-arbre du crate) **écrase TOUS les fichiers
+  racine** du dépôt public (pas seulement la licence) : README, scripts
+  d'install (`install-n0.sh`/`.ps1`, `smoke-n0.ps1`,
+  `provision_ner_lite.sh`) et désormais `mobile/`. **Toute publication du
+  dépôt `cloison-proxy` passe par `deploy/publish-proxy-public.sh`**
+  (re-split + overlay racine complet + LICENSE AGPL + push + vérification
+  des URLs publiques) — ne jamais pousser la branche split nue.
 
 ## 6. Conformité charte
 

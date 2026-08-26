@@ -29,12 +29,12 @@ async fn run(cli: Cli) -> Result<(), CliError> {
     match cli.command {
         Command::Provision(a) => provision(&client, a).await,
         Command::TenantGet(a) => tenant_get(&client, a).await,
-        Command::TokenIssue(a) => token_issue(&client, a).await,
-        Command::TokenRotate(a) => token_rotate(&client, a).await,
-        Command::TokenRevoke(a) => token_revoke(&client, a).await,
-        Command::TokenVerify(a) => token_verify(&client, a).await,
-        Command::PolicySet(a) => policy_set(&client, a).await,
-        Command::LicenseAdd(a) => license_add(&client, a).await,
+        Command::Token(TokenCmd::Issue(a)) => token_issue(&client, a).await,
+        Command::Token(TokenCmd::Rotate(a)) => token_rotate(&client, a).await,
+        Command::Token(TokenCmd::Revoke(a)) => token_revoke(&client, a).await,
+        Command::Token(TokenCmd::Verify(a)) => token_verify(&client, a).await,
+        Command::Policy(PolicyCmd::Set(a)) => policy_set(&client, a).await,
+        Command::License(LicenseCmd::Add(a)) => license_add(&client, a).await,
         Command::Ledger(LedgerCmd::Root) => ledger_root(&client).await,
         Command::Ledger(LedgerCmd::Check(a)) => {
             verify_ledger_file(&a.ledger_file, a.pubkey_file.as_ref())?;

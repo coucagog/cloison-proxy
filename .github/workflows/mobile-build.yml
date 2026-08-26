@@ -1,0 +1,101 @@
+# =============================================================================
+# CLOISON Mobile — CI des builds réels (dette ②, STACK-N0V15 §« Prochaine
+# étape ») : APK Android + app iOS (Simulator), compilés à partir de la
+# source, avec l'artefact WASM construit par wasm-pack (jamais committé).
+#
+# Actif à chaque push/tag sur main. Les runners GitHub étant en panne depuis
+# le 25/08 19:52 (jobs jamais assignés), ce workflow est PRÊT mais ne
+# s'exécutera qu'à la reprise — voir journal/STACK-N0V15.md.
+# =============================================================================
+name: mobile-build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request: {}
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # APK Android (debug) : wasm-pack (artefact WASM) → gradle assembleDebug.
+  android-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain Rust (wasm32 pour l'artefact WASM)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: "latest"
+
+      - name: Construire l'artefact WASM (@cloison/core → assets/cloison/pkg)
+        run: |
+          cd crates/cloison-wasm
+          wasm-pack build --target web --out-dir ../../mobile/android/app/src/main/assets/cloison/pkg
+
+      - name: JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Gradle (version épinglée, sans wrapper committé)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10"
+
+      - name: Build APK debug
+        run: gradle assembleDebug
+        working-directory: mobile/android
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloison-android-debug-apk
+          path: mobile/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # App iOS (Simulator) : wasm-pack → xcodebuild (aucun signing requis).
+  ios-sim:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain Rust (wasm32 pour l'artefact WASM)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: "latest"
+
+      - name: Construire l'artefact WASM (@cloison/core → Cloison/Web/pkg)
+        run: |
+          cd crates/cloison-wasm
+          wasm-pack build --target web --out-dir ../../mobile/ios/Cloison/Web/pkg
+
+      - name: Build app (Simulator générique)
+        run: |
+          cd mobile/ios
+          xcodebuild -project Cloison.xcodeproj -scheme Cloison \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build build
+
+      - name: Upload app
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloison-ios-simulator-app
+          path: mobile/ios/build/Build/Products/Debug-iphonesimulator/Cloison.app
+          if-no-files-found: warn

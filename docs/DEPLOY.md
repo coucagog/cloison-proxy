@@ -57,6 +57,13 @@ docker compose -f deploy/docker-compose.dev.yml down -v
 ```
 
 Notes :
+- **🔴 Doctrine obligatoire : `up -d` sans `--build` réutilise l'image
+  LOCALE — le déploiement dérive de `main`** (constat DEPLOY-11 : l'edge
+  resté sur l'image du 24/08 alors que le code avait changé). Toujours
+  `up -d --build` (reconstruction) ; en CI/prod, préférer `pull_policy:
+  always` ou un tag d'image par commit. Vérifier après déploiement :
+  `docker compose ps` et, pour l'edge, un comportement à jour (ex. auth
+  multi-tenant : un jeton d'un autre tenant → 401).
 - `control` (binaire STACK-7 committé) est construit par
   `deploy/Dockerfile.control` ; en cas de problème sur un service, l'isoler
   avec `docker compose stop control` pour ne déployer que `edge` + `detect`.

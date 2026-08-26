@@ -76,3 +76,10 @@ debug est installable directement (`adb install`).
   WKWebView + moteur WASM, même périmètre).
 - La session est **perdue à la fermeture** de l'app (in-memory assumé) —
   chaque lancement crée une nouvelle clé locataire (non-liabilité, charte §8).
+
+## Récupérer la source
+
+La source mobile est publiée dans le dépôt public open-core
+`github.com/coucagog/cloison-proxy` (AGPL-3.0) : `mobile/android/` — visible
+sans authentification (commit `deploy/publish-proxy-public.sh`, session
+29/08/2026).
