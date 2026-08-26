@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="300" viewBox="0 0 360 300" role="img" aria-label="CLOISON — open-core : la promesse est vérifiable dans le code">
+  <defs>
+    <linearGradient id="ob" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0E1119"/>
+      <stop offset="1" stop-color="#141824"/>
+    </linearGradient>
+    <linearGradient id="otile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B7A85"/>
+      <stop offset="1" stop-color="#1E7A4D"/>
+    </linearGradient>
+    <filter id="osoft" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <rect width="360" height="300" rx="24" fill="url(#ob)"/>
+  <g stroke="#2A3141" stroke-width="1" opacity="0.6">
+    <path d="M0 100 H360"/><path d="M0 200 H360"/>
+    <path d="M120 0 V300"/><path d="M240 0 V300"/>
+  </g>
+
+  <!-- illustration : fenêtre de code, ouverte / s'ouvrant (source visible) -->
+  <g transform="translate(58,74)" filter="url(#osoft)">
+    <rect x="0" y="0" width="244" height="150" rx="14" fill="#191F2C" stroke="#2A3141"/>
+    <!-- barre titre -->
+    <rect x="0" y="0" width="244" height="30" rx="14" fill="#141824"/>
+    <circle cx="16" cy="15" r="5" fill="#E06A63"/>
+    <circle cx="32" cy="15" r="5" fill="#E2A24C"/>
+    <circle cx="48" cy="15" r="5" fill="#3FB878"/>
+    <text x="70" y="19" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#79808F">cloison-proxy · AGPL-3.0</text>
+    <!-- lignes de code -->
+    <g font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#A9AFBE">
+      <text x="20" y="52" fill="#37B5C0" opacity="0.9">const</text>
+      <text x="64" y="52" fill="#E7E9EF">sentinel =</text>
+      <text x="148" y="52" fill="#E2A24C">'⟦'</text>
+      <text x="172" y="52" fill="#A9AFBE">+</text>
+      <text x="188" y="52" fill="#E2A24C">'⟧'</text>
+      <text x="20" y="76" fill="#A9AFBE">restore(</text>
+      <text x="92" y="76" fill="#3FB878">token</text>
+      <text x="128" y="76" fill="#A9AFBE">)</text>
+      <text x="20" y="100" fill="#79808F">// la promesse est</text>
+      <text x="20" y="118" fill="#79808F">//   verifiable dans le code</text>
+    </g>
+  </g>
+  <!-- badge "verifiable" -->
+  <g transform="translate(240,224)">
+    <rect width="120" height="30" rx="15" fill="url(#otile)"/>
+    <path d="M14 15 L20 21 L30 9" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="38" y="20" font-family="system-ui,sans-serif" font-weight="700" font-size="11.5" fill="#fff">vérifiable</text>
+  </g>
+  <text x="58" y="262" font-family="system-ui,sans-serif" font-weight="700" font-size="13" fill="#E7E9EF">Auditez, faites auditer</text>
+  <text x="58" y="280" font-family="system-ui,sans-serif" font-size="11.5" fill="#A9AFBE">10 dépôts publics · licences copyleft/permissives</text>
+</svg>

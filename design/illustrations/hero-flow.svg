@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="460" viewBox="0 0 720 460" role="img" aria-label="CLOISON — le flux de pseudonymisation (aller / retour)">
+  <defs>
+    <linearGradient id="hbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E7E9EE"/>
+      <stop offset="1" stop-color="#DEE1E8"/>
+    </linearGradient>
+    <linearGradient id="htel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B7A85"/>
+      <stop offset="1" stop-color="#1E7A4D"/>
+    </linearGradient>
+    <linearGradient id="hcloison" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#1E7A4D"/>
+      <stop offset="1" stop-color="#0B7A85"/>
+    </linearGradient>
+    <filter id="hsoft" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#191C27" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <!-- fond -->
+  <rect width="720" height="460" rx="24" fill="url(#hbg)"/>
+  <!-- grille discrète (précision/ingénierie) -->
+  <g stroke="#CFD3DC" stroke-width="1" opacity="0.5">
+    <path d="M0 120 H720"/><path d="M0 240 H720"/><path d="M0 360 H720"/>
+    <path d="M180 0 V460"/><path d="M360 0 V460"/><path d="M540 0 V460"/>
+  </g>
+
+  <!-- ===== Colonne 1 : Interface IA (monde clair) ===== -->
+  <g transform="translate(52,96)">
+    <rect width="200" height="148" rx="14" fill="#FFFFFF" filter="url(#hsoft)"/>
+    <rect x="0" y="0" width="200" height="40" rx="14" fill="#F4F6F9"/>
+    <rect x="0" y="30" width="200" height="10" fill="#F4F6F9"/>
+    <circle cx="20" cy="20" r="7" fill="#0B7A85"/>
+    <rect x="36" y="15" width="70" height="10" rx="5" fill="#CFD3DC"/>
+    <g transform="translate(16,60)">
+      <rect width="168" height="34" rx="8" fill="#E1F0F1"/>
+      <text x="10" y="22" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#191C27">Aminata Diop, +221 77…</text>
+    </g>
+    <rect x="16" y="104" width="110" height="10" rx="5" fill="#DEE1E8"/>
+    <rect x="16" y="120" width="80" height="10" rx="5" fill="#E3E6EC"/>
+  </g>
+  <text x="66" y="272" font-family="system-ui,Segoe UI,sans-serif" font-weight="700" font-size="14" fill="#191C27">Interface IA</text>
+  <text x="66" y="290" font-family="system-ui,sans-serif" font-size="12" fill="#8A8F9E">votre monde, en clair</text>
+
+  <!-- ===== Flèche aller (clair → cloison) ===== -->
+  <g transform="translate(272,140)">
+    <path d="M0 40 H96" stroke="#191C27" stroke-width="3" stroke-linecap="round" stroke-dasharray="6 7" fill="none" opacity="0.5"/>
+    <path d="M88 32 L100 40 L88 48" fill="none" stroke="#191C27" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+    <text x="10" y="26" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#535868">PII en clair</text>
+  </g>
+
+  <!-- ===== Colonne 2 : CLOISON edge / cloison ===== -->
+  <g transform="translate(388,86)" filter="url(#hsoft)">
+    <rect width="150" height="168" rx="18" fill="url(#hcloison)"/>
+    <!-- sentinelle ⟦ ⟧ -->
+    <g stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity="0.95" transform="translate(40,34)">
+      <path d="M0 0 L-12 12 L0 24"/>
+      <path d="M70 0 L82 12 L70 24"/>
+      <circle cx="35" cy="12" r="6" fill="#E2A24C"/>
+    </g>
+    <text x="20" y="92" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#fff" text-anchor="middle">⟦ Aminata ⟧</text>
+    <text x="20" y="112" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#fff" text-anchor="middle">⟦ +221 77… ⟧</text>
+    <rect x="32" y="128" width="86" height="22" rx="11" fill="#ffffff" opacity="0.16"/>
+    <text x="75" y="143" font-family="system-ui,sans-serif" font-size="11" fill="#fff" text-anchor="middle">masquage actif</text>
+  </g>
+  <text x="404" y="284" font-family="system-ui,Segoe UI,sans-serif" font-weight="700" font-size="14" fill="#0B7A85">CLOISON edge</text>
+  <text x="404" y="302" font-family="system-ui,sans-serif" font-size="12" fill="#535868">pseudonymise en mémoire</text>
+
+  <!-- ===== Flèche retour (cloison → LLM) jetons ===== -->
+  <g transform="translate(548,150)">
+    <path d="M0 30 H104" stroke="#0B7A85" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <path d="M96 22 L108 30 L96 38" fill="none" stroke="#0B7A85" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="8" y="20" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#0B7A85">que des jetons ⟦…⟧</text>
+  </g>
+
+  <!-- ===== Colonne 3 : Fournisseur LLM (monde aveugle) ===== -->
+  <g transform="translate(560,74)">
+    <rect width="120" height="140" rx="14" fill="#0E1119" filter="url(#hsoft)"/>
+    <circle cx="60" cy="34" r="12" fill="#37B5C0"/>
+    <path d="M52 34 L58 40 L68 28" fill="none" stroke="#0E1119" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="24" y="62" width="72" height="9" rx="4.5" fill="#2A3141"/>
+    <rect x="24" y="80" width="52" height="9" rx="4.5" fill="#2A3141"/>
+    <rect x="24" y="104" width="60" height="16" rx="8" fill="#12271B"/>
+    <text x="54" y="115" font-family="system-ui,sans-serif" font-size="10" fill="#A7DCBD" text-anchor="middle">aveugle</text>
+  </g>
+  <text x="560" y="242" font-family="system-ui,Segoe UI,sans-serif" font-weight="700" font-size="13" fill="#40484D" opacity="0.8">Fournisseur LLM</text>
+  <text x="560" y="260" font-family="system-ui,sans-serif" font-size="12" fill="#8A8F9E">ne voit jamais le clair</text>
+
+  <!-- ===== Bandeau de retour (restauration) ===== -->
+  <g transform="translate(120,352)">
+    <rect width="480" height="56" rx="14" fill="#FFFFFF" opacity="0.82" stroke="#CFD3DC" stroke-width="1"/>
+    <path d="M24 28 H60" stroke="#1E7A4D" stroke-width="3" stroke-linecap="round"/>
+    <path d="M52 20 L64 28 L52 36" fill="none" stroke="#1E7A4D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="86" y="24" font-family="system-ui,sans-serif" font-weight="700" font-size="13" fill="#1c4c36">Retour</text>
+    <text x="86" y="42" font-family="system-ui,sans-serif" font-size="12" fill="#535868">les vraies valeurs sont restaurées dans votre réponse</text>
+  </g>
+</svg>

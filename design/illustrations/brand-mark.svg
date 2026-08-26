@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="96" viewBox="0 0 320 96" role="img" aria-label="CLOISON — symbole de marque">
+  <defs>
+    <linearGradient id="odm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1E7A4D"/>
+      <stop offset="1" stop-color="#0B7A85"/>
+    </linearGradient>
+  </defs>
+  <!-- cloison : le mur de protection, une sentinelle ⟦ ⟧ enfermant la donnée -->
+  <g transform="translate(14,12)">
+    <rect x="0" y="0" width="72" height="72" rx="16" fill="url(#odm)"/>
+    <!-- jetons ⟦⟧ stylisés -->
+    <path d="M20 28 L10 38 L20 48" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.92"/>
+    <path d="M52 28 L62 38 L52 48" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.92"/>
+    <!-- point de donnée protégé -->
+    <circle cx="36" cy="38" r="7" fill="#E2A24C"/>
+    <!-- parenthèse de masquage -->
+    <path d="M28 24 C24 26 24 50 28 52" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
+    <path d="M44 24 C48 26 48 50 44 52" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
+  </g>
+  <!-- wordmark -->
+  <g transform="translate(104,28)">
+    <text x="0" y="26" font-family="system-ui,Segoe UI,Roboto,sans-serif" font-weight="800" font-size="30" letter-spacing="1.5" fill="#191C27">CLOISON</text>
+    <text x="1" y="48" font-family="ui-monospace,SF Mono,Menlo,monospace" font-size="11" letter-spacing="3.5" fill="#8A8F9E">PROXY DE CONFIDENTIALITÉ PII</text>
+  </g>
+</svg>
