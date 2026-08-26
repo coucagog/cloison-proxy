@@ -1,7 +1,8 @@
 # CLOISON Mobile — Android v1 (app WebView + moteur WASM)
 
 > Déclinaison mobile de CLOISON (charte §4 : N0 — le moteur descend chez le
-> client). **GO pilote 27/08/2026 : Android d'abord, iOS plus tard.**
+> client). **GO pilote 27/08/2026 : Android d'abord ; iOS v1 livré en source
+> (29/08/2026, `mobile/ios/` — même périmètre).**
 > Périmètre v1 acté (28/08) : **app WebView embarquant le moteur WASM**
 > (`@cloison/core`) — pseudonymisation **in-app**, coffre **in-memory**
 > (zéro persistance, décision pilote 28/08), chat + endpoint LLM configurable.
@@ -71,6 +72,7 @@ debug est installable directement (`adb install`).
 - **Mode N0-local uniquement** : l'app tokenise in-app vers un fournisseur
   LLM direct (OpenRouter, DeepSeek…). Le mode « clé composite N3 »
   (pseudonymisation par l'edge CLOISON) est une piste v1.1.
-- **iOS** : plus tard (date pilote à venir) — même moteur WASM.
+- **iOS** : v1 livrée en source (29/08/2026) — `mobile/ios/` (SwiftUI +
+  WKWebView + moteur WASM, même périmètre).
 - La session est **perdue à la fermeture** de l'app (in-memory assumé) —
   chaque lancement crée une nouvelle clé locataire (non-liabilité, charte §8).

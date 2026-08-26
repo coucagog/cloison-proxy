@@ -193,6 +193,11 @@ attrapé le bug que les 70 tests ne voyaient pas).
 > WASM, coffre in-memory, build APK documenté — SDK Android requis ;
 > **APK en attente de la reprise des runners GitHub — panne TOUJOURS en
 > cours 29/08** : aucun run depuis 27/08, jobs échoués sans steps).
+> **Mobile iOS v1 livré en source (29/08, `journal/STACK-N0V15.md`)** :
+> `mobile/ios/` — projet Xcode + SwiftUI + WKWebView + moteur WASM, même
+> périmètre (pont natif asynchrone) ; build réel en attente (pas de macOS ;
+> runners en panne). **Dette découverte** : `mobile/` pas encore publié dans
+> `cloison-proxy` (vérifié API) — publication à faire.
 > **Binaires macOS v0.3.1** : idem — en attente de la reprise des runners.
 
 ### ① Dette 71/75 — ✅ RÉSOLUE (DEPLOY-9 + DEPLOY-10)

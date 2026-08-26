@@ -251,6 +251,16 @@ de conformité k-anonyme, journal public restylé (design system de référence)
   87 j). **⚠️ Runners GitHub TOUJOURS en panne** (aucun run depuis 27/08 —
   jobs échoués sans steps) → APK Android et binaires macOS v0.3.1 restent en
   attente de la reprise.
+- **SESSION 29/08/2026 (mobile iOS v1 — ✅ SOURCE LIVRÉE)** : voir
+  `journal/STACK-N0V15.md` — demande pilote « Version IOS » exécutée en
+  **source** : `mobile/ios/` (projet Xcode 15+ + 6 sources Swift + assets
+  Web + README), **miroir de l'app Android v1** (WebView + moteur WASM,
+  tokenize/restore in-app, coffre in-memory, chat + LLM configurable) ;
+  pont natif **asynchrone** WKScriptMessageHandler (vs synchrone Android).
+  Docs à jour (N0.md, README Android, site docs mobile.html). **Build iOS
+  réel en attente** (pas de macOS/Xcode ; runners en panne). **Découverte
+  honnêteté** : `mobile/` N'EST PAS publié dans `cloison-proxy` (vérifié API
+  GitHub) — affirmations corrigées, dette de publication consignée.
 - **Distribution N0** : les binaires/artefacts/scripts vivent dans le dépôt
   PUBLIC `coucagog/cloison-proxy` (le monorepo est privé — 404 pour le
   public). Install : `install-n0.sh`/`install-n0.ps1` à la racine de ce dépôt.

@@ -40,8 +40,10 @@
       rien n'est persisté.</p>
     <div class="note">
       <span class="k">État</span>
-      <div>La source v1 est livrée. L'APK se compile avec <b>wasm-pack</b> + le <b>SDK Android</b>
-        (procédure ci-dessous). iOS viendra plus tard — même moteur WASM.</div>
+      <div>Les sources v1 sont livrées pour <b>Android et iOS</b> (même moteur
+        WASM, même périmètre). L'APK se compile avec <b>wasm-pack</b> + le
+        <b>SDK Android</b> ; l'app iOS avec <b>wasm-pack</b> + <b>Xcode</b> —
+        procédures ci-dessous.</div>
     </div>
   </div>
 </section>
@@ -64,7 +66,7 @@
         dans les préférences de l'app (votre clé amont, jamais transmise ailleurs).</li>
     </ol>
 
-    <h2>2 · Compiler l'APK</h2>
+    <h2>2 · Compiler l'app Android (APK)</h2>
     <p>Prérequis : <strong>JDK 17</strong>, <strong>Android SDK</strong> (Android Studio
       recommandé), <strong>Rust cible wasm32</strong> pour l'artefact WASM (une seule fois) :</p>
     <pre><code># 1. Artefact WASM (à la racine du dépôt CLOISON) :
@@ -79,6 +81,23 @@ cd mobile/android
 gradle assembleDebug        # → app/build/outputs/apk/debug/app-debug.apk</code></pre>
     <p>L'APK de <strong>release signé</strong> nécessite un keystore ; l'APK debug est
       installable directement (<code>adb install</code>).</p>
+
+    <h2>2bis · Compiler l'app iOS</h2>
+    <p>Prérequis : <strong>macOS + Xcode</strong>, <strong>Rust cible wasm32</strong>
+      (artefact WASM identique, une seule fois par version) :</p>
+    <pre><code># 1. Artefact WASM (à la racine du dépôt CLOISON) :
+cd crates/cloison-wasm
+wasm-pack build --target web --out-dir ../../mobile/ios/Cloison/Web/pkg
+#    cargo check -p cloison-wasm --target wasm32-unknown-unknown
+
+# 2. App (ouvrir mobile/ios/Cloison.xcodeproj dans Xcode → Run, ou CLI) :
+cd mobile/ios
+xcodebuild -project Cloison.xcodeproj -scheme Cloison \
+  -destination 'generic/platform=iOS Simulator' build</code></pre>
+    <p>Le build Simulator est utilisable directement ; l'archive de release
+      signée nécessite un compte Apple (code signing). Le pont natif iOS est
+      asynchrone (<code>WKScriptMessageHandler</code>) — la logique de chat
+      est identique à Android.</p>
 
     <h2>3 · Sécurité (invariants)</h2>
     <ul>
@@ -97,15 +116,17 @@ gradle assembleDebug        # → app/build/outputs/apk/debug/app-debug.apk</cod
       <li><strong>Mode N0-local uniquement</strong> : l'app tokenise in-app vers un
         fournisseur LLM direct (OpenRouter, DeepSeek…). Le mode « clé composite N3 »
         (pseudonymisation par l'edge CLOISON) est une piste v1.1.</li>
-      <li><strong>iOS</strong> : plus tard (date pilote à venir) — même moteur WASM.</li>
       <li>La session est <strong>perdue à la fermeture</strong> de l'app (in-memory assumé) —
         chaque lancement crée une nouvelle clé locataire (non-liabilité).</li>
     </ul>
 
     <h2>5 · Récupérer la source</h2>
-    <p>Le monorepo <code>coucagog/cloison</code> est privé ; la source mobile est livrée
-      dans le dépôt de la passerelle publique (open-core) : <code>mobile/android/</code>
-      dans <code>github.com/coucagog/cloison-proxy</code> (AGPL-3.0).</p>
+    <p>La source mobile vit dans le monorepo privé <code>coucagog/cloison</code>
+      (<code>mobile/android/</code> + <code>mobile/ios/</code>), consultable sur
+      demande. La publication du dossier <code>mobile/</code> dans le dépôt
+      public open-core <code>github.com/coucagog/cloison-proxy</code>
+      (AGPL-3.0) est prévue — la promesse « le code est ouvert » porte pour
+      l'instant sur le moteur et la passerelle.</p>
 
     <div class="note">
       <span class="k">Suite</span>
