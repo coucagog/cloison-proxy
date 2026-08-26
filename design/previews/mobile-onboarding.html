@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>CLOISON — Mobile Onboarding (aperçu)</title>
+<style>
+  :root{
+    --ink:#191C27;--ink-soft:#535868;--ink-faint:#8A8F9E;
+    --paper:#E7E9EE;--paper-2:#DEE1E8;--panel:#FFFFFF;
+    --line:#CFD3DC;--line-2:#E3E6EC;
+    --jeton:#0B7A85;--jeton-bg:#E1F0F1;--jeton-line:#bfe0e3;
+    --edge:#1E7A4D;--edge-deep:#1c4c36;--edge-bg:#E3F1E9;--edge-line:#c4e2d2;
+    --clair:#A9640C;--clair-bg:#F6ECDD;--clair-line:#e4cfae;
+    --danger:#AD3B3B;--danger-bg:#F6E4E2;
+    --field-bg:#F4F6F9;--field-line:#e0e4ea;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --shadow:rgba(25,28,39,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--paper);
+       -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .phone{max-width:400px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;
+         background:var(--paper);box-shadow:0 0 60px var(--shadow)}
+  /* dots progression */
+  .dots{display:flex;justify-content:center;gap:7px;padding:22px 0 10px}
+  .dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}
+  .dots i.on{width:22px;border-radius:999px;background:var(--jeton)}
+  .main{flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 26px}
+  .illu{display:grid;place-items:center;margin-bottom:30px}
+  .main h2{font-size:26px;letter-spacing:-.028em;line-height:1.15;font-weight:800;margin:0 0 12px}
+  .main p.lead{color:var(--ink-soft);font-size:15.5px;line-height:1.6;margin:0 0 24px}
+  .feature{display:flex;gap:14px;margin:12px 0;align-items:flex-start}
+  .feature .k{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:17px;flex:0 0 auto}
+  .feature .t{font-weight:700;font-size:15px}
+  .feature .s{color:var(--ink-soft);font-size:13.5px;line-height:1.5}
+  .feature.teal .k{background:var(--jeton-bg);border:1px solid var(--jeton-line)}
+  .feature.edge .k{background:var(--edge-bg);border:1px solid var(--edge-line)}
+  .feature.clair .k{background:var(--clair-bg);border:1px solid var(--clair-line)}
+  .btn{display:flex;align-items:center;justify-content:center;width:100%;padding:15px;border:none;
+       border-radius:14px;font-weight:700;font-size:16px;cursor:pointer;margin-top:18px}
+  .btn.primary{background:var(--edge);color:#fff}
+  .btn.primary:active{opacity:.9}
+  .skip{text-align:center;margin-top:14px;font-family:var(--mono);font-size:12px;color:var(--ink-faint);
+        letter-spacing:.04em}
+  .foot{margin-bottom:26px}
+  .trust{display:flex;justify-content:center;gap:12px;padding:12px 24px 22px;font-family:var(--mono);
+         font-size:10px;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-faint)}
+  @media(prefers-color-scheme:dark){
+    :root{--ink:#E7E9EF;--ink-soft:#A9AFBE;--ink-faint:#79808F;--paper:#0E1119;--paper-2:#141824;
+      --panel:#191F2C;--line:#2A3141;--line-2:#232A38;--jeton:#37B5C0;--jeton-bg:#0E2A2E;
+      --jeton-line:#1E4A50;--edge:#3FB878;--edge-deep:#A7DCBD;--edge-bg:#12271B;--edge-line:#2A5540;
+      --clair:#E2A24C;--danger:#E06A63;--field-bg:#12161F;--field-line:#2A3141;--shadow:rgba(0,0,0,.6)}
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="dots"><i></i><i></i><i class="on"></i></div>
+
+  <div class="main">
+    <div class="illu">
+      <!-- illustration coffre (extrait vault) -->
+      <svg width="150" height="130" viewBox="0 0 150 130" aria-label="coffre">
+        <rect x="30" y="30" width="90" height="70" rx="12" fill="var(--panel)" stroke="var(--line)" stroke-width="2"/>
+        <path d="M48 30 C48 12 48 12 68 12 C88 12 88 30 88 30" fill="none" stroke="var(--jeton)" stroke-width="4" stroke-linecap="round"/>
+        <rect x="42" y="44" width="66" height="40" rx="8" fill="var(--jeton-bg)" stroke="var(--jeton-line)"/>
+        <text x="56" y="68" font-family="var(--mono)" font-size="10" fill="var(--jeton)">⟦ ⟦ ⟧</text>
+        <text x="56" y="82" font-family="var(--mono)" font-size="8" fill="var(--ink-faint)">chiffré AES-256</text>
+      </svg>
+    </div>
+
+    <h2>Vos données restent chez vous.</h2>
+    <p class="lead">CLOISON pseudonymise la PII dans l'app, puis restaure la réponse. Le fournisseur
+      ne reçoit que des jetons ⟦…⟧ — jamais le clair.</p>
+
+    <div class="feature teal"><span class="k">🔒</span><div><div class="t">Coffre in-memory</div><div class="s">Rien n'est persisté. Chaque lancement crée une clé locale.</div></div></div>
+    <div class="feature edge"><span class="k">✓</span><div><div class="t">Restauration bornée</div><div class="s">Seuls les jetons de cette requête sont restaurés (registre + MAC).</div></div></div>
+    <div class="feature clair"><span class="k">⚠️</span><div><div class="t">Signal quasi-identifiant</div><div class="s">Densité élevée signalée — jamais résolue, honnêtement.</div></div></div>
+
+    <button class="btn primary">Commencer</button>
+    <div class="skip">Passer · configurer plus tard</div>
+  </div>
+
+  <div class="foot">
+    <div class="trust"><span>🔒 chiffré</span><span>✓ vérifiable</span><span>open-core</span></div>
+  </div>
+</div>
+</body>
+</html>
