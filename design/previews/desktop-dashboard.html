@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLOISON — Desktop (aperçu)</title>
+<style>
+  /* ===== DESIGN.md tokens (palette officielle) ===== */
+  :root{
+    --ink:#191C27;--ink-soft:#535868;--ink-faint:#8A8F9E;
+    --paper:#E7E9EE;--paper-2:#DEE1E8;--panel:#FFFFFF;
+    --line:#CFD3DC;--line-2:#E3E6EC;
+    --jeton:#0B7A85;--jeton-bg:#E1F0F1;--jeton-line:#bfe0e3;
+    --edge:#1E7A4D;--edge-deep:#1c4c36;--edge-bg:#E3F1E9;--edge-line:#c4e2d2;
+    --clair:#A9640C;--clair-bg:#F6ECDD;--clair-line:#e4cfae;
+    --danger:#AD3B3B;--danger-bg:#F6E4E2;
+    --field-bg:#F4F6F9;--field-line:#e0e4ea;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --shadow:rgba(25,28,39,.16);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--paper);
+       -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .app{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+  /* ===== sidebar ===== */
+  .side{background:var(--panel);border-right:1px solid var(--line);padding:18px 14px;
+        display:flex;flex-direction:column;gap:6px}
+  .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 16px;font-weight:800;letter-spacing:-.01em}
+  .brand .dot{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--edge),var(--jeton));
+              display:grid;place-items:center;color:#fff;font-size:14px}
+  .brand small{font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--ink-faint);
+               text-transform:uppercase;display:block;font-weight:500}
+  .nav a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;color:var(--ink-soft);
+         text-decoration:none;font-size:14px;font-weight:500}
+  .nav a:hover{background:var(--paper-2);color:var(--ink)}
+  .nav a.on{background:var(--jeton-bg);color:var(--jeton);border:1px solid var(--jeton-line);font-weight:700}
+  .side .spacer{flex:1}
+  .side .foot{padding:10px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;
+              color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em}
+  /* ===== main ===== */
+  .main{display:flex;flex-direction:column;overflow:hidden}
+  .top{display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .top h1{font-size:18px;margin:0;letter-spacing:-.01em}
+  .top .pill{margin-left:auto;font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;
+             color:var(--edge-deep);background:var(--edge-bg);border:1px solid var(--edge-line);padding:5px 11px;border-radius:999px;
+             display:flex;align-items:center;gap:6px}
+  .top .pill i{width:7px;height:7px;border-radius:50%;background:var(--edge)}
+  .top .pill.warn{color:var(--clair);background:var(--clair-bg);border-color:var(--clair-line)}
+  .body{padding:24px;overflow-y:auto;display:grid;gap:18px}
+  /* ===== hero card ===== */
+  .hero{display:grid;grid-template-columns:1.4fr 1fr;gap:20px;background:var(--panel);
+        border:1px solid var(--line);border-radius:16px;padding:22px;align-items:center}
+  .hero .t{font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+  .hero .t em{color:var(--jeton);font-style:normal}
+  .hero p{color:var(--ink-soft);font-size:14px;line-height:1.6;margin:10px 0 0;max-width:52ch}
+  .hero .illu{display:grid;place-items:center;background:var(--paper-2);border-radius:12px;padding:12px}
+  /* ===== kpi ===== */
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .kpi .n{font-size:26px;font-weight:800;letter-spacing:-.02em}
+  .kpi .l{font-family:var(--mono);font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+  .kpi .s{font-size:12.5px;color:var(--ink-soft);margin-top:6px}
+  .kpi.ok .n{color:var(--edge)}
+  .kpi.teal .n{color:var(--jeton)}
+  /* ===== grid 2 col ===== */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .card h3{margin:0 0 12px;font-size:15px;letter-spacing:-.01em}
+  /* ===== status list ===== */
+  .srow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-2);font-size:13.5px}
+  .srow:last-child{border-bottom:none}
+  .srow .dotk{width:9px;height:9px;border-radius:3px;flex:0 0 auto}
+  .srow .kv{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--ink-soft)}
+  .srow.ok .dotk{background:var(--edge)}
+  .srow.jet .dotk{background:var(--jeton)}
+  .srow.warn .dotk{background:var(--clair)}
+  /* ===== journal table ===== */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);
+     text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+  td{padding:9px 10px;border-bottom:1px solid var(--line-2);color:var(--ink-soft)}
+  td.mono{font-family:var(--mono);font-size:12px;color:var(--ink)}
+  .badge{font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;padding:3px 7px;border-radius:999px}
+  .badge.ok{color:var(--edge-deep);background:var(--edge-bg);border:1px solid var(--edge-line)}
+  .badge.jet{color:var(--jeton);background:var(--jeton-bg);border:1px solid var(--jeton-line)}
+  @media(prefers-color-scheme:dark){
+    :root{--ink:#E7E9EF;--ink-soft:#A9AFBE;--ink-faint:#79808F;--paper:#0E1119;--paper-2:#141824;
+      --panel:#191F2C;--line:#2A3141;--line-2:#232A38;--jeton:#37B5C0;--jeton-bg:#0E2A2E;
+      --jeton-line:#1E4A50;--edge:#3FB878;--edge-deep:#A7DCBD;--edge-bg:#12271B;--edge-line:#2A5540;
+      --clair:#E2A24C;--danger:#E06A63;--field-bg:#12161F;--field-line:#2A3141;--shadow:rgba(0,0,0,.6)}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="side">
+    <div class="brand"><span class="dot">⟦⟧</span><span>CLOISON<small>console</small></span></div>
+    <nav class="nav">
+      <a href="#" class="on">▦ Tableau de bord</a>
+      <a href="#">✦ Activité</a>
+      <a href="#">🔎 Journal</a>
+      <a href="#">⚙ Paramètres</a>
+    </nav>
+    <div class="spacer"></div>
+    <div class="foot">v0.3.1 · open-core</div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="top">
+      <h1>Tableau de bord — confidentialité</h1>
+      <div class="pill"><i></i>masquage actif</div>
+    </header>
+
+    <div class="body">
+      <!-- Hero -->
+      <section class="hero">
+        <div>
+          <div class="t">Vos données n'atteignent <em>jamais</em> le modèle.</div>
+          <p>Le moteur pseudonymise la PII en jetons ⟦…⟧ à la frontière, restaure les vraies
+            valeurs au retour. Le cloud ne voit que des compteurs k-anonymes signés.</p>
+        </div>
+        <div class="illu">
+          <!-- inline hero-flow (extrait) -->
+          <svg width="270" height="150" viewBox="0 0 270 150" aria-label="flux">
+            <rect width="270" height="150" rx="12" fill="var(--paper-2)"/>
+            <g font-family="var(--mono)" font-size="11" fill="var(--ink-soft)">
+              <rect x="18" y="38" width="70" height="64" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+              <text x="30" y="62">Interface IA</text>
+              <text x="30" y="80" font-family="var(--mono)" font-size="9">Aminata, +221</text>
+              <rect x="104" y="34" width="64" height="72" rx="10" fill="var(--jeton)"/>
+              <text x="118" y="62" fill="#fff">⟦⟧</text>
+              <text x="118" y="82" fill="#fff" font-size="8">masquage</text>
+              <rect x="184" y="38" width="70" height="64" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+              <text x="196" y="62">LLM</text>
+              <text x="196" y="80" font-size="9">⟦…⟧ only</text>
+              <path d="M96 70 H100" stroke="var(--ink-soft)" stroke-width="2"/>
+              <path d="M172 70 H180" stroke="var(--jeton)" stroke-width="2"/>
+            </g>
+          </svg>
+        </div>
+      </section>
+
+      <!-- KPIs -->
+      <section class="kpis">
+        <div class="kpi ok"><div class="n">0</div><div class="l">sentinelles résiduelles</div><div class="s">restauration complète, chaîne intacte</div></div>
+        <div class="kpi teal"><div class="n">3</div><div class="l">types PII détectés</div><div class="s">nom · email · téléphone (+221)</div></div>
+        <div class="kpi"><div class="n">13</div><div class="l">entrées journal</div><div class="s">signées Ed25519 · vérifiables</div></div>
+      </section>
+
+      <!-- 2 colonnes -->
+      <section class="cols">
+        <div class="card">
+          <h3>État du mot de passe</h3>
+          <div class="srow jet"><span class="dotk"></span>Coffre chiffré (AES-256-GCM)<span class="kv">actif</span></div>
+          <div class="srow ok"><span class="dotk"></span>Auth locale — zéro dépendance cloud<span class="kv">OK</span></div>
+          <div class="srow warn"><span class="dotk"></span>Quasi-identifiants<span class="kv">signalés</span></div>
+          <div class="srow"><span class="dotk"></span>Embeddings<span class="kv">bloqués 404</span></div>
+        </div>
+        <div class="card">
+          <h3>Journal de transparence</h3>
+          <table>
+            <tr><th>seq</th><th>Hash</th><th>État</th></tr>
+            <tr><td class="mono">11</td><td class="mono">a1b2c3d4…</td><td><span class="badge ok">vérifié</span></td></tr>
+            <tr><td class="mono">12</td><td class="mono">e5f6a7b8…</td><td><span class="badge ok">vérifié</span></td></tr>
+            <tr><td class="mono">13</td><td class="mono">0a-…</td><td><span class="badge jet">vérifié</span></td></tr>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</body>
+</html>

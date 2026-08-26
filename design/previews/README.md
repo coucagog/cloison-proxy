@@ -8,6 +8,7 @@
 | Fichier | Écran | Statut |
 |---|---|---|
 | `mobile-app.html` | **App mobile — écran de chat confidentiel** : header marque + statut, conversation pseudonymisée (jetons ⟦⟧, restauration, signal quasi-id), bandeau « chiffré chez vous », composer, footer confiance. Clair/sombre auto. | ✅ maquette |
+| `desktop-dashboard.html` | **App desktop — dashboard confidentialité** : sidebar marque, hero « flux », KPIs (0 sentinelle, 3 types PII, 13 entrées journal), état du coffre, table du journal de transparence. Clair/sombre auto. | ✅ maquette |
 
 ## Comment en générer d'autres (via Open Design, une fois le daemon buildé)
 
