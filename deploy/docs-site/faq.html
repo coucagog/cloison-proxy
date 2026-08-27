@@ -14,8 +14,7 @@
     })();
   </script>
   <style>
-
-    :root {
+:root {
       /* CLOISON · palette officielle (clair) */
       --bg: #E7E9EE;
       --bg-2: #DEE1E8;
@@ -87,7 +86,7 @@
 
     * { box-sizing: border-box; }
     html { -webkit-text-size-adjust: 100%; }
-    @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+    @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; }}
 
     body {
       margin: 0;
@@ -106,28 +105,11 @@
     ul { margin: 0; padding: 0; list-style: none; }
 
     .wrap { max-width: var(--wrap); margin: 0 auto; padding-left: 40px; padding-right: 40px; }
-    @media (max-width: 900px) { .wrap { padding-left: 22px; padding-right: 22px; } }
+    @media (max-width: 900px) { .wrap { padding-left: 22px; padding-right: 22px; }}
 
     .mono { font-family: var(--font-mono); }
     .token { font-family: var(--font-mono); color: var(--jeton); font-size: 0.94em; white-space: nowrap; }
     .code { font-family: var(--font-mono); font-size: 0.9em; overflow-wrap: anywhere; }
-
-    /* ---------- Header ---------- */
-    .site-header {
-      position: sticky;
-      top: 0;
-      z-index: 60;
-      background: var(--header-bg);
-      backdrop-filter: saturate(180%) blur(14px);
-      -webkit-backdrop-filter: saturate(180%) blur(14px);
-      border-bottom: 1px solid var(--line-2);
-    }
-    .site-header .wrap {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-      height: 64px;
-    }
     .brand {
       display: inline-flex;
       align-items: center;
@@ -160,7 +142,7 @@
     }
     .nav a:hover { color: var(--fg); background: var(--bg-2); }
     .nav a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
-    @media (max-width: 1080px) { .nav a { display: none; } }
+    @media (max-width: 1080px) { .nav a { display: none; }}
 
     .theme-toggle {
       display: inline-flex;
@@ -182,60 +164,6 @@
     .theme-toggle .icon-sun { display: none; }
     :root[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
     :root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
-
-    /* ---------- Docs layout ---------- */
-    .docs-grid {
-      display: grid;
-      grid-template-columns: 246px minmax(0, 1fr) 220px;
-      gap: 48px;
-      max-width: var(--wrap);
-      margin: 0 auto;
-      padding: 48px 40px 96px;
-      align-items: start;
-    }
-    @media (max-width: 900px) { .docs-grid { padding-left: 22px; padding-right: 22px; } }
-
-    /* Left rail — grouped nav */
-    .docs-nav { position: sticky; top: 96px; max-height: calc(100vh - 120px); overflow-y: auto; }
-    .docs-nav .nav-group { margin-bottom: 30px; }
-    .docs-nav .nav-group:last-child { margin-bottom: 0; }
-    .nav-group-label {
-      display: block;
-      font-family: var(--font-mono);
-      font-size: 11.5px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 12px;
-    }
-    .docs-nav ul li { margin-bottom: 2px; }
-    .docs-nav a {
-      display: block;
-      position: relative;
-      padding: 7px 14px;
-      border-radius: 8px;
-      color: var(--muted);
-      font-size: 15px;
-      line-height: 1.4;
-      transition: color 160ms ease, background 160ms ease;
-    }
-    .docs-nav a:hover { color: var(--fg); background: var(--bg-2); }
-    .docs-nav a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
-    .docs-nav a[aria-current="page"] {
-      color: var(--fg);
-      font-weight: 640;
-      background: var(--bg-2);
-    }
-    .docs-nav a[aria-current="page"]::before {
-      content: "";
-      position: absolute;
-      inset-inline-start: 0;
-      top: 8px;
-      bottom: 8px;
-      width: 2px;
-      border-radius: 2px;
-      background: var(--jeton);
-    }
 
     /* Mobile nav drawer */
     .docs-drawer { display: none; margin-bottom: 32px; }
@@ -281,48 +209,8 @@
       font-weight: 640;
       background: var(--bg-2);
     }
-    .docs-drawer .nav-group { margin-bottom: 24px; }
-    .docs-drawer .nav-group:last-child { margin-bottom: 0; }
     @media (max-width: 800px) {
-      .docs-nav { display: none; }
-      .docs-drawer { display: block; }
-    }
-
-    /* Right rail — TOC */
-    .toc { position: sticky; top: 96px; max-height: calc(100vh - 120px); overflow-y: auto; }
-    .toc-title {
-      font-family: var(--font-mono);
-      font-size: 11.5px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 14px;
-    }
-    .toc ul li { margin-bottom: 2px; }
-    .toc a {
-      display: block;
-      padding: 6px 12px;
-      border-radius: 7px;
-      color: var(--muted);
-      font-size: 13.5px;
-      line-height: 1.4;
-      transition: color 160ms ease, background 160ms ease;
-      border-inline-start: 2px solid transparent;
-    }
-    .toc a:hover { color: var(--fg); background: var(--bg-2); }
-    .toc a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
-    .toc a.active {
-      color: var(--jeton-text);
-      font-weight: 600;
-      background: var(--bg-2);
-      border-inline-start-color: var(--jeton);
-    }
-    .toc .toc-sub { padding-inline-start: 12px; }
-    @media (max-width: 1000px) {
-      .toc { display: none; }
-      .docs-grid { grid-template-columns: 246px minmax(0, 1fr); }
-    }
-    @media (max-width: 800px) { .docs-grid { grid-template-columns: minmax(0, 1fr); } }
+      .docs-drawer { display: block; }}
 
     /* ---------- Article ---------- */
     .doc { min-width: 0; max-width: 720px; }
@@ -397,8 +285,7 @@
     .defs-def strong { color: var(--fg); font-weight: 600; }
     @media (max-width: 620px) {
       .defs-grid { grid-template-columns: 1fr; gap: 3px 0; }
-      .defs-def { margin-bottom: 14px; }
-    }
+      .defs-def { margin-bottom: 14px; }}
 
     /* Callouts */
     .callout {
@@ -529,75 +416,15 @@
     .limit-item .icon svg { width: 20px; height: 20px; display: block; }
     .limit-item span { color: var(--muted); font-size: 15.5px; line-height: 1.6; }
     .limit-item strong { color: var(--fg); font-weight: 640; }
-
-    /* ---------- Footer ---------- */
-    .site-footer {
-      border-top: 1px solid var(--line-2);
-      background: var(--bg-2);
-      padding: 72px 0 40px;
-    }
-    .footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 32px; }
-    .footer-brand .brand { margin-bottom: 16px; }
-    .footer-brand p { color: var(--muted); font-size: 14.5px; max-width: 34ch; }
-    .footer-col h4 {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--faint);
-      margin: 0 0 18px;
-      font-weight: 600;
-    }
-    .footer-col li { margin-bottom: 11px; }
-    .footer-col a { color: var(--muted); font-size: 15px; transition: color 160ms ease; }
-    .footer-col a:hover { color: var(--fg); }
-    .footer-col a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
-    .footer-tagline {
-      margin-top: 56px;
-      padding-top: 26px;
-      border-top: 1px solid var(--line-2);
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      font-family: var(--font-mono);
-      font-size: 13px;
-      color: var(--muted);
-    }
-    .footer-tagline .hosts { display: flex; flex-wrap: wrap; gap: 0 20px; }
-    .footer-tagline a:hover { color: var(--fg); }
-
-    @media (max-width: 900px) { .footer-grid { grid-template-columns: 1fr 1fr 1fr; } .footer-brand { grid-column: 1 / -1; } }
     @media (max-width: 620px) {
-      .footer-grid { grid-template-columns: 1fr; gap: 28px; }
       .doc h3 { margin-top: 34px; }
       .doc-table { font-size: 13px; }
-      .doc-table th, .doc-table td { padding: 10px 11px; }
-    }
+      .doc-table th, .doc-table td { padding: 10px 11px; }}
 
     @media (prefers-reduced-motion: reduce) {
       * { transition: none !important; animation: none !important; }
-      html { scroll-behavior: auto; }
-    }
-      /* ---------- Docs pager (prev / next) ---------- */
-    .doc-pager { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 56px; }
-    .doc-pager a, .doc-pager span { display: block; padding: 16px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); text-decoration: none; transition: border-color 160ms ease, background 160ms ease; }
-    .doc-pager a small, .doc-pager span small { display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
-    .doc-pager a span, .doc-pager span span { display: block; font-size: 14.5px; font-weight: 620; }
-    .doc-pager a:hover { border-color: var(--jeton); background: var(--jeton-soft); }
-    .doc-pager .prev { text-align: left; }
-    .doc-pager .next { text-align: right; }
-    .doc-pager .dead { opacity: .45; pointer-events: none; }
-      /* ---------- Docs sidebar nav (canonical) ---------- */
-    .nav-groups { display: grid; gap: 24px; }
-    .nav-group { display: grid; gap: 2px; }
-    .nav-group-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); padding-inline-start: 12px; margin-bottom: 8px; }
-    .nav-link { display: block; padding: 7px 12px; border-inline-start: 2px solid transparent; border-radius: 0 8px 8px 0; color: var(--muted); font-size: 14.5px; line-height: 1.4; transition: color 160ms ease, background 160ms ease, border-color 160ms ease; }
-    .nav-link:hover { color: var(--fg); background: var(--bg-2); }
-    .nav-link:focus-visible { outline: 2px solid var(--jeton); outline-offset: 1px; }
-    .nav-link[aria-current="page"] { color: var(--fg); font-weight: 620; border-inline-start-color: var(--jeton); background: var(--jeton-soft); }
-  
+      html { scroll-behavior: auto; }}
+
 /* ================= Header ================= */
     .site-header {
       position: sticky;
@@ -1037,8 +864,7 @@
 
     <!-- ============ ARTICLE ============ -->
     <main class="article doc" id="top" data-od-id="article">
-
-        <h1 data-od-id="doc-title">FAQ &amp; limites honnêtes</h1>
+<h1 data-od-id="doc-title">FAQ &amp; limites honnêtes</h1>
         <p class="lede" data-od-id="doc-lede">Les réponses aux questions qu'on nous pose le plus souvent sur ce que CLOISON fait — et ce qu'il ne fait pas. Nous préférons poser les limites à voix haute plutôt que de vous laisser les découvrir.</p>
 
         <!-- Abreviations -->

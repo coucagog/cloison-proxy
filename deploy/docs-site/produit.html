@@ -14,8 +14,7 @@
     })();
   </script>
   <style>
-
-    :root {
+:root {
       /* CLOISON · palette officielle (clair) */
       --bg: #E7E9EE;
       --bg-2: #DEE1E8;
@@ -89,7 +88,7 @@
 
     * { box-sizing: border-box; }
     html { -webkit-text-size-adjust: 100%; }
-    @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+    @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; }}
 
     body {
       margin: 0;
@@ -108,24 +107,7 @@
     ul, ol { margin: 0; padding-inline-start: 0; list-style: none; }
 
     .wrap { max-width: var(--wrap); margin: 0 auto; padding-left: 32px; padding-right: 32px; }
-    @media (max-width: 620px) { .wrap { padding-left: 20px; padding-right: 20px; } }
-
-    /* ---------- Header ---------- */
-    .site-header {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      background: var(--header-bg);
-      backdrop-filter: saturate(180%) blur(14px);
-      -webkit-backdrop-filter: saturate(180%) blur(14px);
-      border-bottom: 1px solid var(--line-2);
-    }
-    .site-header .wrap {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-      height: 64px;
-    }
+    @media (max-width: 620px) { .wrap { padding-left: 20px; padding-right: 20px; }}
     .brand {
       display: inline-flex;
       align-items: center;
@@ -159,7 +141,7 @@
     .nav a:hover { color: var(--fg); background: var(--bg-2); }
     .nav a[aria-current="page"] { color: var(--fg); background: var(--bg-2); }
     .nav a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
-    @media (max-width: 940px) { .nav a { display: none; } }
+    @media (max-width: 940px) { .nav a { display: none; }}
 
     .theme-toggle {
       display: inline-flex;
@@ -181,66 +163,6 @@
     .theme-toggle .icon-sun { display: none; }
     :root[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
     :root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
-
-    /* ---------- Docs shell (3 columns) ---------- */
-    .docs-shell {
-      max-width: var(--docs);
-      margin: 0 auto;
-      padding: 48px 32px 96px;
-      display: grid;
-      grid-template-columns: 236px minmax(0, 1fr) 220px;
-      gap: 48px;
-      align-items: start;
-    }
-    @media (max-width: 1220px) { .docs-shell { grid-template-columns: 232px minmax(0, 1fr); } .toc { display: none; } }
-    @media (max-width: 940px) { .docs-shell { grid-template-columns: 1fr; gap: 36px; } .sidebar { display: none; } }
-    @media (max-width: 620px) { .docs-shell { padding-left: 20px; padding-right: 20px; } }
-
-    /* ---------- Sidebar nav (inline-start) ---------- */
-    .sidebar { position: sticky; top: 96px; }
-    .side-group + .side-group { margin-top: 30px; }
-    .side-group > h2 {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--faint);
-      font-weight: 600;
-      margin-bottom: 10px;
-    }
-    .side-group ul { display: flex; flex-direction: column; gap: 2px; }
-    .side-group a {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      padding: 7px 10px 7px 14px;
-      margin-inline-start: 0;
-      border-inline-start: 2px solid transparent;
-      border-radius: 8px;
-      color: var(--muted);
-      font-size: 14.5px;
-      line-height: 1.35;
-      transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
-    }
-    .side-group a::before {
-      content: "";
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: var(--line);
-      flex: 0 0 auto;
-      transition: background 160ms ease;
-    }
-    .side-group a:hover { color: var(--fg); background: var(--bg-2); border-inline-start-color: var(--faint); }
-    .side-group a:hover::before { background: var(--faint); }
-    .side-group a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
-    .side-group a[aria-current="page"] {
-      color: var(--fg);
-      font-weight: 600;
-      background: var(--bg-2);
-      border-inline-start-color: var(--jeton);
-    }
-    .side-group a[aria-current="page"]::before { background: var(--jeton); }
 
     /* ---------- Article body ---------- */
     .article { min-width: 0; }
@@ -367,7 +289,7 @@
       box-shadow: 0 1px 0 rgba(25, 28, 39, 0.03);
     }
     pre code { background: none; border: none; padding: 0; font-size: inherit; color: inherit; }
-    @media (max-width: 620px) { pre { padding: 18px; font-size: 12.5px; } }
+    @media (max-width: 620px) { pre { padding: 18px; font-size: 12.5px; }}
 
     /* ---------- Tables ---------- */
     .table-wrap { border: 1px solid var(--line-2); border-radius: var(--radius); overflow-x: auto; margin: 24px 0; }
@@ -386,7 +308,7 @@
     td { padding: 13px 16px; border-top: 1px solid var(--line-2); color: var(--fg); font-size: 15px; line-height: 1.5; vertical-align: top; }
     td:first-child { white-space: nowrap; font-weight: 600; }
     td code { font-size: 0.84em; }
-    @media (max-width: 620px) { .table-wrap table { min-width: 460px; } }
+    @media (max-width: 620px) { .table-wrap table { min-width: 460px; }}
 
     /* ---------- Callouts ---------- */
     .callout {
@@ -455,136 +377,12 @@
     }
     .mono-link:hover { color: var(--jeton-text); border-color: var(--jeton-text); }
     .mono-link:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
-
-    /* ---------- TOC (inline-end) ---------- */
-    .toc { position: sticky; top: 96px; }
-    .toc > h2 {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--faint);
-      font-weight: 600;
-      margin-bottom: 12px;
-    }
-    .toc ul { display: flex; flex-direction: column; gap: 2px; }
-    .toc a {
-      display: block;
-      padding: 6px 12px 6px 14px;
-      border-inline-start: 2px solid transparent;
-      border-radius: 8px;
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.4;
-      transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
-    }
-    .toc a:hover { color: var(--fg); background: var(--bg-2); border-inline-start-color: var(--line); }
-    .toc a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
-    .toc a.active { color: var(--jeton-text); font-weight: 600; background: var(--bg-2); border-inline-start-color: var(--jeton); }
-
-    /* ---------- Mobile nav drawer ---------- */
-    .docs-nav-mobile {
-      display: none;
-      border: 1px solid var(--line-2);
-      border-radius: var(--radius);
-      background: var(--surface);
-      margin: 0 0 8px;
-    }
-    .docs-nav-mobile summary {
-      list-style: none;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      padding: 15px 18px;
-      font-family: var(--font-mono);
-      font-size: 12.5px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--muted);
-      font-weight: 600;
-    }
-    .docs-nav-mobile summary::-webkit-details-marker { display: none; }
-    .docs-nav-mobile summary:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
-    .docs-nav-mobile summary::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--jeton); }
-    .docs-nav-mobile summary::after { content: "+"; margin-inline-start: auto; color: var(--muted); font-family: var(--font-mono); }
-    .docs-nav-mobile[open] summary::after { content: "−"; }
-    .docs-nav-mobile .nav-wrap { padding: 6px 18px 18px; }
-    .docs-nav-mobile .side-group + .side-group { margin-top: 18px; }
-    .docs-nav-mobile .side-group > h2 { color: var(--faint); }
-    @media (max-width: 940px) { .docs-nav-mobile { display: block; } }
-
-    /* ---------- Footer ---------- */
-    .site-footer {
-      border-top: 1px solid var(--line-2);
-      background: var(--bg-2);
-      padding: 72px 0 40px;
-    }
-    .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 32px; }
-    .footer-brand .brand { margin-bottom: 16px; }
-    .footer-brand p { color: var(--muted); font-size: 14.5px; max-width: 34ch; }
-    .footer-col h4 {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--faint);
-      margin: 0 0 18px;
-      font-weight: 600;
-    }
-    .footer-col ul { list-style: none; margin: 0; padding: 0; }
-    .footer-col li { margin-bottom: 11px; }
-    .footer-col a { color: var(--muted); font-size: 15px; transition: color 160ms ease; }
-    .footer-col a:hover { color: var(--fg); }
-    .footer-col a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
-
-    .footer-tagline {
-      margin-top: 56px;
-      padding-top: 26px;
-      border-top: 1px solid var(--line-2);
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      font-family: var(--font-mono);
-      font-size: 13px;
-      color: var(--muted);
-    }
-    .footer-tagline .hosts { display: flex; flex-wrap: wrap; gap: 0 20px; }
-    .footer-tagline a:hover { color: var(--fg); }
-
-    /* ---------- Responsive (footer) ---------- */
-    @media (max-width: 900px) {
-      .footer-grid { grid-template-columns: 1fr 1fr 1fr; }
-      .footer-brand { grid-column: 1 / -1; }
-    }
     @media (max-width: 620px) {
-      .footer-grid { grid-template-columns: 1fr; gap: 28px; }
-      .doc-section > h2 { font-size: 24px; }
-    }
+      .doc-section > h2 { font-size: 24px; }}
 
     @media (prefers-reduced-motion: reduce) {
-      * { transition: none !important; animation: none !important; }
-    }
-      /* ---------- Docs pager (prev / next) ---------- */
-    .doc-pager { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 56px; }
-    .doc-pager a, .doc-pager span { display: block; padding: 16px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); text-decoration: none; transition: border-color 160ms ease, background 160ms ease; }
-    .doc-pager a small, .doc-pager span small { display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
-    .doc-pager a span, .doc-pager span span { display: block; font-size: 14.5px; font-weight: 620; }
-    .doc-pager a:hover { border-color: var(--jeton); background: var(--jeton-soft); }
-    .doc-pager .prev { text-align: left; }
-    .doc-pager .next { text-align: right; }
-    .doc-pager .dead { opacity: .45; pointer-events: none; }
-      /* ---------- Docs sidebar nav (canonical) ---------- */
-    .nav-groups { display: grid; gap: 24px; }
-    .nav-group { display: grid; gap: 2px; }
-    .nav-group-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); padding-inline-start: 12px; margin-bottom: 8px; }
-    .nav-link { display: block; padding: 7px 12px; border-inline-start: 2px solid transparent; border-radius: 0 8px 8px 0; color: var(--muted); font-size: 14.5px; line-height: 1.4; transition: color 160ms ease, background 160ms ease, border-color 160ms ease; }
-    .nav-link:hover { color: var(--fg); background: var(--bg-2); }
-    .nav-link:focus-visible { outline: 2px solid var(--jeton); outline-offset: 1px; }
-    .nav-link[aria-current="page"] { color: var(--fg); font-weight: 620; border-inline-start-color: var(--jeton); background: var(--jeton-soft); }
-  
+      * { transition: none !important; animation: none !important; }}
+
 /* ================= Header ================= */
     .site-header {
       position: sticky;
@@ -1024,8 +822,7 @@
 
     <!-- ============ ARTICLE ============ -->
     <main class="article" id="top" data-od-id="article">
-
-      <div class="doc-head">
+<div class="doc-head">
         <span class="doc-eyebrow" data-od-id="doc-eyebrow"><span class="dot" aria-hidden="true"></span>Le produit · comment ça marche</span>
         <h1 data-od-id="doc-title">Un proxy entre votre interface et le modèle : rien d'autre ne change.</h1>
         <p class="lede" data-od-id="doc-lede">CLOISON parle le protocole OpenAI. La plupart des interfaces IA se branchent en deux champs — la Base URL et la clé composite. Ce qui change, ce n'est pas votre produit : c'est ce que le fournisseur reçoit, et ce que l'opérateur peut prouver.</p>
