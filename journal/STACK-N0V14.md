@@ -172,3 +172,19 @@ prod à l'arrivée d'un client réel).
   prochaine refonte) ; le **template docs-page d'Open Design** reste la
   source des divergences — toute future génération devra être re-normalisée
   ou le template aligné sur la coquille canonique.
+
+### Retour pilote post-déploiement (à corriger en session suivante)
+
+Sur `api.html`, `install-n0.html`, `open-core.html` : le TOC « Sur cette
+page » ne suit pas la section en cours au défilement (la couleur active ne
+suit pas), la sidebar « Découvrir » n'est pas identique aux autres pages,
+ni les boutons précédent/suivant. **Recette pilote** : répliquer le
+fonctionnement du TOC depuis `journal.html`, et la sidebar + le pager depuis
+`mobile.html`. **Causes racines identifiées** : règles legacy retenues qui
+masquent la sidebar — `install-n0` (`body.docs-menu-open .sidebar`, la classe
+n'est plus jamais posée → sidebar invisible) et `open-core`
+(`body.drawer-open .sidebar` + `transform: translateX(-100%)` → sidebar hors
+écran) ; labels TOC collés « 01Xxx » (améliorer `headingLabel`). Correctif
+recommandé : purger les règles de coquille legacy des `<style>` au lieu de
+l'écrasement par le canonique. Détail complet dans le handoff racine
+`NEXT-SESSION.md` §6-7.
