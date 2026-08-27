@@ -1,165 +1,841 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-theme="light">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="description" content="CLOISON Mobile Android &amp; iOS — app WebView + moteur WASM : pseudonymisation in-app, coffre in-memory, chat + LLM configurable. Comment compiler l'APK / l'app iOS et l'utiliser." />
-<title>Mobile Android &amp; iOS — CLOISON</title>
-<link rel="stylesheet" href="assets/docs.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mobile Android &amp; iOS — CLOISON</title>
+  <meta name="description" content="CLOISON Mobile : une app native Android & iOS qui embarque le moteur N0 dans un coffre en mémoire. Pseudonymisation sur le poste, NER local, aucun envoi — seuls des compteurs k-anonymes signés remontent pour l'audit." />
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('cloison-theme'); } catch (e) {}
+      if (!t) t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <style>
+    :root {
+      /* CLOISON · palette officielle (clair) */
+      --bg: #E7E9EE;
+      --bg-2: #DEE1E8;
+      --surface: #FFFFFF;
+      --fg: #191C27;
+      --muted: #535868;
+      --faint: #8A8F9E;
+      --line: #CFD3DC;
+      --line-2: #E3E6EC;
+
+      --jeton: #0B7A85;        /* identité — liens actifs, teal */
+      --jeton-soft: #E1F0F1;
+      --jeton-soft-2: #bfe0e3;
+
+      --edge: #1E7A4D;         /* confiance / succès — vérifié */
+      --edge-soft: #E3F1E9;
+      --edge-line: #c4e2d2;
+
+      --clair: #A9640C;        /* attention honnête — limites */
+      --clair-soft: #F6ECDD;
+      --clair-line: #e4cfae;
+
+      --danger: #AD3B3B;
+      --danger-soft: #F6E4E2;
+
+      --jeton-text: #09646D;
+      --clair-text: #8C5004;
+
+      --header-bg: rgba(231, 233, 238, 0.82);
+
+      --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+      --wrap: 1060px;
+      --radius: 14px;
+      --radius-sm: 9px;
+      --header-h: 64px;
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #0E1119;
+      --bg-2: #141824;
+      --surface: #191F2C;
+      --fg: #E7E9EF;
+      --muted: #A9AFBE;
+      --faint: #79808F;
+      --line: #2A3141;
+      --line-2: #232A38;
+
+      --jeton: #37B5C0;
+      --jeton-soft: rgba(55, 181, 192, 0.14);
+      --jeton-soft-2: rgba(55, 181, 192, 0.22);
+
+      --edge: #3FB878;
+      --edge-soft: rgba(63, 184, 120, 0.14);
+      --edge-line: rgba(63, 184, 120, 0.30);
+
+      --clair: #E2A24C;
+      --clair-soft: rgba(226, 162, 76, 0.14);
+      --clair-line: rgba(226, 162, 76, 0.30);
+
+      --danger: #E06A63;
+      --danger-soft: rgba(224, 106, 99, 0.16);
+
+      --jeton-text: #37B5C0;
+      --clair-text: #E2A24C;
+
+      --header-bg: rgba(14, 17, 25, 0.82);
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 17px/1.62 var(--font-ui);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      transition: background 180ms ease, color 180ms ease;
+    }
+
+    a { color: var(--jeton); text-decoration: none; }
+    p { margin: 0; }
+    ul, ol { margin: 0; padding: 0; list-style: none; }
+    button { font: inherit; cursor: pointer; }
+
+    .mono { font-family: var(--font-mono); }
+
+    /* ---------- Header ---------- */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      background: var(--header-bg);
+      backdrop-filter: saturate(180%) blur(14px);
+      -webkit-backdrop-filter: saturate(180%) blur(14px);
+      border-bottom: 1px solid var(--line-2);
+    }
+    .site-header .wrap {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      height: var(--header-h);
+      max-width: 1280px;
+      margin: 0 auto;
+      padding-left: 28px;
+      padding-right: 28px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 800;
+      font-size: 16.5px;
+      letter-spacing: 0.045em;
+      color: var(--fg);
+      white-space: nowrap;
+    }
+    .brand-mark {
+      width: 11px;
+      height: 11px;
+      border-radius: 2.5px;
+      background: var(--fg);
+      flex: 0 0 auto;
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      margin-left: auto;
+    }
+    .nav a {
+      color: var(--muted);
+      font-size: 14px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: color 160ms ease, background 160ms ease;
+    }
+    .nav a:hover { color: var(--fg); background: var(--bg-2); }
+    .nav a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    @media (max-width: 940px) { .nav a { display: none; } }
+
+    .theme-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      flex: 0 0 auto;
+      margin-left: 8px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--fg);
+      transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+    }
+    .theme-toggle:hover { background: var(--bg-2); border-color: var(--line); }
+    .theme-toggle:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .theme-toggle svg { width: 18px; height: 18px; }
+    .theme-toggle .icon-sun { display: none; }
+    :root[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+    :root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+
+    /* ---------- Docs shell ---------- */
+    .docs-shell {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 28px 40px;
+      display: grid;
+      grid-template-columns: 252px minmax(0, 1fr) 236px;
+      gap: 48px;
+      align-items: start;
+    }
+
+    /* ---------- Sidebar ---------- */
+    .sidebar {
+      position: sticky;
+      top: calc(var(--header-h) + 20px);
+      max-height: calc(100vh - var(--header-h) - 40px);
+      overflow-y: auto;
+      padding: 28px 4px 28px 0;
+      border-inline-end: 1px solid var(--line-2);
+      font-size: 14px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--line) transparent;
+    }
+    .sidebar .group { margin-bottom: 26px; }
+    .sidebar .group-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--faint);
+      padding: 0 0 8px;
+      margin: 0;
+    }
+    .sidebar a {
+      display: block;
+      position: relative;
+      color: var(--muted);
+      padding: 6px 10px 6px 14px;
+      border-radius: 8px;
+      transition: color 160ms ease, background 160ms ease;
+    }
+    .sidebar a:hover { color: var(--fg); background: var(--bg-2); }
+    .sidebar a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .sidebar a[aria-current="page"] {
+      color: var(--jeton-text);
+      background: var(--jeton-soft);
+      font-weight: 560;
+      border-inline-start: 3px solid var(--jeton);
+      padding-inline-start: 11px;
+    }
+
+    /* ---------- Article ---------- */
+    .article { min-width: 0; padding: 32px 0 0; max-width: 720px; }
+    .crumbs {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 14px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.01em;
+    }
+    .crumbs a { color: var(--muted); }
+    .crumbs a:hover { color: var(--fg); }
+    .article h1 {
+      font-size: clamp(30px, 4vw, 40px);
+      line-height: 1.12;
+      letter-spacing: -0.022em;
+      font-weight: 780;
+      margin: 0 0 16px;
+      text-wrap: balance;
+    }
+    .article .lede {
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.6;
+      margin: 0 0 6px;
+      max-width: 66ch;
+    }
+    .article h2 {
+      font-size: clamp(22px, 2.6vw, 27px);
+      line-height: 1.2;
+      letter-spacing: -0.018em;
+      font-weight: 720;
+      margin: 56px 0 14px;
+      text-wrap: balance;
+      scroll-margin-top: calc(var(--header-h) + 24px);
+    }
+    .article h2 .h2-num {
+      font-family: var(--font-mono);
+      font-size: 0.72em;
+      letter-spacing: 0.06em;
+      color: var(--jeton-text);
+      margin-inline-end: 8px;
+    }
+    .article h3 {
+      font-size: 18px;
+      line-height: 1.3;
+      letter-spacing: -0.012em;
+      font-weight: 640;
+      margin: 30px 0 8px;
+    }
+    .article p { margin: 14px 0; color: var(--fg); }
+    .article ul, .article ol { margin: 14px 0; padding-inline-start: 22px; }
+    .article ul { list-style: disc; }
+    .article ol { list-style: decimal; }
+    .article li { margin: 7px 0; color: var(--fg); }
+    .article li::marker { color: var(--muted); }
+    .article strong { font-weight: 640; }
+    .article a:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+    .code, .token { font-family: var(--font-mono); }
+    .code { font-size: 0.89em; overflow-wrap: anywhere; }
+    .token { color: var(--jeton); font-size: 0.94em; white-space: nowrap; }
+
+    .article pre {
+      background: var(--surface);
+      border: 1px solid var(--line-2);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 13.5px;
+      line-height: 1.68;
+      color: var(--fg);
+      margin: 18px 0;
+      scrollbar-width: thin;
+    }
+    .article pre .cm { color: var(--muted); }
+    .article pre .dash { color: var(--faint); }
+    .article pre .tok { color: var(--jeton); font-weight: 600; }
+
+    .callout {
+      display: block;
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin: 22px 0;
+      font-size: 15px;
+      line-height: 1.6;
+      border: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .callout .label {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .callout p { margin: 8px 0; }
+    .callout p:first-of-type { margin-top: 0; }
+    .callout p:last-child { margin-bottom: 0; }
+    .callout.note { border-inline-start: 3px solid var(--jeton); }
+    .callout.note .label { color: var(--jeton-text); }
+    .callout.warn { border-inline-start: 3px solid var(--clair); background: var(--clair-soft); }
+    .callout.warn .label { color: var(--clair-text); }
+
+    .article table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 14.5px;
+      line-height: 1.55;
+    }
+    .article th {
+      text-align: start;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--faint);
+      font-weight: 600;
+      padding: 10px 12px 12px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .article td {
+      padding: 12px 12px 12px 0;
+      border-bottom: 1px solid var(--line-2);
+      color: var(--fg);
+      vertical-align: top;
+    }
+    .article td:first-child { color: var(--fg); font-weight: 560; white-space: nowrap; }
+    .article td.mono { font-family: var(--font-mono); font-size: 0.92em; color: var(--muted); }
+
+    .figure {
+      display: grid;
+      place-items: center;
+      margin: 34px 0 40px;
+    }
+    .figure svg { width: 258px; height: auto; display: block; }
+    .figure figcaption {
+      margin-top: 14px;
+      max-width: 46ch;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13.5px;
+      line-height: 1.55;
+    }
+
+    /* ---------- TOC ---------- */
+    .toc {
+      position: sticky;
+      top: calc(var(--header-h) + 20px);
+      max-height: calc(100vh - var(--header-h) - 40px);
+      overflow-y: auto;
+      padding: 28px 0 28px 12px;
+      border-inline-start: 1px solid var(--line-2);
+      font-size: 13.5px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--line) transparent;
+    }
+    .toc .toc-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--faint);
+      margin-bottom: 12px;
+    }
+    .toc a {
+      display: block;
+      position: relative;
+      color: var(--muted);
+      padding: 6px 0 6px 12px;
+      border-inline-start: 2px solid transparent;
+      transition: color 160ms ease, border-color 160ms ease;
+    }
+    .toc a:hover { color: var(--fg); }
+    .toc a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .toc a.active { color: var(--jeton-text); border-inline-start-color: var(--jeton); font-weight: 560; }
+
+    /* ---------- Footer ---------- */
+    .site-footer {
+      border-top: 1px solid var(--line-2);
+      background: var(--bg-2);
+      padding: 72px 0 40px;
+    }
+    .site-footer .wrap { max-width: 1280px; margin: 0 auto; padding: 0 28px; }
+    .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 32px; }
+    .footer-brand .brand { margin-bottom: 16px; }
+    .footer-brand p { color: var(--muted); font-size: 14.5px; max-width: 34ch; }
+    .footer-col h4 {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--faint);
+      margin: 0 0 18px;
+      font-weight: 600;
+    }
+    .footer-col ul { list-style: none; }
+    .footer-col li { margin-bottom: 11px; }
+    .footer-col a { color: var(--muted); font-size: 15px; transition: color 160ms ease; }
+    .footer-col a:hover { color: var(--fg); }
+    .footer-col a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .footer-tagline {
+      margin-top: 56px;
+      padding-top: 26px;
+      border-top: 1px solid var(--line-2);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .footer-tagline .hosts { display: flex; flex-wrap: wrap; gap: 0 20px; }
+    .footer-tagline a:hover { color: var(--fg); }
+
+    /* ---------- Phone SVG ---------- */
+    .phone text { font-family: var(--font-mono); }
+    .phone .t-ui { font-family: var(--font-ui); }
+    .phone .ph-frame { fill: var(--surface); stroke: var(--faint); }
+    .phone .ph-screen { fill: var(--bg); }
+    .phone .ph-div { stroke: var(--line-2); }
+    .phone .ph-ink { fill: var(--fg); }
+    .phone .ph-muted { fill: var(--muted); }
+    .phone .ph-faint { fill: var(--faint); }
+    .phone .ph-surface { fill: var(--surface); stroke: var(--line-2); }
+    .phone .ph-accent { fill: var(--jeton); }
+    .phone .ph-accent-soft { fill: var(--jeton-soft); }
+    .phone .ph-edge-soft { fill: var(--edge-soft); stroke: var(--edge-line); }
+    .phone .ph-edge { fill: var(--edge); }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 1080px) {
+      .docs-shell { grid-template-columns: 236px minmax(0, 1fr); gap: 36px; }
+      .toc { display: none; }
+    }
+    @media (max-width: 940px) {
+      .docs-shell { grid-template-columns: 220px minmax(0, 1fr); }
+    }
+    @media (max-width: 760px) {
+      .docs-shell { grid-template-columns: 1fr; gap: 0; padding: 0 20px 32px; }
+      .sidebar {
+        position: static;
+        max-height: none;
+        overflow-x: auto;
+        display: flex;
+        gap: 10px;
+        padding: 16px 0;
+        border-inline-end: none;
+        border-bottom: 1px solid var(--line-2);
+        white-space: nowrap;
+        scrollbar-width: thin;
+      }
+      .sidebar .group { display: contents; }
+      .sidebar .group-label { display: none; }
+      .sidebar a {
+        display: inline-flex;
+        align-items: center;
+        padding: 7px 13px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--muted);
+      }
+      .sidebar a[aria-current="page"] {
+        border-color: var(--jeton-soft-2);
+        background: var(--jeton-soft);
+        color: var(--jeton-text);
+        border-inline-start: 1px solid var(--jeton-soft-2);
+        padding-inline-start: 13px;
+      }
+      .article { padding: 24px 0 0; }
+      .footer-grid { grid-template-columns: 1fr; gap: 28px; }
+      .footer-brand { grid-column: auto; }
+    }
+    @media (max-width: 520px) {
+      .article pre { font-size: 12.5px; }
+      .figure svg { width: 224px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+      html { scroll-behavior: auto; }
+    }
+      /* ---------- Docs pager (prev / next) ---------- */
+    .doc-pager { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 56px; }
+    .doc-pager a, .doc-pager span { display: block; padding: 16px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); text-decoration: none; transition: border-color 160ms ease, background 160ms ease; }
+    .doc-pager a small, .doc-pager span small { display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+    .doc-pager a span, .doc-pager span span { display: block; font-size: 14.5px; font-weight: 620; }
+    .doc-pager a:hover { border-color: var(--jeton); background: var(--jeton-soft); }
+    .doc-pager .prev { text-align: left; }
+    .doc-pager .next { text-align: right; }
+    .doc-pager .dead { opacity: .45; pointer-events: none; }
+      /* ---------- Docs sidebar nav (canonical) ---------- */
+    .nav-groups { display: grid; gap: 24px; }
+    .nav-group { display: grid; gap: 2px; }
+    .nav-group-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); padding-inline-start: 12px; margin-bottom: 8px; }
+    .nav-link { display: block; padding: 7px 12px; border-inline-start: 2px solid transparent; border-radius: 0 8px 8px 0; color: var(--muted); font-size: 14.5px; line-height: 1.4; transition: color 160ms ease, background 160ms ease, border-color 160ms ease; }
+    .nav-link:hover { color: var(--fg); background: var(--bg-2); }
+    .nav-link:focus-visible { outline: 2px solid var(--jeton); outline-offset: 1px; }
+    .nav-link[aria-current="page"] { color: var(--fg); font-weight: 620; border-inline-start-color: var(--jeton); background: var(--jeton-soft); }
+  </style>
 </head>
 <body>
-
-<header class="top">
-  <div class="wrap">
-    <a class="brand" href="index.html"><span class="dot"></span>CLOISON <small>proxy de confidentialité</small></a>
-    <div class="right">
-      <nav>
+  <header class="site-header" data-od-id="header">
+    <div class="wrap">
+      <a class="brand" href="#top" data-od-id="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>CLOISON</span>
+      </a>
+      <nav class="nav" aria-label="Navigation principale" data-od-id="nav">
         <a href="produit.html">Le produit</a>
         <a href="install-n0.html">Installer N0</a>
-        <a href="mobile.html" aria-current="page">Mobile</a>
+        <a href="mobile.html">Mobile</a>
         <a href="api.html">API</a>
         <a href="journal.html">Journal</a>
         <a href="open-core.html">Open-core</a>
         <a href="faq.html">FAQ</a>
+        <a href="glossaire.html">Glossaire</a>
       </nav>
-      <button class="theme-btn" id="themeBtn" type="button" aria-label="Basculer thème clair / sombre" aria-pressed="false" title="Thème clair / sombre">
-        <svg class="ic ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-        <svg class="ic ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v2.6M12 19.4V22M2 12h2.6M19.4 12H22M4.8 4.8l1.9 1.9M17.3 17.3l1.9 1.9M19.2 4.8l-1.9 1.9M6.7 17.3l-1.9 1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Basculer le thème" aria-pressed="false" data-od-id="theme-toggle">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.2M12 19.8V22M22 12h-2.2M4.2 12H2M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6M18.4 18.4l-1.6-1.6M7.2 7.2 5.6 5.6"/></svg>
       </button>
     </div>
-  </div>
-</header>
+  </header>
 
-<section class="hero">
-  <div class="wrap">
-    <div class="eyebrow">Déclinaison mobile · Android d'abord</div>
-    <h1>CLOISON dans votre poche : <span class="hl">même moteur, aucune PII hors de l'app</span>.</h1>
-    <p class="lede">Une app Android (WebView + moteur WASM <code>@cloison/core</code>) qui
-      pseudonymise <strong>in-app</strong> : votre message est tokenisé avant d'être envoyé
-      au fournisseur LLM, la réponse est restaurée dans l'app. Coffre <strong>in-memory</strong>,
-      rien n'est persisté.</p>
-    <div class="note">
-      <span class="k">État</span>
-      <div>Les sources v1 sont livrées pour <b>Android et iOS</b> (même moteur
-        WASM, même périmètre). L'APK se compile avec <b>wasm-pack</b> + le
-        <b>SDK Android</b> ; l'app iOS avec <b>wasm-pack</b> + <b>Xcode</b> —
-        procédures ci-dessous.</div>
-    </div>
-  </div>
-</section>
+  <main id="top">
+    <div class="docs-shell">
+      <!-- LEFT NAV -->
+            <nav class="sidebar" aria-label="Navigation de la documentation" data-od-id="sidebar">
+        <div class="nav-groups">
+          <div class="nav-group">
+            <div class="nav-group-label">Découvrir</div>
+            <a class="nav-link" href="index.html">Accueil</a>
+            <a class="nav-link" href="produit.html">Le produit</a>
+            <a class="nav-link" href="mobile.html" aria-current="page">Mobile</a>
+          </div>
+          <div class="nav-group">
+            <div class="nav-group-label">Déployer</div>
+            <a class="nav-link" href="install-n0.html">Installer N0</a>
+            <a class="nav-link" href="api.html">API</a>
+          </div>
+          <div class="nav-group">
+            <div class="nav-group-label">Vérifier</div>
+            <a class="nav-link" href="journal.html">Journal de transparence</a>
+            <a class="nav-link" href="open-core.html">Open-core</a>
+          </div>
+          <div class="nav-group">
+            <div class="nav-group-label">Référence</div>
+            <a class="nav-link" href="faq.html">FAQ</a>
+            <a class="nav-link" href="glossaire.html">Glossaire</a>
+          </div>
+        </div>
+      </nav>
 
-<div class="doc">
-  <div class="wrap">
 
-    <h2>1 · Ce que fait l'app (v1)</h2>
-    <ol>
-      <li><strong>Pseudonymisation in-app</strong> : votre message est tokenisé
-        <strong>dans l'app</strong> (WASM, clé locataire aléatoire générée côté client)
-        avant d'être envoyé au fournisseur LLM — le fournisseur ne reçoit <strong>que des
-        jetons</strong> <code>⟦…⟧</code>, jamais la PII en clair.</li>
-      <li><strong>Restauration in-app</strong> : la réponse du LLM est restaurée dans l'app
-        (jetons émis par la requête en cours uniquement — registre + MAC).</li>
-      <li><strong>Coffre in-memory</strong> : rien n'est persisté (choix pilote) ; la
-        session WASM (clé locataire + registre) vit dans la mémoire de l'app et meurt à la
-        fermeture.</li>
-      <li><strong>Configuration</strong> : endpoint LLM (Base URL + clé) + modèle — stockés
-        dans les préférences de l'app (votre clé amont, jamais transmise ailleurs).</li>
-    </ol>
+      <!-- ARTICLE -->
+      <article class="article" data-od-id="article">
+        <div class="crumbs" data-od-id="crumbs"><a href="index.html">Docs</a> › Produit › Mobile</div>
+        <h1 data-od-id="article-title">Mobile Android &amp; iOS</h1>
+        <p class="lede" data-od-id="article-lede">L'app CLOISON met le moteur N0 dans votre poche : pseudonymisation sur le poste, session dans un coffre chiffré en mémoire, aucune donnée personnelle en clair qui ne sorte de l'app. Ce guide couvre le périmètre, l'installation, puis les limites — et le cadre de référence qui reste le vôtre.</p>
 
-    <h2>2 · Compiler l'app Android (APK)</h2>
-    <p>Prérequis : <strong>JDK 17</strong>, <strong>Android SDK</strong> (Android Studio
-      recommandé), <strong>Rust cible wasm32</strong> pour l'artefact WASM (une seule fois) :</p>
-    <pre><code># 1. Artefact WASM (à la racine du dépôt CLOISON) :
+        <figure class="figure" data-od-id="phone-mock">
+          <svg class="phone" viewBox="0 0 280 560" role="img" aria-label="Aperçu de l'app CLOISON : un message pseudonymisé en local">
+            <rect class="ph-frame" x="6" y="6" width="268" height="548" rx="36" stroke-width="2"/>
+            <rect class="ph-screen" x="18" y="18" width="244" height="524" rx="26"/>
+            <text class="ph-muted" x="34" y="42" font-size="11" font-family="var(--font-mono)">09:41</text>
+            <rect class="ph-muted" x="212" y="33" width="16" height="9" rx="2"/>
+            <rect class="ph-faint" x="234" y="36" width="2" height="3" rx="1"/>
+            <rect class="ph-ink" x="34" y="62" width="11" height="11" rx="2.5"/>
+            <text class="ph-ink t-ui" x="52" y="72" font-size="12.5" font-weight="800" letter-spacing="0.04em">CLOISON</text>
+            <text class="ph-faint" x="226" y="72" font-size="10" font-family="var(--font-mono)">N0</text>
+            <line class="ph-div" x1="18" y1="92" x2="262" y2="92" stroke-width="1"/>
+            <text class="ph-muted" x="34" y="120" font-size="10" letter-spacing="0.08em" font-family="var(--font-mono)">MESSAGE · PSEUDONYMISÉ</text>
+            <rect class="ph-surface" x="34" y="136" width="212" height="92" rx="14" stroke-width="1"/>
+            <text class="ph-ink" x="48" y="162" font-size="11.5" font-family="var(--font-mono)">Rendez-vous avec</text>
+            <text class="ph-accent" x="48" y="180" font-size="11.5" font-family="var(--font-mono)">⟦pii:name⟧</text>
+            <text class="ph-ink" x="48" y="198" font-size="11.5" font-family="var(--font-mono)">le ⟦pii:date⟧</text>
+            <text class="ph-ink" x="48" y="216" font-size="11.5" font-family="var(--font-mono)">au ⟦pii:tel⟧.</text>
+            <rect class="ph-edge-soft" x="34" y="244" width="212" height="28" rx="14" stroke-width="1"/>
+            <text class="ph-edge" x="140" y="263" font-size="10" font-family="var(--font-mono)" text-anchor="middle" font-weight="600">3 champs pseudonymisés · 0 en clair</text>
+            <rect class="ph-muted" x="34" y="300" width="13" height="11" rx="2"/>
+            <circle class="ph-screen" cx="40.5" cy="305" r="2"/>
+            <rect class="ph-screen" x="39.8" y="305" width="1.4" height="3"/>
+            <text class="ph-muted" x="56" y="311" font-size="11" font-family="var(--font-mono)">Clé LLM · reste dans l'app</text>
+            <text class="ph-muted" x="56" y="327" font-size="10" font-family="var(--font-mono)">aucune transmission</text>
+            <line class="ph-div" x1="34" y1="352" x2="246" y2="352" stroke-width="1"/>
+            <text class="ph-muted" x="34" y="382" font-size="10" letter-spacing="0.08em" font-family="var(--font-mono)">AUDIT · COMPTEURS</text>
+            <text class="ph-ink" x="34" y="406" font-size="11" font-family="var(--font-mono)">128 ops · k=5</text>
+            <text class="ph-muted" x="34" y="424" font-size="10" font-family="var(--font-mono)">signé Ed25519 · jamais de texte</text>
+            <rect class="ph-surface" x="34" y="470" width="212" height="42" rx="21" stroke-width="1"/>
+            <text class="ph-faint t-ui" x="52" y="495" font-size="11">Écrire un message…</text>
+            <circle class="ph-accent" cx="232" cy="491" r="14"/>
+            <path d="M226 491h11m-5-5l5 5-5 5" fill="none" stroke="var(--bg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <figcaption>Pseudonymisation dans l'app : le message est tokenisé en local avant tout envoi ; la clé LLM ne quitte pas l'appareil.</figcaption>
+        </figure>
+
+        <h2 id="app-native" data-od-id="sec-01"><span class="h2-num">01</span>App native</h2>
+        <p>Un seul moteur, un seul périmètre. Le cœur de CLOISON est un binaire WASM identique pour les deux plateformes ; Android et iOS n'en sont que des coquilles natives. Toute la logique — détecter, tokeniser, envoyer, restaurer — vit dans le même artefact, et c'est lui qui versionne. Le code natif ne fait que charger ce moteur et lui passer la clé de session.</p>
+        <p>Le pont natif diffère selon la plateforme :</p>
+        <table data-od-id="sec-01-table">
+          <thead>
+            <tr><th>Plateforme</th><th>Hôte</th><th>Pont natif</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Android</td><td>WebView + runtime WASM</td><td class="mono">JNI / pont objet</td></tr>
+            <tr><td>iOS</td><td>WKWebView + runtime WASM</td><td class="mono">WKScriptMessageHandler</td></tr>
+          </tbody>
+        </table>
+        <p>Le pont iOS est <strong>asynchrone</strong> : les messages montent et descendent via <span class="code">WKScriptMessageHandler</span>. Sur Android, le pont est synchrone côté runtime. Dans les deux cas, l'orchestration de chat est la même — ce qui change, c'est la couche qui frappe à la porte du moteur.</p>
+
+        <div class="callout note" data-od-id="sec-01-callout">
+          <div class="label">Note</div>
+          <p>Le moteur est embarqué, pas distant : pas de compilation côté serveur, pas de clé qui circule pour tokeniser. Tout se passe sur le poste.</p>
+        </div>
+
+        <h2 id="moteur" data-od-id="sec-02"><span class="h2-num">02</span>Le moteur chez vous</h2>
+        <p>L'app exécute le niveau <strong>N0</strong> : traitement local, session éphémère. La clé locataire est générée <strong>côté client</strong>, à chaque lancement, et vit dans un coffre chiffré <em>en mémoire</em>. Rien n'est écrit sur disque : fermer l'app détruit la clé, le registre d'émission et le MAC de la requête. La fenêtre de restauration suit celle de la session — elle meurt avec elle.</p>
+        <p>L'authentification est <strong>locale</strong> : pas de compte, pas de mot de passe distant, pas d'identifiant cloud. Votre clé LLM est conservée dans les préférences de l'app et ne circule jamais ailleurs que vers le fournisseur que vous choisissez. C'est le même invariant que N0 sur desktop, transposé dans une poche.</p>
+        <ul>
+          <li><strong>Coffre chiffré</strong> — clé + registre + MAC en mémoire vive, rien de persistant.</li>
+          <li><strong>Auth locale</strong> — aucune téléphonie, aucun compte ; la clé amont reste chez vous.</li>
+          <li><strong>Session éphémère</strong> — une clé par lancement, aucune réutilisation entre ouvertures.</li>
+        </ul>
+
+        <h2 id="ner" data-od-id="sec-03"><span class="h2-num">03</span>NER local</h2>
+        <p>Avant d'être envoyé, le message traverse un NER embarqué qui tourne <strong>sur le poste</strong> — en WASM, sans réseau. Il classe les quasi-identifiants (nom, date, téléphone, e-mail…) et décide ce qui doit être tokenisé. Il ne résout jamais, ne transmet jamais : la classification est un verdict local qui n'a pas à sortir de l'app.</p>
+        <p>En console, le balayage d'une liste d'attente se déroule ainsi :</p>
+        <pre data-od-id="sec-03-code"><span class="dash">$</span> cloison scan "Rendez-vous avec Marie Dupont le 12/03/2024 au 06 12 34 56 78."
+  <span class="tok">{PERSON}</span> → <span class="tok">⟦pii:name⟧</span>
+  <span class="tok">{DATE}</span>   → <span class="tok">⟦pii:date⟧</span>
+  <span class="tok">{TEL}</span>    → <span class="tok">⟦pii:tel⟧</span>
+  → 3 champs pseudonymisés · 0 en clair</pre>
+        <p>Un quasi-identifiant est <strong>signalé</strong>, jamais résolu. C'est la différence entre dire « ici il y a une personne » et « voici qui c'est ». L'app ne fait que la première chose.</p>
+
+        <h2 id="audit" data-od-id="sec-04"><span class="h2-num">04</span>Hors-ligne &amp; audit</h2>
+        <p>Aucune donnée personnelle en clair ne quitte l'app. Il y a exactement deux chemins de sortie, tous deux bornés — et c'est ce qui rend la promesse contrôlable, plutôt qu'à croire sur parole.</p>
+        <table data-od-id="sec-04-table">
+          <thead>
+            <tr><th>Destination</th><th>Ce qui part</th><th>Lisible ?</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Votre fournisseur LLM</td><td>des jetons <span class="token">⟦…⟧</span> de la requête</td><td>non — seule votre clé restaure</td></tr>
+            <tr><td>Plan de contrôle (audit)</td><td>des compteurs <strong>k-anonymes</strong> signés</td><td>non — jamais de texte</td></tr>
+          </tbody>
+        </table>
+        <p>Les compteurs sont agrégés, <strong>k-anonymes</strong> et signés Ed25519. Le plan de contrôle ne peut ni lire vos messages ni reconstruire une donnée : il voit qu'il y a eu 128 opérations de pseudonymisation, pas ce qu'elles contenaient. Vous pouvez vérifier ce qui a été vu — et ce qui ne l'a jamais été — dans le <a href="https://journal.wonkom.ai" target="_blank" rel="noopener">journal de transparence</a>.</p>
+
+        <h2 id="installation" data-od-id="sec-05"><span class="h2-num">05</span>Installation</h2>
+        <p>Deux artefacts à produire : le moteur WASM, puis la coquille native. Le moteur se construit une fois par version ; chaque plateforme le référence depuis son propre dossier d'assets.</p>
+        <pre data-od-id="sec-05-command"><span class="cm"># 1. Artefact WASM (racine du dépôt CLOISON)</span>
 cd crates/cloison-wasm
-wasm-pack build --target web --out-dir ../../mobile/android/app/src/main/assets/cloison/pkg
-#    (ou copier un pkg construit : cp -r deploy/wasm-demo/pkg …/assets/cloison/pkg)
-#    Vérification de compilation WASM :
-#    cargo check -p cloison-wasm --target wasm32-unknown-unknown
+wasm-pack build --target web \
+  --out-dir ../../mobile/android/app/src/main/assets/cloison/pkg
 
-# 2. APK (ouvrir mobile/android dans Android Studio → Run, ou CLI) :
-cd mobile/android
-gradle assembleDebug        # → app/build/outputs/apk/debug/app-debug.apk</code></pre>
-    <p>L'APK de <strong>release signé</strong> nécessite un keystore ; l'APK debug est
-      installable directement (<code>adb install</code>).</p>
-
-    <h2>2bis · Compiler l'app iOS</h2>
-    <p>Prérequis : <strong>macOS + Xcode</strong>, <strong>Rust cible wasm32</strong>
-      (artefact WASM identique, une seule fois par version) :</p>
-    <pre><code># 1. Artefact WASM (à la racine du dépôt CLOISON) :
-cd crates/cloison-wasm
-wasm-pack build --target web --out-dir ../../mobile/ios/Cloison/Web/pkg
-#    cargo check -p cloison-wasm --target wasm32-unknown-unknown
-
-# 2. App (ouvrir mobile/ios/Cloison.xcodeproj dans Xcode → Run, ou CLI) :
+<span class="cm"># 2. APK Android</span>
+cd ../../mobile/android
+gradle assembleDebug   <span class="cm"># → app/build/outputs/apk/debug/app-debug.apk</span></pre>
+        <p>Côté iOS, l'artefact WASM est le même ; seule la cible de sortie change. Le build Simulator est utilisable immédiatement, l'archive signée nécessite un compte Apple.</p>
+        <pre data-od-id="sec-05-ios"><span class="cm"># Artefact WASM → mobile/ios/Cloison/Web/pkg</span>
 cd mobile/ios
 xcodebuild -project Cloison.xcodeproj -scheme Cloison \
-  -destination 'generic/platform=iOS Simulator' build</code></pre>
-    <p>Le build Simulator est utilisable directement ; l'archive de release
-      signée nécessite un compte Apple (code signing). Le pont natif iOS est
-      asynchrone (<code>WKScriptMessageHandler</code>) — la logique de chat
-      est identique à Android.</p>
+  -destination 'generic/platform=iOS Simulator' build</pre>
+        <h3 id="verifier">Vérifier un artefact</h3>
+        <p>Chaque release est publiée avec son checksum. Vous vérifiez ce que vous allez exécuter avant de l'installer — c'est le même réflexe que pour le binaire N0 desktop.</p>
+        <pre data-od-id="sec-05-checksum"><span class="dash">$</span> shasum -a 256 cloison-mobile-0.11.apk
+9f3c…e2a1  cloison-mobile-0.11.apk   <span class="cm"># = valeur publiée</span></pre>
+        <p>Une fois signée, l'app est distribuée via <strong>TestFlight</strong> puis l'App Store, ou sideloadée sous Android. Le checksum publié confirme l'origine, quel que soit le canal.</p>
 
-    <h2>3 · Sécurité (invariants)</h2>
-    <ul>
-      <li><strong>Zéro PII persistée</strong> : clé locataire aléatoire en mémoire, coffre
-        in-memory, rien sur disque (hors votre clé LLM dans les préférences — nécessaire
-        pour appeler votre fournisseur).</li>
-      <li><strong>Zéro secret embarqué</strong> : aucun secret dans le code/l'APK.</li>
-      <li><strong>Restauration bornée</strong> : registre d'émission de la requête + MAC
-        (invariant I3) — une sentinelle forgée n'est jamais restaurée.</li>
-      <li><strong>Honnêteté</strong> : ne protège pas contre un poste compromis (même limite
-        que N0) ; quasi-identifiants signalés, jamais résolus.</li>
-    </ul>
+        <h2 id="limites" data-od-id="sec-06"><span class="h2-num">06</span>Limites honnêtes</h2>
+        <div class="callout warn" data-od-id="sec-06-warn">
+          <div class="label">Limite 1</div>
+          <p><strong>La pseudonymisation n'est pas l'anonymisation.</strong> Les jetons sont déterministes et réversibles pour votre clé : une personne peut rester ré-identifiable par corrélation, surtout à faible volume. CLOISON minimise ce qui sort ; il ne l'efface pas.</p>
+        </div>
+        <p>L'autre limite est d'ordre réglementaire, et nous préférons la dire plutôt que la laisser sous-entendue. CLOISON documente et réduit ; il <strong>ne se substitue pas</strong> aux obligations qui vous incombent en tant que responsable de traitement. Le cadre n'est pas un ajout marketing, il est structurant.</p>
+        <div class="callout note" data-od-id="sec-06-framework">
+          <div class="label">Cadre de référence</div>
+          <p>CLOISON est conçu pour s'inscrire dans le cadre de protection des données qui <em>vous</em> concerne. Pour nos déploiements de référence, ce cadre n'est pas le RGPD : nous partons de la <strong>loi n°2008-12 sénégalaise</strong> relative à la protection des données à caractère personnel, de l'<strong>Acte additionnel CEDEAO A/SA.1/01/10</strong> également applicable dans l'espace UEMOA, et de la <strong>Convention de Malabo (2014)</strong> sur la cybersécurité et la protection des données.</p>
+          <p>La CDP soumet les traitements à un régime <strong>à deux étages</strong> — déclaration ou autorisation préalable selon la sensibilité — et distingue <strong>responsable de traitement</strong> et <strong>sous-traitant</strong>. Vous êtes le responsable ; CLOISON est l'outil. Le RGPD reste une référence <strong>complémentaire</strong> (fast-follow Europe), pas le cadre principal. Le rapport signé documente ce qui a été vu ; il ne remplace ni une déclaration, ni une autorisation, ni une analyse d'impact.</p>
+        </div>
+        <p>En pratique : choisissez votre régime, déposez votre déclaration ou sollicitez l'autorisation préalable, et traitez CLOISON comme un moyen de minimisation — pas comme une exemption.</p>
+      
+        <nav class="doc-pager" aria-label="Navigation des pages">
+          <a class="prev" href="install-n0.html"><small>← Précédent</small><span>Installer N0</span></a>
+          <a class="next" href="api.html"><small>Suivant →</small><span>API & clé composite</span></a>
+        </nav>
+</article>
 
-    <h2>4 · Limites v1</h2>
-    <ul>
-      <li><strong>Mode N0-local uniquement</strong> : l'app tokenise in-app vers un
-        fournisseur LLM direct (OpenRouter, DeepSeek…). Le mode « clé composite N3 »
-        (pseudonymisation par l'edge CLOISON) est une piste v1.1.</li>
-      <li>La session est <strong>perdue à la fermeture</strong> de l'app (in-memory assumé) —
-        chaque lancement crée une nouvelle clé locataire (non-liabilité).</li>
-    </ul>
-
-    <h2>5 · Récupérer la source</h2>
-    <p>La source mobile est publiée dans le dépôt public open-core
-      <code>github.com/coucagog/cloison-proxy</code> (AGPL-3.0) :
-      <code>mobile/android/</code> + <code>mobile/ios/</code> — visible sans
-      authentification.</p>
-
-    <div class="note">
-      <span class="k">Suite</span>
-      <div>Découvrez le moteur desktop : <a href="install-n0.html">installer N0 en ≤ 10 min</a>.</div>
+      <!-- RIGHT TOC -->
+      <aside class="toc" aria-label="Sur cette page" data-od-id="toc">
+        <div class="toc-label">Sur cette page</div>
+        <a href="#app-native" class="active">01 · App native</a>
+        <a href="#moteur">02 · Le moteur chez vous</a>
+        <a href="#ner">03 · NER local</a>
+        <a href="#audit">04 · Hors-ligne &amp; audit</a>
+        <a href="#installation">05 · Installation</a>
+        <a href="#limites">06 · Limites honnêtes</a>
+      </aside>
     </div>
+  </main>
 
-  </div>
-</div>
-
-<footer>
-  <div class="wrap">
-    <div class="cols">
-      <div class="col">
-        <span class="t">Produit</span>
-        <a href="produit.html">Architecture &amp; promesse</a>
-        <a href="faq.html">FAQ + limites honnêtes</a>
-        <a href="journal.html">Journal de transparence</a>
+  <!-- FOOTER -->
+  <footer class="site-footer" data-od-id="footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a class="brand" href="#top" data-od-id="footer-brand">
+            <span class="brand-mark" aria-hidden="true"></span>
+            <span>CLOISON</span>
+          </a>
+          <p>Le proxy de confidentialité qui transforme vos données en jetons vérifiables — avant, pendant et après l'appel au modèle.</p>
+        </div>
+        <div class="footer-col" data-od-id="footer-produit">
+          <h4>Produit</h4>
+          <ul>
+            <li><a href="produit.html">Pseudonymisation</a></li>
+            <li><a href="produit.html">Restauration</a></li>
+            <li><a href="produit.html">Plan de contrôle</a></li>
+            <li><a href="produit.html">Trois niveaux</a></li>
+          </ul>
+        </div>
+        <div class="footer-col" data-od-id="footer-commencer">
+          <h4>Commencer</h4>
+          <ul>
+            <li><a href="install-n0.html">Installer N0</a></li>
+            <li><a href="mobile.html">Mobile</a></li>
+            <li><a href="api.html">Endpoint API</a></li>
+            <li><a href="glossaire.html">Glossaire</a></li>
+          </ul>
+        </div>
+        <div class="footer-col" data-od-id="footer-verifier">
+          <h4>Vérifier</h4>
+          <ul>
+            <li><a href="https://journal.wonkom.ai" target="_blank" rel="noopener">Journal</a></li>
+            <li><a href="open-core.html">Code ouvert</a></li>
+            <li><a href="faq.html">Conformité</a></li>
+          </ul>
+        </div>
       </div>
-      <div class="col">
-        <span class="t">Commencer</span>
-        <a href="install-n0.html">Installer N0</a>
-        <a href="mobile.html">Guide mobile Android &amp; iOS</a>
-        <a href="api.html">API + clé composite</a>
-      </div>
-      <div class="col">
-        <span class="t">Vérifier</span>
-        <a href="journal.html">journal.wonkom.ai</a>
-        <a href="open-core.html">Code ouvert</a>
+      <div class="footer-tagline" data-od-id="footer-tagline">
+        <div class="hosts">
+          <a href="https://docs.wonkom.ai" target="_blank" rel="noopener" data-od-id="footer-docs">docs.wonkom.ai</a>
+          <a href="https://api.wonkom.ai" target="_blank" rel="noopener" data-od-id="footer-api">api.wonkom.ai</a>
+          <a href="https://journal.wonkom.ai" target="_blank" rel="noopener" data-od-id="footer-journal">journal.wonkom.ai</a>
+        </div>
+        <span>© 2025 CLOISON · open-core</span>
       </div>
     </div>
-    <div>CLOISON — proxy de confidentialité PII. <span class="pill">open-core</span></div>
-    <div class="mono">docs.wonkom.ai · api.wonkom.ai · journal.wonkom.ai</div>
-  </div>
-</footer>
+  </footer>
 
-<script src="assets/theme.js"></script>
+  <script>
+    (function () {
+      var btn = document.getElementById('theme-toggle');
+      if (!btn) return;
+      function sync() {
+        var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+        btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+        btn.setAttribute('aria-label', dark ? 'Activer le thème clair' : 'Activer le thème sombre');
+      }
+      btn.addEventListener('click', function () {
+        var cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+        var next = cur === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem('cloison-theme', next); } catch (e) {}
+        sync();
+      });
+      sync();
+    })();
+
+    (function () {
+      var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+      var map = {};
+      links.forEach(function (a) {
+        var id = a.getAttribute('href').slice(1);
+        var el = document.getElementById(id);
+        if (el) map[id] = el;
+      });
+      var ids = Object.keys(map);
+      function refresh() {
+        var current = ids[ids.length - 1];
+        for (var i = 0; i < ids.length; i++) {
+          if (map[ids[i]].getBoundingClientRect().top < 130) current = ids[i];
+        }
+        links.forEach(function (a) {
+          var id = a.getAttribute('href').slice(1);
+          a.classList.toggle('active', id === current);
+        });
+      }
+      var ticking = false;
+      window.addEventListener('scroll', function () {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(function () { refresh(); ticking = false; });
+      }, { passive: true });
+      links.forEach(function (a) {
+        a.addEventListener('click', function () {
+          links.forEach(function (x) { x.classList.toggle('active', x === a); });
+        });
+      });
+      refresh();
+    })();
+  </script>
 </body>
 </html>

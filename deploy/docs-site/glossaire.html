@@ -1,0 +1,948 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CLOISON — Glossaire de référence</title>
+  <meta name="description" content="Le langage exact de CLOISON, terme par terme : confidentialité & données, architecture & cloisonnement, cryptographie & preuve, cadre juridique & souveraineté (Sénégal / UEMOA, RGPD en lecture complémentaire)." />
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('cloison-theme'); } catch (e) {}
+      if (!t) t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <style>
+    :root {
+      /* CLOISON · palette officielle (clair) */
+      --bg: #E7E9EE;
+      --bg-2: #DEE1E8;
+      --surface: #FFFFFF;
+      --fg: #191C27;
+      --muted: #535868;
+      --faint: #8A8F9E;
+      --line: #CFD3DC;
+      --line-2: #E3E6EC;
+
+      --jeton: #0B7A85;        /* identité — CTA, liens actifs */
+      --jeton-soft: #E1F0F1;
+      --jeton-soft-2: #bfe0e3;
+
+      --edge: #1E7A4D;         /* confiance / succès — vérifié */
+      --edge-soft: #E3F1E9;
+      --edge-line: #c4e2d2;
+
+      --clair: #A9640C;        /* attention honnête — limites */
+      --clair-soft: #F6ECDD;
+      --clair-line: #E4CFAE;
+
+      --danger: #AD3B3B;
+      --danger-soft: #F6E4E2;
+
+      /* text-safe variants for tokens used on tinted backgrounds */
+      --jeton-text: #09646D;
+      --clair-text: #8C5004;
+
+      --header-bg: rgba(231, 233, 238, 0.82);
+
+      --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+      --wrap: 1060px;
+      --docs-wrap: 1240px;
+      --radius: 14px;
+      --radius-sm: 9px;
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #0E1119;
+      --bg-2: #141824;
+      --surface: #191F2C;
+      --fg: #E7E9EF;
+      --muted: #A9AFBE;
+      --faint: #79808F;
+      --line: #2A3141;
+      --line-2: #232A38;
+
+      --jeton: #37B5C0;
+      --jeton-soft: rgba(55, 181, 192, 0.14);
+      --jeton-soft-2: rgba(55, 181, 192, 0.22);
+
+      --edge: #3FB878;
+      --edge-soft: rgba(63, 184, 120, 0.14);
+      --edge-line: rgba(63, 184, 120, 0.30);
+
+      --clair: #E2A24C;
+      --clair-soft: rgba(226, 162, 76, 0.14);
+      --clair-line: rgba(226, 162, 76, 0.30);
+
+      --danger: #E06A63;
+      --danger-soft: rgba(224, 106, 99, 0.16);
+
+      --jeton-text: #37B5C0;
+      --clair-text: #E2A24C;
+
+      --header-bg: rgba(14, 17, 25, 0.82);
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 17px/1.62 var(--font-ui);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      transition: background 180ms ease, color 180ms ease;
+    }
+
+    a { color: var(--fg); text-decoration: none; }
+    h1, h2, h3, h4 { margin: 0; font-weight: 750; letter-spacing: -0.02em; }
+    p { margin: 0; }
+    button { font: inherit; cursor: pointer; }
+
+    .mono { font-family: var(--font-mono); }
+    .wrap { max-width: var(--wrap); margin: 0 auto; padding-inline: 32px; }
+
+    /* ---------- Header (identique au redessin) ---------- */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: var(--header-bg);
+      backdrop-filter: saturate(180%) blur(14px);
+      -webkit-backdrop-filter: saturate(180%) blur(14px);
+      border-bottom: 1px solid var(--line-2);
+    }
+    .site-header .wrap {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      height: 64px;
+      max-width: var(--docs-wrap);
+    }
+    @media (max-width: 620px) { .site-header .wrap { padding-inline: 20px; gap: 16px; } }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 800;
+      font-size: 16.5px;
+      letter-spacing: 0.045em;
+      color: var(--fg);
+      white-space: nowrap;
+    }
+    .brand-mark {
+      width: 11px;
+      height: 11px;
+      border-radius: 2.5px;
+      background: var(--fg);
+      flex: 0 0 auto;
+    }
+
+    .nav-toggle {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      flex: 0 0 auto;
+      margin-inline-end: 4px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--fg);
+      transition: background 160ms ease, border-color 160ms ease;
+    }
+    .nav-toggle:hover { background: var(--bg-2); }
+    .nav-toggle:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .nav-toggle svg { width: 18px; height: 18px; }
+    .nav-toggle .icon-x { display: none; }
+    body.drawer-open .nav-toggle .icon-bars { display: none; }
+    body.drawer-open .nav-toggle .icon-x { display: block; }
+
+    .nav { display: flex; align-items: center; gap: 2px; margin-inline-start: auto; }
+    .nav a {
+      color: var(--muted);
+      font-size: 14px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      white-space: nowrap;
+      transition: color 160ms ease, background 160ms ease;
+    }
+    .nav a:hover { color: var(--fg); background: var(--bg-2); }
+    .nav a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .nav a[aria-current="page"] { color: var(--jeton-text); font-weight: 560; }
+    .nav a[aria-current="page"]:hover { color: var(--jeton-text); }
+    .nav a[aria-current="page"]::after {
+      content: "";
+      display: block;
+      width: 18px;
+      height: 2px;
+      border-radius: 2px;
+      background: var(--jeton);
+      margin: 4px auto 0;
+    }
+    @media (max-width: 980px) { .nav a { display: none; } }
+
+    .theme-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      flex: 0 0 auto;
+      margin-inline-start: 8px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--fg);
+      transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+    }
+    .theme-toggle:hover { background: var(--bg-2); border-color: var(--line); }
+    .theme-toggle:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .theme-toggle svg { width: 18px; height: 18px; }
+    .theme-toggle .icon-sun { display: none; }
+    :root[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+    :root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+
+    /* ---------- Docs layout ---------- */
+    .docs-content { max-width: var(--docs-wrap); margin: 0 auto; padding-inline: 32px; }
+    .docs-layout {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr) 218px;
+      column-gap: 44px;
+      align-items: start;
+      padding-block: 40px 80px;
+    }
+
+    /* Sidebar (inline-start) */
+    .docs-sidebar { position: sticky; top: 88px; align-self: start; max-height: calc(100vh - 88px); overflow-y: auto; padding-block-end: 24px; }
+    .nav-group { margin-bottom: 30px; }
+    .nav-group .group-label {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--faint);
+      font-weight: 600;
+      margin-bottom: 12px;
+      padding-inline-start: 14px;
+    }
+    .sidebar-link {
+      display: block;
+      color: var(--muted);
+      font-size: 14.5px;
+      line-height: 1.4;
+      padding: 7px 14px;
+      border-inline-start: 3px solid transparent;
+      border-radius: 0 7px 7px 0;
+      transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
+    }
+    .sidebar-link:hover { color: var(--fg); background: var(--bg-2); }
+    .sidebar-link:focus-visible { outline: 2px solid var(--jeton); outline-offset: -2px; }
+    .sidebar-link[aria-current="page"] {
+      color: var(--fg);
+      font-weight: 600;
+      border-inline-start-color: var(--jeton);
+    }
+    .sidebar-link .sidebar-note {
+      display: block;
+      color: var(--faint);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    /* Article body */
+    .docs-article { min-width: 0; }
+    .article-inner { max-width: 720px; margin-inline: auto; }
+    .crumbs {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--faint);
+      font-size: 13px;
+      letter-spacing: 0.01em;
+      margin-bottom: 22px;
+    }
+    .crumbs a { color: var(--muted); transition: color 160ms ease; }
+    .crumbs a:hover { color: var(--fg); }
+    .crumbs .crumb-sep { color: var(--line); }
+    h1 { font-size: clamp(30px, 3.6vw, 40px); line-height: 1.14; font-weight: 780; letter-spacing: -0.02em; margin: 0 0 18px; }
+    .lede { color: var(--muted); font-size: 18px; line-height: 1.6; max-width: 58ch; margin: 0 0 14px; }
+    .lede strong { color: var(--fg); font-weight: 640; }
+
+    .h2 {
+      font-size: 23px;
+      line-height: 1.25;
+      letter-spacing: -0.015em;
+      margin: 56px 0 6px;
+      scroll-margin-top: 88px;
+    }
+    .section-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--jeton-text);
+      margin: 56px 0 0;
+    }
+    .section-kicker::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--jeton); flex: 0 0 auto; }
+    .section-kicker + .h2 { margin-top: 12px; }
+    .section-intro { color: var(--muted); font-size: 16.5px; line-height: 1.62; max-width: 62ch; margin-bottom: 8px; }
+
+    /* Glossary list */
+    .glossary { margin: 22px 0 0; }
+    .term { padding: 22px 0; border-top: 1px solid var(--line-2); }
+    .term:first-child { border-top: none; padding-top: 4px; }
+    .term dt { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-weight: 640; font-size: 18px; letter-spacing: -0.01em; line-height: 1.3; }
+    .term dt .term-code { font-family: var(--font-mono); font-weight: 600; font-size: 0.86em; letter-spacing: 0; }
+    .term dt .token { color: var(--jeton); }
+    .term dt .term-en { color: var(--faint); font-weight: 500; font-size: 14px; letter-spacing: 0.01em; }
+    .term dd { margin: 8px 0 0; color: var(--muted); font-size: 16px; line-height: 1.62; max-width: 62ch; }
+    .term dd .mono, .term dd code { font-family: var(--font-mono); font-size: 0.9em; color: var(--fg); background: var(--bg-2); padding: 1px 5px; border-radius: 4px; }
+
+    /* Inline links */
+    a.inline { color: var(--jeton-text); font-weight: 500; border-bottom: 1px solid var(--jeton-soft-2); transition: border-color 160ms ease, color 160ms ease; }
+    a.inline:hover { color: var(--jeton); border-color: var(--jeton); }
+    a.inline:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+
+    /* Code blocks */
+    .code-block {
+      position: relative;
+      background: var(--bg-2);
+      border: 1px solid var(--line-2);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin: 22px 0;
+      overflow-x: auto;
+    }
+    .code-block pre { margin: 0; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.6; color: var(--fg); }
+    .code-block code { font-family: var(--font-mono); }
+    .copy-btn {
+      position: absolute;
+      top: 10px;
+      inset-inline-end: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+      border: 1px solid var(--line-2);
+      background: var(--surface);
+      color: var(--muted);
+      transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+    }
+    .copy-btn:hover { color: var(--fg); background: var(--bg); border-color: var(--line); }
+    .copy-btn:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .copy-btn svg { width: 15px; height: 15px; }
+
+    /* Callouts */
+    .callout {
+      display: flex;
+      gap: 14px;
+      padding: 18px 20px;
+      border-radius: 12px;
+      background: var(--surface);
+      border: 1px solid var(--line-2);
+      margin: 24px 0;
+      font-size: 15.5px;
+      line-height: 1.62;
+      color: var(--fg);
+    }
+    .callout .icon { flex: 0 0 auto; margin-top: 2px; width: 20px; height: 20px; }
+    .callout .icon svg { width: 20px; height: 20px; }
+    .callout .label { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.09em; text-transform: uppercase; font-weight: 600; margin-bottom: 6px; color: var(--muted); }
+    .callout p { color: var(--muted); }
+    .callout p + p { margin-top: 8px; }
+    .callout strong { color: var(--fg); font-weight: 640; }
+    .callout.note { border-inline-start: 3px solid var(--jeton); }
+    .callout.note .icon { color: var(--jeton); }
+    .callout.note .label { color: var(--jeton-text); }
+    .callout.warn { border-inline-start: 3px solid var(--clair); background: var(--clair-soft); }
+    .callout.warn .icon { color: var(--clair-text); }
+    .callout.warn .label { color: var(--clair-text); }
+    .callout.warn p { color: var(--fg); }
+
+    /* Table */
+    .table-wrap { margin: 24px 0; border: 1px solid var(--line-2); border-radius: 12px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+    thead th {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 600;
+      text-align: start;
+      background: var(--bg-2);
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line-2);
+    }
+    tbody td { padding: 13px 16px; border-top: 1px solid var(--line-2); vertical-align: top; line-height: 1.55; }
+    tbody tr:first-child td { border-top: none; }
+    tbody td:first-child { font-weight: 600; font-family: var(--font-mono); font-size: 14px; color: var(--fg); white-space: nowrap; }
+    tbody td.honest { color: var(--clair-text); }
+    tbody td .ok { color: var(--edge); }
+
+    /* TOC (inline-end) */
+    .docs-toc { position: sticky; top: 88px; align-self: start; max-height: calc(100vh - 88px); overflow-y: auto; }
+    .toc-label {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--faint);
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+    .toc a {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.4;
+      padding: 6px 0;
+      border-inline-start: 3px solid transparent;
+      padding-inline-start: 12px;
+      transition: color 160ms ease, border-color 160ms ease;
+    }
+    .toc a:hover { color: var(--fg); }
+    .toc a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .toc a.active { color: var(--fg); font-weight: 600; border-inline-start-color: var(--jeton); }
+    .toc a .toc-num { font-family: var(--font-mono); font-size: 12px; color: var(--faint); }
+
+    /* Next / back pager */
+    .doc-pager { display: flex; gap: 24px; margin-top: 64px; padding-top: 28px; border-top: 1px solid var(--line-2); }
+    .doc-pager a { display: block; flex: 1; color: var(--muted); transition: color 160ms ease; }
+    .doc-pager a:hover { color: var(--fg); }
+    .doc-pager a small { display: block; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--faint); margin-bottom: 6px; }
+    .doc-pager a span { font-size: 15.5px; font-weight: 560; }
+    .doc-pager a.next { text-align: end; }
+
+    /* Drawer scrim */
+    .drawer-scrim { display: none; position: fixed; inset: 0; background: rgba(14, 17, 25, 0.42); z-index: 60; opacity: 0; pointer-events: none; transition: opacity 200ms ease; }
+    body.drawer-open .drawer-scrim { opacity: 1; pointer-events: auto; }
+    body.drawer-open { overflow: hidden; }
+
+    /* ---------- Footer (identique au redessin) ---------- */
+    .site-footer { border-top: 1px solid var(--line-2); background: var(--bg-2); padding: 72px 0 40px; }
+    .site-footer .wrap { max-width: var(--docs-wrap); }
+    .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 32px; }
+    .footer-brand .brand { margin-bottom: 16px; }
+    .footer-brand p { color: var(--muted); font-size: 14.5px; max-width: 34ch; }
+    .footer-col h4 { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); margin: 0 0 18px; font-weight: 600; }
+    .footer-col ul { list-style: none; margin: 0; padding: 0; }
+    .footer-col li { margin-bottom: 11px; }
+    .footer-col a { color: var(--muted); font-size: 15px; transition: color 160ms ease; }
+    .footer-col a:hover { color: var(--fg); }
+    .footer-col a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .footer-tagline { margin-top: 56px; padding-top: 26px; border-top: 1px solid var(--line-2); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
+    .footer-tagline .hosts { display: flex; flex-wrap: wrap; gap: 0 20px; }
+    .footer-tagline a:hover { color: var(--fg); }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 1180px) {
+      .docs-layout { grid-template-columns: 250px minmax(0, 1fr); column-gap: 40px; }
+      .docs-toc { display: none; }
+    }
+    @media (max-width: 980px) {
+      .nav-toggle { display: inline-flex; }
+      .docs-layout { grid-template-columns: minmax(0, 1fr); }
+      .docs-sidebar {
+        position: fixed;
+        inset-block: 0;
+        inset-inline-start: 0;
+        width: min(320px, 86vw);
+        z-index: 70;
+        align-self: auto;
+        background: var(--surface);
+        border-inline-end: 1px solid var(--line);
+        box-shadow: 0 0 48px rgba(15, 20, 30, 0.22);
+        transform: translateX(-103%);
+        transition: transform 220ms ease;
+        max-height: none;
+        overflow-y: auto;
+        padding: 28px 22px 32px;
+        border-inline-start: none;
+      }
+      [dir="rtl"] .docs-sidebar { transform: translateX(103%); }
+      body.drawer-open .docs-sidebar { transform: translateX(0); }
+      .drawer-scrim { display: block; }
+      .docs-article { padding-top: 4px; }
+    }
+    @media (max-width: 900px) {
+      .footer-grid { grid-template-columns: 1fr 1fr 1fr; }
+      .footer-brand { grid-column: 1 / -1; }
+    }
+    @media (max-width: 620px) {
+      .docs-content { padding-inline: 20px; }
+      .docs-layout { padding-block: 24px 56px; }
+      .footer-grid { grid-template-columns: 1fr; gap: 28px; }
+      .term dd { font-size: 15.5px; }
+      .term dt { font-size: 17px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+      .docs-sidebar, .drawer-scrim { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header" data-od-id="header">
+    <div class="wrap">
+      <button class="nav-toggle" id="nav-toggle" type="button" aria-label="Ouvrir le menu de documentation" aria-expanded="false" aria-controls="docs-sidebar" data-od-id="nav-toggle">
+        <svg class="icon-bars" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        <svg class="icon-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <a class="brand" href="index.html" data-od-id="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>CLOISON</span>
+      </a>
+      <nav class="nav" aria-label="Navigation principale" data-od-id="nav">
+        <a href="produit.html">Le produit</a>
+        <a href="install-n0.html">Installer N0</a>
+        <a href="mobile.html">Mobile</a>
+        <a href="api.html">API</a>
+        <a href="journal.html">Journal</a>
+        <a href="open-core.html">Open-core</a>
+        <a href="faq.html">FAQ</a>
+        <a href="glossaire.html" aria-current="page">Glossaire</a>
+      </nav>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Basculer le thème" aria-pressed="false" data-od-id="theme-toggle">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.2M12 19.8V22M22 12h-2.2M4.2 12H2M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6M18.4 18.4l-1.6-1.6M7.2 7.2 5.6 5.6"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="drawer-scrim" id="drawer-scrim" aria-hidden="true"></div>
+
+  <div class="docs-content">
+    <div class="docs-layout">
+      <!-- INLINE-START NAV -->
+      <nav class="docs-sidebar" id="docs-sidebar" aria-label="Navigation de la documentation" data-od-id="sidebar">
+        <div class="nav-group" data-od-id="sidebar-commencer">
+          <div class="group-label">Commencer</div>
+          <a class="sidebar-link" href="install-n0.html" data-od-id="sidebar-install">Installer N0<span class="sidebar-note">≤ 10 min</span></a>
+          <a class="sidebar-link" href="api.html" data-od-id="sidebar-api">Endpoint API<span class="sidebar-note">api.wonkom.ai</span></a>
+          <a class="sidebar-link" href="mobile.html" data-od-id="sidebar-mobile">Mobile<span class="sidebar-note">iOS · Android · WASM</span></a>
+        </div>
+        <div class="nav-group" data-od-id="sidebar-produit">
+          <div class="group-label">Le produit</div>
+          <a class="sidebar-link" href="produit.html" data-od-id="sidebar-produit">Pseudonymisation</a>
+          <a class="sidebar-link" href="produit.html" data-od-id="sidebar-restauration">Restauration</a>
+          <a class="sidebar-link" href="produit.html" data-od-id="sidebar-controle">Plan de contrôle aveugle</a>
+          <a class="sidebar-link" href="index.html#niveaux" data-od-id="sidebar-niveaux">Trois niveaux <span class="sidebar-note">N0 · N1 · N2 · N3</span></a>
+        </div>
+        <div class="nav-group" data-od-id="sidebar-verifier">
+          <div class="group-label">Vérifier</div>
+          <a class="sidebar-link" href="journal.html" data-od-id="sidebar-journal">Journal de transparence</a>
+          <a class="sidebar-link" href="open-core.html" data-od-id="sidebar-opencore">Open-core &amp; code</a>
+          <a class="sidebar-link" href="faq.html" data-od-id="sidebar-faq">FAQ &amp; limites</a>
+        </div>
+        <div class="nav-group" data-od-id="sidebar-reference">
+          <div class="group-label">Référence</div>
+          <a class="sidebar-link" href="glossaire.html" aria-current="page" data-od-id="sidebar-glossaire">Glossaire<span class="sidebar-note">28 termes</span></a>
+        </div>
+      </nav>
+
+      <!-- ARTICLE BODY -->
+      <article class="docs-article" data-od-id="article">
+        <div class="article-inner">
+          <div class="crumbs" data-od-id="crumbs">
+            <a href="index.html">Docs</a>
+            <span class="crumb-sep" aria-hidden="true">›</span>
+            <span>Glossaire</span>
+          </div>
+
+          <h1 data-od-id="page-title">Glossaire de référence</h1>
+          <p class="lede" data-od-id="page-lede">
+            CLOISON utilise un vocabulaire précis — et vous le méritez aussi. Ce glossaire fixe le sens exact des termes employés dans la documentation, le journal de transparence et le rapport de conformité, pour qu'un même mot ne puisse jamais être compris de deux façons. <strong>Notre cadre de référence est celui où CLOISON se déploie d'abord : le droit sénégalais et ouest-africain</strong> (loi n°2008-12, CEDEAO / UEMOA, Convention de Malabo). Le RGPD y figure à titre complémentaire, pour l'expansion européenne — il n'est pas le cadre premier.
+          </p>
+
+          <div class="callout note" data-od-id="callout-lecture">
+            <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg></span>
+            <div>
+              <div class="label">Note de lecture</div>
+              <p>Les quatre sections suivent l'ordre d'un déploiement réel : comprendre ce qui est protégé, où tourne le moteur, par quelle preuve, puis sous quel droit. Si vous ne devez retenir qu'une chose, lisez <strong>Confidentialité &amp; données</strong> puis <strong>Cadre juridique &amp; souveraineté</strong>.</p>
+            </div>
+          </div>
+
+          <!-- 01 CONFIDENTIALITÉ & DONNÉES -->
+          <span class="section-kicker" data-od-id="kicker-confidentialite">01</span>
+          <h2 class="h2" id="confidentialite" data-od-id="heading-confidentialite">Confidentialité &amp; données</h2>
+          <p class="section-intro" data-od-id="intro-confidentialite">Ce que CLOISON traite, et ce qu'il ne prétend pas faire. La distinction entre pseudonymiser et anonymiser est le fondement de toute la suite.</p>
+
+          <dl class="glossary" data-od-id="glossary-confidentialite">
+            <div class="term" data-od-id="term-pii">
+              <dt><span class="term-code">PII</span> <span class="term-en">· Personally Identifiable Information</span></dt>
+              <dd>Données personnelles identifiantes : nom, email, téléphone, numéro de CNI, adresse… Deux lettres pour la catégorie de tout ce que CLOISON détecte avant l'envoi.</dd>
+            </div>
+            <div class="term" data-od-id="term-pseudonymisation">
+              <dt>Pseudonymisation</dt>
+              <dd>Remplacement réversible d'un identifiant par un jeton lié à l'identité d'origine. La valeur en clair reste reconstituable — c'est ce qui permet de restaurer la réponse.</dd>
+            </div>
+            <div class="term" data-od-id="term-anonymisation">
+              <dt>Anonymisation</dt>
+              <dd>Donnée rendue irréversiblement non-liaible. <strong style="color:var(--fg);font-weight:640;">CLOISON pseudonymise, il n'anonymise pas.</strong></dd>
+            </div>
+            <div class="term" data-od-id="term-quasi-identifiants">
+              <dt>Quasi-identifiants</dt>
+              <dd>Combinaison de champs (âge + ville + date…) capable de ré-identifier sans nom. CLOISON les signale (généralisation / suppression, <span class="mono">k-anonymat</span>) et ne prétend pas les résoudre.</dd>
+            </div>
+            <div class="term" data-od-id="term-jeton">
+              <dt>Jeton <span class="token">⟦…⟧</span></dt>
+              <dd>Représentation stable d'une valeur pseudonymisée, salée par conversation (le sel = la rotation). C'est la forme que voit le modèle, à la place de la donnée en clair.</dd>
+            </div>
+            <div class="term" data-od-id="term-coffre">
+              <dt>Coffre <span class="term-en">· chiffré</span></dt>
+              <dd>Registre local chiffré <code>${jeton ↔ valeur}</code>&nbsp;; il ne vit que côté client (edge), jamais sur le cloud.</dd>
+            </div>
+            <div class="term" data-od-id="term-cle-composite">
+              <dt>Clé composite</dt>
+              <dd>Identifiant + clé placés dans le seul champ « clé », pour ne jamais exposer de secret dans l'URL.</dd>
+            </div>
+            <div class="term" data-od-id="term-determinisme">
+              <dt>Déterminisme &amp; coréférence</dt>
+              <dd>Le même clair produit le même jeton dans une session&nbsp;; la cohérence entre références est conservée.</dd>
+            </div>
+          </dl>
+
+          <div class="callout warn" data-od-id="callout-quasi">
+            <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2.5 20h19Z"/><path d="M12 9.5v4"/><path d="M12 16.5h.01"/></svg></span>
+            <div>
+              <div class="label">Limite honnête</div>
+              <p>Un jeton n'est pas une anonymisation. Dès qu'un quasi-identifiant suffit à re-identifier, le risque persiste&nbsp;: c'est pourquoi CLOISON signale ces champs et applique des seuils de <span class="mono" style="color:var(--fg);font-weight:600;">k-anonymat</span> plutôt que de prétendre les avoir supprimés.</p>
+            </div>
+          </div>
+
+          <!-- 02 ARCHITECTURE & CLOISONNEMENT -->
+          <span class="section-kicker" data-od-id="kicker-architecture">02</span>
+          <h2 class="h2" id="architecture" data-od-id="heading-architecture">Architecture &amp; cloisonnement</h2>
+          <p class="section-intro" data-od-id="intro-architecture">Où tourne le moteur, ce qui traverse le réseau, et ce que retient le plan de contrôle.</p>
+
+          <dl class="glossary" data-od-id="glossary-architecture">
+            <div class="term" data-od-id="term-proxy">
+              <dt>Proxy OpenAI-compatible</dt>
+              <dd>Passerelle qui imite le protocole OpenAI&nbsp;; deux champs (base URL + clé composite).</dd>
+            </div>
+            <div class="term" data-od-id="term-edge">
+              <dt>Edge</dt>
+              <dd>Le moteur s'exécute chez le client, à la frontière&nbsp;; le clair ne quitte pas le poste (N0).</dd>
+            </div>
+            <div class="term" data-od-id="term-controle-aveugle">
+              <dt>Plan de contrôle aveugle</dt>
+              <dd>Le cloud ne recueille que des compteurs agrégés signés, jamais de texte ni de clair.</dd>
+            </div>
+            <div class="term" data-od-id="term-niveaux">
+              <dt>N0 / N1 / N2 / N3 <span class="term-en">· échelle de cloisonnement</span></dt>
+              <dd>Poste (rien), site (le client), enclave (scellé, prouvé), hébergé (l'éditeur lit le clair — jamais l'argument).</dd>
+            </div>
+            <div class="term" data-od-id="term-mode-audit">
+              <dt>Mode Audit <span class="term-en">· observe-only</span></dt>
+              <dd>Détection + comptage sans masquage, rapport de conformité signé à seuils k-anonymes.</dd>
+            </div>
+            <div class="term" data-od-id="term-ner">
+              <dt><span class="term-code">NER</span> <span class="term-en">· Named Entity Recognition</span></dt>
+              <dd>Détection automatique des entités (personnes, lieux, formats de CNI…).</dd>
+            </div>
+          </dl>
+
+          <h3 class="h2" id="niveaux-table" data-od-id="heading-niveaux-table" style="font-size:19px;margin-top:44px;">Échelle de cloisonnement</h3>
+          <div class="table-wrap" data-od-id="table-niveaux">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Niveau</th>
+                  <th scope="col">Le moteur tourne…</th>
+                  <th scope="col">Ce que voit l'éditeur</th>
+                  <th scope="col">Notre position</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>N0</td><td>sur votre poste</td><td>rien</td><td>zéro transfert de clair</td></tr>
+                <tr><td>N1</td><td>sur votre site</td><td>rien</td><td>clés chez vous, toujours</td></tr>
+                <tr><td>N2</td><td>dans une enclave scellée</td><td>prouvé</td><td>attestation vérifiable</td></tr>
+                <tr><td>N3</td><td>hébergé (<span class="mono">api.wonkom.ai</span>)</td><td class="honest">peut lire le clair</td><td class="honest">jamais l'argument</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 class="h2" id="exemple-n0" data-od-id="heading-exemple-n0" style="font-size:19px;margin-top:44px;">Exemple pratique — lancer le moteur en local</h3>
+          <p class="section-intro">En N0, le moteur écoute sur une adresse de boucle locale. Le clair ne franchit jamais la frontière.</p>
+
+          <div class="code-block" data-od-id="code-shell">
+            <button class="copy-btn" type="button" aria-label="Copier le code" title="Copier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
+            <pre><code># 1. Lancer le moteur (N0)
+./cloison serve --listen 127.0.0.1:8787
+
+# 2. Vérifier qu'il répond
+curl -s http://localhost:8787/health</code></pre>
+          </div>
+
+          <div class="code-block" data-od-id="code-config">
+            <button class="copy-btn" type="button" aria-label="Copier le code" title="Copier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
+            <pre><code># cloison.toml — politique de pseudonymisation (N0)
+[fields]
+name       = "pseudonymize"
+email      = "pseudonymize"
+phone      = "pseudonymize"
+cni        = "pseudonymize"
+age        = "generalize"     # quasi-identifiant
+
+[proxy]
+base_url     = "https://api.openai.com/v1"
+composite_key = "org_…:sk-…" # identifiant + clé, un seul champ</code></pre>
+          </div>
+
+          <!-- 03 CRYPTOGRAPHIE & PREUVE -->
+          <span class="section-kicker" data-od-id="kicker-cryptographie">03</span>
+          <h2 class="h2" id="cryptographie" data-od-id="heading-cryptographie">Cryptographie &amp; preuve</h2>
+          <p class="section-intro" data-od-id="intro-cryptographie">Les primitives qui rendent la protection vérifiable — de la dérivation d'un jeton à la preuve d'inclusion.</p>
+
+          <dl class="glossary" data-od-id="glossary-cryptographie">
+            <div class="term" data-od-id="term-hmac">
+              <dt><span class="term-code">HMAC</span></dt>
+              <dd>Empreinte à clé pour dériver un jeton (mieux qu'un hachage nu&nbsp;; le sel de session fait la rotation).</dd>
+            </div>
+            <div class="term" data-od-id="term-aead">
+              <dt><span class="term-code">AEAD</span></dt>
+              <dd>Chiffrement authentifié (<span class="mono">AES-256-GCM</span> / <span class="mono">XChaCha20-Poly1305</span>) pour le coffre au repos.</dd>
+            </div>
+            <div class="term" data-od-id="term-ed25519">
+              <dt><span class="term-code">Ed25519</span></dt>
+              <dd>Signature cryptographique utilisée par le journal de transparence et les reçus.</dd>
+            </div>
+            <div class="term" data-od-id="term-merkle">
+              <dt>Chaîne de hachage / Merkle</dt>
+              <dd>Journal append-only où chaque entrée scelle la précédente&nbsp;; preuve d'inclusion.</dd>
+            </div>
+            <div class="term" data-od-id="term-k-anonymat">
+              <dt>k-anonymat <span class="term-code">k</span></dt>
+              <dd>Seuil d'agrégation minimal pour qu'un compteur publié ne puisse rien révéler sur un individu.</dd>
+            </div>
+            <div class="term" data-od-id="term-wasm">
+              <dt><span class="term-code">WASM</span> <span class="term-en">· WebAssembly</span></dt>
+              <dd>Build portable du moteur qui tourne dans le navigateur (<span class="mono">cloison-verify</span>) et sur mobile.</dd>
+            </div>
+          </dl>
+
+          <!-- 04 CADRE JURIDIQUE & SOUVERAINETÉ -->
+          <span class="section-kicker" data-od-id="kicker-juridique">04</span>
+          <h2 class="h2" id="juridique" data-od-id="heading-juridique">Cadre juridique &amp; souveraineté</h2>
+          <p class="section-intro" data-od-id="intro-juridique">Notre référence n'est pas européenne par défaut&nbsp;: nous déployons d'abord en Afrique de l'Ouest, sous le droit sénégalais et ouest-africain. Le RGPD est une lecture complémentaire pour la suite, pas le cadre qui gouverne.</p>
+
+          <dl class="glossary" data-od-id="glossary-juridique">
+            <div class="term" data-od-id="term-loi-2008-12">
+              <dt>Loi n°2008-12 <span class="term-en">· Sénégal</span></dt>
+              <dd>Loi sénégalaise de protection des données personnelles. Notre cadre premier&nbsp;: elle fixe la déclaration et l'autorisation préalable.</dd>
+            </div>
+            <div class="term" data-od-id="term-cedeao">
+              <dt><span class="term-code">CEDEAO</span></dt>
+              <dd>Acte additionnel A/SA.1/01/10 (2010), applicable aussi à l'UEMOA.</dd>
+            </div>
+            <div class="term" data-od-id="term-malabo">
+              <dt>Convention de Malabo <span class="term-en">· 2014</span></dt>
+              <dd>Convention africaine de cybersécurité et protection des données, ratifiée par le Sénégal.</dd>
+            </div>
+            <div class="term" data-od-id="term-cdp">
+              <dt><span class="term-code">CDP</span></dt>
+              <dd>Autorité de protection des données (Commission de protection des Données personnelles).</dd>
+            </div>
+            <div class="term" data-od-id="term-deux-etages">
+              <dt>Régime à deux étages</dt>
+              <dd>Déclaration (données ordinaires)&nbsp;; autorisation préalable de la CDP (données sensibles : santé, biométrie…).</dd>
+            </div>
+            <div class="term" data-od-id="term-responsable">
+              <dt>Responsable ≠ sous-traitant</dt>
+              <dd>Qui fixe la finalité du traitement. CLOISON se positionne en sous-traitant / intermédiaire technique (corpus sans exfiltration, opt-in séparé).</dd>
+            </div>
+            <div class="term" data-od-id="term-rgpd">
+              <dt><span class="term-code">RGPD</span></dt>
+              <dd>Référentiel européen&nbsp;; lecture complémentaire pour le fast-follow Europe, pas notre cadre premier.</dd>
+            </div>
+            <div class="term" data-od-id="term-agpl">
+              <dt><span class="term-code">AGPL-3.0</span></dt>
+              <dd>Licence de la passerelle (les forks hébergés doivent rester ouverts).</dd>
+            </div>
+          </dl>
+
+          <div class="callout note" data-od-id="callout-framework">
+            <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6Z"/><path d="M9 12l2 2 4-4"/></svg></span>
+            <div>
+              <div class="label">Note — cadre premier</div>
+              <p>Pour un déploiement en Afrique de l'Ouest, la loi n°2008-12, l'acte CEDEAO et la Convention de Malabo priment. Le RGPD reste utile <strong>en complément</strong> : il devient le cadre principal lorsque le traitement vise l'Europe. Nous ne faisons pas l'inverse.</p>
+            </div>
+          </div>
+
+          <div class="doc-pager" data-od-id="pager">
+            <a class="prev" href="faq.html"><small>← Précédent</small><span>FAQ &amp; limites honnêtes</span></a>
+            <a class="next" href="api.html"><small>Suivant →</small><span>Endpoint API</span></a>
+          </div>
+        </div>
+      </article>
+
+      <!-- INLINE-END TOC -->
+      <aside class="docs-toc" aria-label="Sur cette page" data-od-id="toc">
+        <div class="toc-label">Sur cette page</div>
+        <a href="#confidentialite" data-od-id="toc-confidentialite"><span class="toc-num">01</span>Confidentialité &amp; données</a>
+        <a href="#architecture" data-od-id="toc-architecture"><span class="toc-num">02</span>Architecture &amp; cloisonnement</a>
+        <a href="#cryptographie" data-od-id="toc-cryptographie"><span class="toc-num">03</span>Cryptographie &amp; preuve</a>
+        <a href="#juridique" data-od-id="toc-juridique"><span class="toc-num">04</span>Cadre juridique &amp; souveraineté</a>
+        <a href="#niveaux-table" data-od-id="toc-niveaux"><span class="toc-num">02b</span>Échelle de cloisonnement</a>
+        <a href="#exemple-n0" data-od-id="toc-exemple"><span class="toc-num">02c</span>Exemple — N0</a>
+      </aside>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="site-footer" data-od-id="footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a class="brand" href="index.html" data-od-id="footer-brand">
+            <span class="brand-mark" aria-hidden="true"></span>
+            <span>CLOISON</span>
+          </a>
+          <p>Le proxy de confidentialité qui transforme vos données en jetons vérifiables — avant, pendant et après l'appel au modèle.</p>
+        </div>
+        <div class="footer-col" data-od-id="footer-produit">
+          <h4>Produit</h4>
+          <ul>
+            <li><a href="produit.html">Pseudonymisation</a></li>
+            <li><a href="produit.html">Restauration</a></li>
+            <li><a href="produit.html">Plan de contrôle</a></li>
+            <li><a href="index.html#niveaux">Trois niveaux</a></li>
+          </ul>
+        </div>
+        <div class="footer-col" data-od-id="footer-commencer">
+          <h4>Commencer</h4>
+          <ul>
+            <li><a href="install-n0.html">Installer N0</a></li>
+            <li><a href="api.html">Endpoint API</a></li>
+            <li><a href="mobile.html">Mobile</a></li>
+          </ul>
+        </div>
+        <div class="footer-col" data-od-id="footer-verifier">
+          <h4>Vérifier</h4>
+          <ul>
+            <li><a href="https://journal.wonkom.ai" target="_blank" rel="noopener">Journal</a></li>
+            <li><a href="open-core.html">Code ouvert</a></li>
+            <li><a href="faq.html">Conformité</a></li>
+            <li><a href="glossaire.html">Glossaire</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-tagline" data-od-id="footer-tagline">
+        <div class="hosts">
+          <a href="https://docs.wonkom.ai" target="_blank" rel="noopener" data-od-id="footer-docs">docs.wonkom.ai</a>
+          <a href="https://api.wonkom.ai" target="_blank" rel="noopener" data-od-id="footer-api">api.wonkom.ai</a>
+          <a href="https://journal.wonkom.ai" target="_blank" rel="noopener" data-od-id="footer-journal">journal.wonkom.ai</a>
+        </div>
+        <span>© 2025 CLOISON · open-core</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      // Theme toggle
+      var tbtn = document.getElementById('theme-toggle');
+      if (tbtn) {
+        function syncTheme() {
+          var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+          tbtn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+          tbtn.setAttribute('aria-label', dark ? 'Activer le thème clair' : 'Activer le thème sombre');
+        }
+        tbtn.addEventListener('click', function () {
+          var cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+          var next = cur === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', next);
+          try { localStorage.setItem('cloison-theme', next); } catch (e) {}
+          syncTheme();
+        });
+        syncTheme();
+      }
+
+      // Mobile drawer nav
+      var dbtn = document.getElementById('nav-toggle');
+      var scrim = document.getElementById('drawer-scrim');
+      var sidebar = document.getElementById('docs-sidebar');
+      if (dbtn && sidebar) {
+        function setOpen(open) {
+          document.body.classList.toggle('drawer-open', open);
+          dbtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          dbtn.setAttribute('aria-label', open ? 'Fermer le menu de documentation' : 'Ouvrir le menu de documentation');
+        }
+        dbtn.addEventListener('click', function () {
+          setOpen(!document.body.classList.contains('drawer-open'));
+        });
+        if (scrim) scrim.addEventListener('click', function () { setOpen(false); });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') setOpen(false);
+        });
+        sidebar.addEventListener('click', function (e) {
+          if (e.target.closest('a') && window.innerWidth <= 980) setOpen(false);
+        });
+      }
+
+      // Copy buttons
+      document.querySelectorAll('.copy-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var block = btn.closest('.code-block');
+          var text = block ? block.querySelector('pre code').innerText : '';
+          function done(ok) {
+            if (!ok) return;
+            var prev = btn.innerHTML;
+            btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+            setTimeout(function () { btn.innerHTML = prev; }, 1400);
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+          } else {
+            done(false);
+          }
+        });
+      });
+
+      // TOC scrollspy
+      var tocLinks = document.querySelectorAll('.docs-toc a');
+      var sections = [];
+      tocLinks.forEach(function (a) {
+        var id = a.getAttribute('href').slice(1);
+        var el = document.getElementById(id);
+        if (el) sections.push({ link: a, el: el });
+      });
+      if ('IntersectionObserver' in window && sections.length) {
+        var byId = {};
+        sections.forEach(function (s) { byId[s.el.id] = s; });
+        var obs = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting && byId[en.target.id]) {
+              tocLinks.forEach(function (a) { a.classList.remove('active'); });
+              byId[en.target.id].link.classList.add('active');
+            }
+          });
+        }, { rootMargin: "-88px 0px -70% 0px", threshold: 0 });
+        sections.forEach(function (s) { obs.observe(s.el); });
+      } else {
+        // Fallback: mark the first section active
+        if (sections[0]) sections[0].link.classList.add('active');
+      }
+    })();
+  </script>
+</body>
+</html>

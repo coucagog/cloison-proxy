@@ -1,164 +1,993 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-theme="light">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="description" content="CLOISON — API OpenAI-compatible, clé composite, multi-tenant, CLI ops, rapport de conformité k-anonyme, variables de configuration." />
-<title>API &amp; clé composite — CLOISON</title>
-<link rel="stylesheet" href="assets/docs.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>API & clé composite — CLOISON · Documentation</title>
+  <meta name="description" content="Référence de l'API CLOISON : endpoint OpenAI-compatible, clé composite multi-tenant, exemples curl/SDK, journal par appel et rapport d'audit signé à remettre à votre autorité de protection des données." />
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('cloison-theme'); } catch (e) {}
+      if (!t) t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <style>
+    :root {
+      /* CLOISON · palette officielle (clair) */
+      --bg: #E7E9EE;
+      --bg-2: #DEE1E8;
+      --surface: #FFFFFF;
+      --fg: #191C27;
+      --muted: #535868;
+      --faint: #8A8F9E;
+      --line: #CFD3DC;
+      --line-2: #E3E6EC;
+
+      --jeton: #0B7A85;
+      --jeton-soft: #E1F0F1;
+      --jeton-soft-2: #bfe0e3;
+
+      --edge: #1E7A4D;
+      --edge-soft: #E3F1E9;
+      --edge-line: #c4e2d2;
+
+      --clair: #A9640C;
+      --clair-soft: #F6ECDD;
+
+      --danger: #AD3B3B;
+      --danger-soft: #F6E4E2;
+
+      --jeton-text: #09646D;
+      --clair-text: #8C5004;
+
+      --header-bg: rgba(231, 233, 238, 0.82);
+
+      --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+      --wrap: 1160px;
+      --radius: 14px;
+      --radius-sm: 9px;
+
+      --code-bg: #E4E7ED;
+      --code-head-bg: #E9EBF0;
+      --code-fg: #242735;
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #0E1119;
+      --bg-2: #141824;
+      --surface: #191F2C;
+      --fg: #E7E9EF;
+      --muted: #A9AFBE;
+      --faint: #79808F;
+      --line: #2A3141;
+      --line-2: #232A38;
+
+      --jeton: #37B5C0;
+      --jeton-soft: rgba(55, 181, 192, 0.14);
+      --jeton-soft-2: rgba(55, 181, 192, 0.22);
+
+      --edge: #3FB878;
+      --edge-soft: rgba(63, 184, 120, 0.14);
+      --edge-line: rgba(63, 184, 120, 0.30);
+
+      --clair: #E2A24C;
+      --clair-soft: rgba(226, 162, 76, 0.14);
+
+      --danger: #E06A63;
+      --danger-soft: rgba(224, 106, 99, 0.16);
+
+      --jeton-text: #37B5C0;
+      --clair-text: #E2A24C;
+
+      --header-bg: rgba(14, 17, 25, 0.82);
+
+      --code-bg: #12161F;
+      --code-head-bg: #0B0E15;
+      --code-fg: #C9CED9;
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 17px/1.62 var(--font-ui);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      transition: background 180ms ease, color 180ms ease;
+    }
+
+    a { color: var(--fg); text-decoration: none; }
+    h1, h2, h3 { margin: 0; font-weight: 750; letter-spacing: -0.02em; }
+    p { margin: 0; }
+    button { font: inherit; cursor: pointer; }
+
+    .wrap { max-width: var(--wrap); margin: 0 auto; padding-inline: 32px; }
+    @media (max-width: 620px) { .wrap { padding-inline: 20px; } }
+
+    /* ---------- Header ---------- */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: var(--header-bg);
+      backdrop-filter: saturate(180%) blur(14px);
+      -webkit-backdrop-filter: saturate(180%) blur(14px);
+      border-bottom: 1px solid var(--line-2);
+    }
+    .site-header .wrap { display: flex; align-items: center; gap: 24px; height: 64px; }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 800;
+      font-size: 16.5px;
+      letter-spacing: 0.045em;
+      color: var(--fg);
+      white-space: nowrap;
+    }
+    .brand-mark {
+      width: 11px;
+      height: 11px;
+      border-radius: 2.5px;
+      background: var(--fg);
+      flex: 0 0 auto;
+    }
+    .nav { display: flex; align-items: center; gap: 2px; margin-inline-start: auto; }
+    .nav a {
+      color: var(--muted);
+      font-size: 14px;
+      padding: 8px 11px;
+      border-radius: 8px;
+      transition: color 160ms ease, background 160ms ease;
+      white-space: nowrap;
+    }
+    .nav a:hover { color: var(--fg); background: var(--bg-2); }
+    .nav a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    @media (max-width: 1060px) { .nav a { display: none; } }
+
+    .theme-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      flex: 0 0 auto;
+      margin-inline-start: 8px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--fg);
+      transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+    }
+    .theme-toggle:hover { background: var(--bg-2); border-color: var(--line); }
+    .theme-toggle:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .theme-toggle svg { width: 18px; height: 18px; }
+    .theme-toggle .icon-sun { display: none; }
+    :root[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+    :root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+
+    /* ---------- Docs three-column layout ---------- */
+    .docs {
+      display: grid;
+      grid-template-columns: 248px minmax(0, 1fr) 200px;
+      gap: 44px;
+      align-items: start;
+      max-width: var(--wrap);
+      margin: 0 auto;
+      padding: 44px 32px 96px;
+    }
+    @media (max-width: 620px) { .docs { padding-inline: 20px; } }
+
+    .docs-nav { position: sticky; top: 88px; }
+    .docs-toc { position: sticky; top: 88px; }
+    .article { max-width: 62ch; margin-inline: auto; min-width: 0; }
+
+    /* Sidebar */
+    .docs-nav .group { margin-bottom: 30px; }
+    .docs-nav .group-title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--faint);
+      font-weight: 600;
+      padding-inline-start: 16px;
+      margin-bottom: 11px;
+    }
+    .docs-nav ul { list-style: none; margin: 0; padding: 0; }
+    .docs-nav li { margin: 0; }
+    .docs-nav a {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 16px;
+      border-radius: 8px;
+      border-inline-start: 3px solid transparent;
+      color: var(--muted);
+      font-size: 15px;
+      transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
+    }
+    .docs-nav a:hover { color: var(--fg); background: var(--bg-2); }
+    .docs-nav a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .docs-nav a.is-current {
+      color: var(--jeton-text);
+      font-weight: 640;
+      border-inline-start-color: var(--jeton);
+      background: var(--jeton-soft);
+    }
+
+    /* TOC */
+    .docs-toc .toc-title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--faint);
+      font-weight: 600;
+      margin-bottom: 14px;
+      padding-inline-start: 16px;
+    }
+    .docs-toc a {
+      display: block;
+      padding: 6px 16px;
+      border-radius: 8px;
+      border-inline-start: 3px solid transparent;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.4;
+      transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+    }
+    .docs-toc a:hover { color: var(--fg); }
+    .docs-toc a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .docs-toc a.is-active {
+      color: var(--jeton-text);
+      border-inline-start-color: var(--jeton);
+      background: var(--jeton-soft);
+      font-weight: 600;
+    }
+
+    /* ---------- Article ---------- */
+    .article h1 {
+      font-size: clamp(34px, 3.6vw, 46px);
+      line-height: 1.1;
+      letter-spacing: -0.022em;
+      font-weight: 780;
+      margin: 0 0 18px;
+    }
+    .article .lede {
+      color: var(--muted);
+      font-size: 19px;
+      line-height: 1.6;
+      margin: 0 0 34px;
+      max-width: 58ch;
+    }
+    .article section { margin-top: 54px; }
+    .article section:first-of-type { margin-top: 46px; }
+    .article h2 {
+      font-size: clamp(24px, 2.4vw, 30px);
+      line-height: 1.2;
+      letter-spacing: -0.015em;
+      margin: 0 0 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line-2);
+    }
+    .article h2 .h2-num {
+      font-family: var(--font-mono);
+      font-size: 0.52em;
+      letter-spacing: 0.06em;
+      color: var(--jeton-text);
+      font-weight: 600;
+      margin-inline-end: 12px;
+      vertical-align: 0.18em;
+    }
+    .article p { margin: 0 0 18px; }
+    .article a { color: var(--jeton-text); text-decoration: underline; text-decoration-color: var(--jeton-soft-2); text-underline-offset: 2px; transition: text-decoration-color 150ms ease; }
+    .article a:hover { text-decoration-color: var(--jeton); }
+    .article strong { font-weight: 640; }
+    .article .token {
+      font-family: var(--font-mono);
+      color: var(--jeton-text);
+      font-size: 0.94em;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+    .article code.inline {
+      font-family: var(--font-mono);
+      font-size: 0.88em;
+      background: var(--bg-2);
+      border: 1px solid var(--line-2);
+      border-radius: 6px;
+      padding: 1px 6px;
+      color: var(--fg);
+      overflow-wrap: anywhere;
+    }
+    #endpoints, #cle, #exemples, #journal, #audit { scroll-margin-top: 96px; }
+
+    /* ---------- Tables ---------- */
+    .table-wrap {
+      margin: 24px 0 30px;
+      border: 1px solid var(--line-2);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--surface);
+    }
+    table.table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+    table.table th {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--faint);
+      font-weight: 600;
+      text-align: start;
+      padding: 13px 20px;
+      background: var(--bg-2);
+      border-bottom: 1px solid var(--line-2);
+      white-space: nowrap;
+    }
+    table.table td {
+      padding: 14px 20px;
+      border-top: 1px solid var(--line-2);
+      color: var(--muted);
+      vertical-align: top;
+      line-height: 1.55;
+    }
+    table.table td:first-child { color: var(--fg); }
+    table.table td .mono { font-family: var(--font-mono); font-size: 13px; color: var(--fg); overflow-wrap: anywhere; }
+    table.table.kv th { width: 170px; background: var(--surface); white-space: normal; }
+    table.table.kv td { background: var(--surface); }
+    table.table.kv td .mono { color: var(--fg); }
+
+    /* ---------- Code panels ---------- */
+    .code-panel {
+      margin: 24px 0 22px;
+      background: var(--code-bg);
+      border: 1px solid var(--line-2);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .code-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 18px;
+      background: var(--code-head-bg);
+      border-bottom: 1px solid var(--line-2);
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+    .code-head .dotrow { display: inline-flex; gap: 5px; margin-inline-end: 4px; }
+    .code-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); flex: 0 0 auto; }
+    .code-head .code-title { color: var(--fg); }
+    .copy-btn {
+      margin-inline-start: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 34px;
+      padding: 5px 12px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+    }
+    .copy-btn:hover { color: var(--fg); border-color: var(--faint); }
+    .copy-btn:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .copy-btn svg { width: 13px; height: 13px; }
+    .copy-btn[data-copied="true"] { color: var(--edge); border-color: var(--edge-line); background: var(--edge-soft); }
+    .code-body {
+      margin: 0;
+      padding: 18px 20px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 13.5px;
+      line-height: 1.75;
+      color: var(--code-fg);
+    }
+    .code-body pre { margin: 0; font: inherit; }
+    .code-body .tok { color: var(--jeton-text); font-weight: 600; }
+    .code-body .cmt { color: var(--muted); font-style: italic; }
+    .code-body .str { color: var(--clair-text); }
+    .code-body .key { color: var(--jeton-text); }
+    .code-body .hl { color: var(--edge); }
+
+    /* ---------- Callouts ---------- */
+    .callout {
+      display: flex;
+      gap: 15px;
+      align-items: flex-start;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      background: var(--surface);
+      margin: 24px 0;
+    }
+    .callout-icon { flex: 0 0 auto; margin-top: 2px; }
+    .callout-icon svg { width: 20px; height: 20px; }
+    .callout-body { min-width: 0; }
+    .callout-label {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      margin-bottom: 7px;
+      font-weight: 600;
+      display: block;
+    }
+    .callout-body > p { color: var(--muted); font-size: 15.5px; line-height: 1.62; margin: 0; }
+    .callout-body .code {
+      font-family: var(--font-mono);
+      font-size: 0.88em;
+      background: var(--surface);
+      border: 1px solid var(--line-2);
+      border-radius: 6px;
+      padding: 1px 6px;
+      color: var(--fg);
+      overflow-wrap: anywhere;
+    }
+    .callout-body a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+    .callout-body ul { margin: 10px 0 0; padding-inline-start: 18px; color: var(--muted); font-size: 15.5px; line-height: 1.62; }
+    .callout-body li { margin-bottom: 6px; }
+    .callout-body li:last-child { margin-bottom: 0; }
+    .callout-body li strong { color: var(--fg); font-weight: 640; }
+    .callout-note { background: var(--jeton-soft); border-color: var(--jeton-soft-2); }
+    .callout-note .callout-icon { color: var(--jeton-text); }
+    .callout-note .callout-label { color: var(--jeton-text); }
+    .callout-warning { background: var(--clair-soft); border-color: #E4CFAE; }
+    :root[data-theme="dark"] .callout-warning { border-color: rgba(226, 162, 76, 0.30); }
+    .callout-warning .callout-icon { color: var(--clair-text); }
+    .callout-warning .callout-label { color: var(--clair-text); }
+
+    /* ---------- State legend ---------- */
+    .legend { display: flex; flex-direction: column; gap: 12px; margin: 6px 0 22px; }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      color: var(--fg);
+    }
+    .legend-item .state-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      flex: 0 0 auto;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 4px 11px;
+      border-radius: 999px;
+      min-width: 124px;
+      justify-content: center;
+    }
+    .legend-item .state-pill .sp-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .legend-item span.state-pill.s-pseudonymise { color: var(--jeton-text); background: var(--jeton-soft); }
+    .legend-item span.state-pill.s-restaure { color: var(--edge); background: var(--edge-soft); }
+    .legend-item span.state-pill.s-verrouille { color: var(--clair-text); background: var(--clair-soft); }
+    .legend-item .state-desc { color: var(--muted); }
+
+    /* Journal table state badges */
+    .row-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .row-state .sp-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .row-state.s-pseudonymise { color: var(--jeton-text); background: var(--jeton-soft); }
+    .row-state.s-restaure { color: var(--edge); background: var(--edge-soft); }
+    .row-state.s-verrouille { color: var(--clair-text); background: var(--clair-soft); }
+
+    /* ---------- Footer ---------- */
+    .site-footer {
+      border-top: 1px solid var(--line-2);
+      background: var(--bg-2);
+      padding: 72px 0 40px;
+    }
+    .footer-grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 32px; }
+    .footer-brand .brand { margin-bottom: 16px; }
+    .footer-brand p { color: var(--muted); font-size: 14.5px; max-width: 34ch; }
+    .footer-col h4 {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--faint);
+      margin: 0 0 18px;
+      font-weight: 600;
+    }
+    .footer-col ul { list-style: none; margin: 0; padding: 0; }
+    .footer-col li { margin-bottom: 11px; }
+    .footer-col a { color: var(--muted); font-size: 15px; transition: color 160ms ease; }
+    .footer-col a:hover { color: var(--fg); }
+    .footer-col a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .footer-tagline {
+      margin-top: 56px;
+      padding-top: 26px;
+      border-top: 1px solid var(--line-2);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .footer-tagline .hosts { display: flex; flex-wrap: wrap; gap: 0 20px; }
+    .footer-tagline a:hover { color: var(--fg); }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 1100px) {
+      .docs { grid-template-columns: 230px minmax(0, 1fr); gap: 36px; }
+      .docs-toc { display: none; }
+    }
+    @media (max-width: 940px) {
+      .docs { grid-template-columns: 1fr; gap: 22px; padding-top: 24px; }
+      .docs-nav { position: static; overflow-x: auto; scrollbar-width: thin; margin-inline: -20px; padding-inline: 20px; }
+      .docs-nav .group { display: inline-flex; align-items: center; gap: 4px; margin: 0; padding-inline-end: 18px; border-inline-start: 1px solid var(--line-2); }
+      .docs-nav .group:first-child { border-inline-start: none; }
+      .docs-nav .group-title { display: none; }
+      .docs-nav ul { display: flex; gap: 4px; }
+      .docs-nav li { margin: 0; }
+      .docs-nav a { white-space: nowrap; padding: 7px 13px; border-inline-start: none; font-size: 14px; }
+      .docs-nav a.is-current { background: var(--jeton-soft); color: var(--jeton-text); border-radius: 999px; }
+      .article { max-width: none; }
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+      .footer-brand { grid-column: 1 / -1; }
+    }
+    @media (max-width: 620px) {
+      .docs { padding: 20px 20px 80px; }
+      .footer-grid { grid-template-columns: 1fr; gap: 28px; }
+      table.table th, table.table td { padding: 11px 14px; }
+      .code-body { padding: 15px 15px; }
+      .article h1 { font-size: 32px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+      html { scroll-behavior: auto !important; }
+    }
+      /* ---------- Docs pager (prev / next) ---------- */
+    .doc-pager { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 56px; }
+    .doc-pager a, .doc-pager span { display: block; padding: 16px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); text-decoration: none; transition: border-color 160ms ease, background 160ms ease; }
+    .doc-pager a small, .doc-pager span small { display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+    .doc-pager a span, .doc-pager span span { display: block; font-size: 14.5px; font-weight: 620; }
+    .doc-pager a:hover { border-color: var(--jeton); background: var(--jeton-soft); }
+    .doc-pager .prev { text-align: left; }
+    .doc-pager .next { text-align: right; }
+    .doc-pager .dead { opacity: .45; pointer-events: none; }
+      /* ---------- Docs sidebar nav (canonical) ---------- */
+    .nav-groups { display: grid; gap: 24px; }
+    .nav-group { display: grid; gap: 2px; }
+    .nav-group-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); padding-inline-start: 12px; margin-bottom: 8px; }
+    .nav-link { display: block; padding: 7px 12px; border-inline-start: 2px solid transparent; border-radius: 0 8px 8px 0; color: var(--muted); font-size: 14.5px; line-height: 1.4; transition: color 160ms ease, background 160ms ease, border-color 160ms ease; }
+    .nav-link:hover { color: var(--fg); background: var(--bg-2); }
+    .nav-link:focus-visible { outline: 2px solid var(--jeton); outline-offset: 1px; }
+    .nav-link[aria-current="page"] { color: var(--fg); font-weight: 620; border-inline-start-color: var(--jeton); background: var(--jeton-soft); }
+  </style>
 </head>
 <body>
-
-<header class="top">
-  <div class="wrap">
-    <a class="brand" href="index.html"><span class="dot"></span>CLOISON <small>proxy de confidentialité</small></a>
-    <div class="right">
-      <nav>
+  <header class="site-header" data-od-id="header">
+    <div class="wrap">
+      <a class="brand" href="#top" data-od-id="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>CLOISON</span>
+      </a>
+      <nav class="nav" aria-label="Navigation principale" data-od-id="nav">
         <a href="produit.html">Le produit</a>
         <a href="install-n0.html">Installer N0</a>
         <a href="mobile.html">Mobile</a>
-        <a href="api.html" aria-current="page">API</a>
+        <a href="api.html">API</a>
         <a href="journal.html">Journal</a>
         <a href="open-core.html">Open-core</a>
         <a href="faq.html">FAQ</a>
+        <a href="glossaire.html">Glossaire</a>
       </nav>
-      <button class="theme-btn" id="themeBtn" type="button" aria-label="Basculer thème clair / sombre" aria-pressed="false" title="Thème clair / sombre">
-        <svg class="ic ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-        <svg class="ic ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v2.6M12 19.4V22M2 12h2.6M19.4 12H22M4.8 4.8l1.9 1.9M17.3 17.3l1.9 1.9M19.2 4.8l-1.9 1.9M6.7 17.3l-1.9 1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Basculer le thème" aria-pressed="false" data-od-id="theme-toggle">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.2M12 19.8V22M22 12h-2.2M4.2 12H2M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6M18.4 18.4l-1.6-1.6M7.2 7.2 5.6 5.6"/></svg>
       </button>
     </div>
-  </div>
-</header>
+  </header>
 
-<section class="hero">
-  <div class="wrap">
-    <div class="eyebrow">Intégration · API OpenAI-compatible</div>
-    <h1>Deux champs, <span class="hl">zéro réécriture</span>.</h1>
-    <p class="lede">Pointez votre interface IA sur <code>api.wonkom.ai</code> : Base URL +
-      clé composite. Le protocole est celui d'OpenAI — tout client compatible fonctionne.</p>
-  </div>
-</section>
+  <main id="top">
+    <div class="docs">
+      <!-- SIDEBAR NAV -->
+      <nav class="docs-nav" aria-label="Documentation" data-od-id="docs-nav">
+        <div class="nav-groups">
+          <div class="nav-group">
+            <div class="nav-group-label">Découvrir</div>
+            <a class="nav-link" href="index.html">Accueil</a>
+            <a class="nav-link" href="produit.html">Le produit</a>
+            <a class="nav-link" href="mobile.html">Mobile</a>
+          </div>
+          <div class="nav-group">
+            <div class="nav-group-label">Déployer</div>
+            <a class="nav-link" href="install-n0.html">Installer N0</a>
+            <a class="nav-link" href="api.html" aria-current="page">API</a>
+          </div>
+          <div class="nav-group">
+            <div class="nav-group-label">Vérifier</div>
+            <a class="nav-link" href="journal.html">Journal de transparence</a>
+            <a class="nav-link" href="open-core.html">Open-core</a>
+          </div>
+          <div class="nav-group">
+            <div class="nav-group-label">Référence</div>
+            <a class="nav-link" href="faq.html">FAQ</a>
+            <a class="nav-link" href="glossaire.html">Glossaire</a>
+          </div>
+        </div>
+      </nav>
 
-<div class="doc">
-  <div class="wrap">
+      <!-- ARTICLE -->
+      <article class="article" data-od-id="article">
+        <h1 data-od-id="article-title">API &amp; clé composite</h1>
+        <p class="lede" data-od-id="article-lede">Deux champs, zéro réécriture. CLOISON expose un endpoint OpenAI-compatible : vous renseignez la base URL et la clé composite, puis chaque requête part pseudonymisée — champs PII convertis en jetons <span class="token">⟦…⟧</span> — et la réponse revient restaurée, sans toucher à votre code.</p>
 
-    <h2>1 · En deux champs</h2>
-    <table>
-      <tr><th>Champ</th><th>Valeur</th></tr>
-      <tr><td><strong>Base URL</strong></td><td><code>https://api.wonkom.ai/v1</code></td></tr>
-      <tr><td><strong>Clé</strong></td><td><code>mn_&lt;jeton&gt;.&lt;clé_amont_du_client&gt;</code> (clé composite fournie à l'onboarding)</td></tr>
-    </table>
-    <p>Exemple (curl, CLI) :</p>
-    <pre><code>curl https://api.wonkom.ai/v1/chat/completions \
-  -H "Authorization: Bearer mn_&lt;jeton&gt;.&lt;clé_amont&gt;" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"openai/gpt-4o-mini","messages":[{"role":"user",
-       "content":"Bonjour, je m'appelle Aminata Diop, mon téléphone est le 77 123 45 67."}]}'</code></pre>
-    <ul>
-      <li>Open WebUI : <em>Settings → Connections → OpenAI API</em> → Base URL + clé.</li>
-      <li>LibreChat : endpoint OpenAI personnalisé, même couple.</li>
-      <li>La clé composite est découpée sur le <strong>premier point</strong> : le jeton
-        <code>mn_…</code> (auth) et la clé amont (réinjectée <strong>uniquement en
-        header</strong> vers votre fournisseur — jamais en URL, jamais en log).</li>
-    </ul>
+        <div class="table-wrap" data-od-id="quick-facts">
+          <table class="table kv">
+            <tbody>
+              <tr><th>Base URL</th><td><span class="mono">https://api.wonkom.ai</span></td></tr>
+              <tr><th>Clé composite</th><td><span class="mono">CLOISON_v1_acme_e8f2…9ab1</span></td></tr>
+              <tr><th>Authentification</th><td>En-tête <span class="mono">Authorization: Bearer</span> — aucun secret dans l'URL</td></tr>
+            </tbody>
+          </table>
+        </div>
 
-    <h2>2 · Multi-tenant (intégration directe)</h2>
-    <p>Votre jeton est émis pour un tenant. Si votre jeton appartient à un autre tenant que
-      la plateforme, ajoutez le header de routage (non secret) :</p>
-    <pre><code>X-Cloison-Tenant: &lt;votre-tenant&gt;</code></pre>
-    <p>Un jeton n'est accepté que dans son tenant — <strong>fail-closed</strong>, jamais de
-      fuite inter-tenant (charte §7.2).</p>
+        <!-- 01 ENDPOINTS -->
+        <section id="endpoints" data-od-id="endpoints">
+          <h2 data-od-id="endpoints-title"><span class="h2-num">01</span>Endpoints</h2>
+          <p data-od-id="endpoints-body">Tout passe par un unique endpoint OpenAI-compatible. Il n'existe pas de SDK propriétaire à apprendre : vous conservez votre client, vos modèles et vos prompts. La seule chose qui change est l'adresse à laquelle votre interface envoie ses requêtes.</p>
+          <p>Le protocole est celui que votre client connaît déjà. Les champs <code class="inline">model</code>, <code class="inline">messages</code>, <code class="inline">temperature</code> et <code class="inline">max_tokens</code> transitent sans être réécrits — CLOISON n'intercepte que les champs déclarés par votre politique de pseudonymisation.</p>
 
-    <h2>3 · Endpoints</h2>
-    <table>
-      <tr><th>Endpoint</th><th>Rôle</th></tr>
-      <tr><td><code>POST /v1/chat/completions</code></td><td>chat (stream + non-stream, tool-calls) — le corps est tokenisé à l'aller, restauré au retour</td></tr>
-      <tr><td><code>POST /v1/completions</code></td><td>legacy non-stream</td></tr>
-      <tr><td><code>GET /v1/models</code></td><td>pass-through amont après auth</td></tr>
-      <tr><td><code>GET /v1/audit/report?period=…</code></td><td>rapport de conformité k-anonyme (mode audit observe-only)</td></tr>
-    </table>
-    <p>Erreurs normalisées (shape OpenAI) : <code>401 invalid_api_key</code> ·
-      <code>400 invalid_request_error</code> · <code>413 request_too_large</code> ·
-      <code>429 rate_limit_exceeded</code> · <code>502 upstream_error</code> —
-      le <code>message</code> ne contient <strong>jamais</strong> de secret.</p>
+          <div class="code-panel" data-od-id="endpoints-code">
+            <div class="code-head"><span class="dotrow" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span><span class="code-title">config — pointer votre client</span><button class="copy-btn" type="button" data-copy aria-label="Copier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copier</span></button></div>
+            <div class="code-body"><pre><code><span class="cmt"># Deux valeurs, et rien d'autre à toucher.</span>
+<span class="key">OPENAI_BASE_URL</span> = <span class="str">"https://api.wonkom.ai"</span>
+<span class="key">OPENAI_API_KEY</span> = <span class="str">"CLOISON_v1_acme_e8f2…9ab1"</span>
 
-    <h2 id="audit">4 · Rapport de conformité (k-anonyme)</h2>
-    <p>Sur demande (mode audit observe-only activé pour votre tenant), le rapport
-      <code>GET /v1/audit/report</code> fournit, par période
-      (<code>hourly|daily|weekly|all</code>) :</p>
-    <ul>
-      <li>compteurs k-anonymes par type de PII détectée ;</li>
-      <li>restaurations incomplètes et sorties bloquées ;</li>
-      <li>jauges quasi-id — <strong>signés</strong> (Ed25519, vérifiables avec le code
-        public) et <strong>présentables</strong> : aucun texte, aucune valeur isolée &lt; k
-        (les cellules &lt; k sont <strong>redactées</strong>).</li>
-    </ul>
+<span class="cmt"># Le protocole OpenAI est conservé tel quel :</span>
+<span class="cmt"># model, messages, temperature … transitent sans être réécrits.</span></code></pre></div>
+          </div>
 
-    <h2>5 · CLI ops (<code>cloison-cli</code>)</h2>
-    <p>Outillage d'administration pour l'opérateur (provisioning de tenant, jetons,
-      politiques, licences, santé du journal). Le clair <code>mn_</code> n'est affiché
-      <strong>qu'une seule fois</strong>, à l'émission — jamais journalisé :</p>
-    <pre><code>cloison-cli provision acme --nom "Acme SARL" --plan pro
-cloison-cli token issue acme               # clair affiché UNE fois
-cloison-cli token verify acme mn_&lt;jeton&gt;   # seul le hash transite
-cloison-cli token rotate acme tok-&lt;id&gt;     # ancien jeton: grâce de 300 s
-cloison-cli token revoke acme tok-&lt;id&gt;     # révocation immédiate
-cloison-cli policy set acme policy.json
-cloison-cli license add acme --plan enterprise --expires_at 1893456000
-cloison-cli ledger root                    # santé du journal public</code></pre>
-    <p>Flux d'onboarding scripté : <code>deploy/onboard_client.sh</code> (provision →
-      émission → vérification par hash → livraison de la clé composite).</p>
+          <div class="table-wrap" data-od-id="endpoints-table">
+            <table class="table">
+              <thead>
+                <tr><th>Opération</th><th>Chemin</th><th>Méthode</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Complétion</td><td><span class="mono">/v1/chat/completions</span></td><td><span class="mono">POST</span></td></tr>
+                <tr><td>Liste des modèles</td><td><span class="mono">/v1/models</span></td><td><span class="mono">GET</span></td></tr>
+                <tr><td>Comptes (usage)</td><td><span class="mono">/v1/usage</span></td><td><span class="mono">GET</span></td></tr>
+              </tbody>
+            </table>
+          </div>
 
-    <h2 id="config">6 · Variables de configuration (N0)</h2>
-    <p>Référence des principales variables <code>CLOISON_*</code> (mode daemon local) :</p>
-    <table>
-      <tr><th>Variable</th><th>Rôle</th></tr>
-      <tr><td><code>CLOISON_VAULT_PATH</code></td><td><strong>active le mode N0</strong> — coffre redb persistant chiffré AES-256-GCM</td></tr>
-      <tr><td><code>CLOISON_VAULT_PASSPHRASE</code></td><td>clé du coffre (HKDF) — requise, jamais stockée en clair</td></tr>
-      <tr><td><code>CLOISON_EXPECTED_ACCESS_TOKEN</code></td><td>jeton <code>mn_*</code> local — comparé à temps constant, zéro appel au plan de contrôle</td></tr>
-      <tr><td><code>CLOISON_UPSTREAM_BASE_URL</code></td><td>votre fournisseur LLM</td></tr>
-      <tr><td><code>CLOISON_AUDIT_MODE</code></td><td><strong>0 par défaut</strong> — l'audit k-anonyme vers le journal est opt-in (<code>=1</code>)</td></tr>
-      <tr><td><code>CLOISON_VAULT_KEYCHAIN_SERVICE</code></td><td>posé = passphrase via le keychain OS (jamais en clair par CLOISON)</td></tr>
-      <tr><td><code>CLOISON_NER_MODEL_ONNX</code> + <code>CLOISON_NER_TOKENIZER</code></td><td>NER léger embarqué (PERSON/LOC in-core)</td></tr>
-      <tr><td><code>CLOISON_ALIAS_EXPANSION</code></td><td>alias intra-session (1 par défaut — R1–R7, jamais les pronoms)</td></tr>
-      <tr><td><code>CLOISON_QUASI_ID_GAUGE</code></td><td>jauge quasi-id (0 par défaut, opt-in — signal, jamais de résolution)</td></tr>
-    </table>
+          <div class="callout callout-note" data-od-id="endpoints-callout">
+            <span class="callout-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg></span>
+            <span class="callout-body">
+              <span class="callout-label">Note</span>
+              <p>Cloison n'expose pas de route dédiée par tenant : le même endpoint dessert tous les espaces, isolés par la <a href="#cle">clé composite</a>.</p>
+            </span>
+          </div>
+        </section>
 
-    <div class="note">
-      <span class="k">Suite</span>
-      <div>Vérifiez la transparence : <a href="journal.html">le journal public</a> · la
-        preuve de confiance : <a href="open-core.html">le code ouvert</a>.</div>
+        <!-- 02 CLE COMPOSITE -->
+        <section id="cle" data-od-id="cle">
+          <h2 data-od-id="cle-title"><span class="h2-num">02</span>Clé composite</h2>
+          <p data-od-id="cle-body">Une seule valeur transporte tout : l'identifiant du tenant et la clé secrète, réunis dans le seul champ <code class="inline">clé</code>. Aucun secret ne transite dans l'URL — l'authentification passe par l'en-tête <code class="inline">Authorization</code>, révocable à tout moment.</p>
+          <p>La clé composite isole chaque tenant. Deux espaces ne partagent ni clés, ni politique de pseudonymisation, ni journal : la séparation reste étanche, même sur un endpoint partagé.</p>
+
+          <div class="code-panel" data-od-id="cle-code-onboarding">
+            <div class="code-head"><span class="dotrow" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span><span class="code-title">cloison onboarding — provisionner un tenant</span><button class="copy-btn" type="button" data-copy aria-label="Copier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copier</span></button></div>
+            <div class="code-body"><pre><code><span class="cmt"># Génère la clé, provisionne l'espace et écrit ./.cloison</span>
+$ <span class="hl">cloison onboarding</span> --tenant acme --out ./.cloison
+
+<span class="cmt"># Sortie :</span>
+<span class="key">tenant</span>  <span class="str">acme</span>
+<span class="key">base</span>    <span class="str">https://api.wonkom.ai</span>
+<span class="key">key</span>     <span class="str">CLOISON_v1_acme_e8f2…9ab1</span>   <span class="cmt"># stockée, jamais réaffichée</span></code></pre></div>
+          </div>
+
+          <div class="code-panel" data-od-id="cle-code-header">
+            <div class="code-head"><span class="dotrow" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span><span class="code-title">requête — le secret dans l'en-tête, jamais dans l'URL</span><button class="copy-btn" type="button" data-copy aria-label="Copier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copier</span></button></div>
+            <div class="code-body"><pre><code>Authorization: Bearer CLOISON_v1_acme_e8f2…9ab1
+<span class="cmt"># ❌ jamais   https://api.wonkom.ai?token=CLOISON_v1_…</span></code></pre></div>
+          </div>
+
+          <div class="callout callout-warning" data-od-id="cle-callout">
+            <span class="callout-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+            <span class="callout-body">
+              <span class="callout-label">Attention</span>
+              <p>Ne placez jamais la clé dans une URL ou une chaîne de requête : elle serait consignée dans les journaux des proxys et des serveurs. La clé est <strong>révocable</strong> — en cas de fuite, <code class="code">cloison rotate --tenant acme</code> en émet une nouvelle sans interruption de service.</p>
+            </span>
+          </div>
+        </section>
+
+        <!-- 03 EXEMPLES -->
+        <section id="exemples" data-od-id="exemples">
+          <h2 data-od-id="exemples-title"><span class="h2-num">03</span>Exemples</h2>
+          <p data-od-id="exemples-body">L'envoi se fait en curl ou via le SDK OpenAI. Avant le modèle, les champs PII sont remplacés par des jetons <span class="token">⟦…⟧</span> ; à la réponse, les vraies valeurs sont réintégrées.</p>
+
+          <div class="code-panel" data-od-id="exemples-code-curl">
+            <div class="code-head"><span class="dotrow" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span><span class="code-title">curl — requête envoyée</span><button class="copy-btn" type="button" data-copy aria-label="Copier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copier</span></button></div>
+            <div class="code-body"><pre><code>curl https://api.wonkom.ai/v1/chat/completions \
+  -H <span class="str">"Authorization: Bearer $CLOISON_API_KEY"</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{
+    "model": "gpt-4o",
+    "messages": [{
+      "role": "user",
+      "content": "Résume le dossier de ⟦PII-PATIENT⟧."
+    }]
+  }'</span></code></pre></div>
+          </div>
+
+          <div class="code-panel" data-od-id="exemples-code-sdk">
+            <div class="code-head"><span class="dotrow" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span><span class="code-title">python — SDK OpenAI inaltéré</span><button class="copy-btn" type="button" data-copy aria-label="Copier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copier</span></button></div>
+            <div class="code-body"><pre><code><span class="key">from</span> openai <span class="key">import</span> OpenAI
+
+client = OpenAI(
+    base_url=<span class="str">"https://api.wonkom.ai"</span>,
+    api_key=<span class="str">"CLOISON_v1_acme_e8f2…9ab1"</span>,
+)
+
+r = client.chat.completions.create(
+    model=<span class="str">"gpt-4o"</span>,
+    messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>,
+               <span class="str">"content"</span>: <span class="str">"Résume le dossier de ⟦PII-PATIENT⟧."</span>}],
+)</code></pre></div>
+          </div>
+
+          <div class="code-panel" data-od-id="exemples-code-reponse">
+            <div class="code-head"><span class="dotrow" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span><span class="code-title">réponse — restaurée avant de vous revenir</span><button class="copy-btn" type="button" data-copy aria-label="Copier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copier</span></button></div>
+            <div class="code-body"><pre><code>{
+  <span class="key">"id"</span>: <span class="str">"chatcmpl-7fN9…"</span>,
+  <span class="key">"object"</span>: <span class="str">"chat.completion"</span>,
+  <span class="key">"model"</span>: <span class="str">"gpt-4o"</span>,
+  <span class="key">"choices"</span>: [{
+    <span class="key">"index"</span>: 0,
+    <span class="key">"message"</span>: {
+      <span class="key">"role"</span>: <span class="str">"assistant"</span>,
+      <span class="key">"content"</span>: <span class="str">"Le dossier de Marie Dupont (n° 7fN9…) compte 3 analyses."</span>
+    },
+    <span class="key">"finish_reason"</span>: <span class="str">"stop"</span>
+  }]
+}</code></pre></div>
+          </div>
+
+          <div class="callout callout-warning" data-od-id="exemples-callout">
+            <span class="callout-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+            <span class="callout-body">
+              <span class="callout-label">Attention</span>
+              <p>Seuls les champs déclarés par la politique sont convertis. Un champ non reconnu passe tel quel : en mode <code class="code">observe-only</code>, rien n'est transformé, tout est journalisé (voir <a href="#audit">section audit</a>).</p>
+            </span>
+          </div>
+        </section>
+
+        <!-- 04 JOURNAL & LOGS -->
+        <section id="journal" data-od-id="journal">
+          <h2 data-od-id="journal-title"><span class="h2-num">04</span>Journal &amp; logs</h2>
+          <p data-od-id="journal-body">Chaque appel produit un événement horodaté dans un journal append-only. Trois états rendent la vie du jeton lisible d'un coup d'œil — et vérifiable.</p>
+
+          <div class="legend" data-od-id="journal-legend">
+            <div class="legend-item"><span class="state-pill s-pseudonymise"><span class="sp-dot" aria-hidden="true"></span>Pseudonymisé</span><span class="state-desc">le clair est remplacé par un jeton avant d'atteindre le modèle</span></div>
+            <div class="legend-item"><span class="state-pill s-restaure"><span class="sp-dot" aria-hidden="true"></span>Restauré</span><span class="state-desc">la vraie valeur est réintégrée à la réponse, coréférence conservée</span></div>
+            <div class="legend-item"><span class="state-pill s-verrouille"><span class="sp-dot" aria-hidden="true"></span>Verrouillé</span><span class="state-desc">restauration impossible — valeur absente ou rotation en cours</span></div>
+          </div>
+
+          <div class="table-wrap" data-od-id="journal-table">
+            <table class="table">
+              <thead>
+                <tr><th>Horodatage</th><th>Appel</th><th>Champs touchés</th><th>État</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><span class="mono">09:12:03Z</span></td><td><span class="mono">c-7fN9</span></td><td><span class="mono">patient.nom · patient.date</span></td><td><span class="row-state s-pseudonymise"><span class="sp-dot" aria-hidden="true"></span>Pseudonymisé</span></td></tr>
+                <tr><td><span class="mono">09:12:03Z</span></td><td><span class="mono">c-7fN9</span></td><td><span class="mono">—</span></td><td><span class="row-state s-restaure"><span class="sp-dot" aria-hidden="true"></span>Restauré</span></td></tr>
+                <tr><td><span class="mono">09:12:04Z</span></td><td><span class="mono">c-7fN7</span></td><td><span class="mono">⟦PII-PATIENT⟧</span></td><td><span class="row-state s-verrouille"><span class="sp-dot" aria-hidden="true"></span>Verrouillé</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="code-panel" data-od-id="journal-code">
+            <div class="code-head"><span class="dotrow" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span><span class="code-title">événement — append-only, signé</span><button class="copy-btn" type="button" data-copy aria-label="Copier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copier</span></button></div>
+            <div class="code-body"><pre><code>{
+  <span class="key">"ts"</span>: <span class="str">"2025-06-04T09:12:03Z"</span>,
+  <span class="key">"tenant"</span>: <span class="str">"acme"</span>,
+  <span class="key">"call"</span>: <span class="str">"c-7fN9"</span>,
+  <span class="key">"state"</span>: <span class="str">"pseudonymise"</span>,
+  <span class="key">"fields"</span>: [<span class="str">"patient.nom"</span>, <span class="str">"patient.date"</span>],
+  <span class="key">"sig"</span>: <span class="str">"ed25519:4F2A…C9D1"</span>
+}</code></pre></div>
+          </div>
+        </section>
+
+        <!-- 05 SECTION AUDIT -->
+        <section id="audit" data-od-id="audit">
+          <h2 data-od-id="audit-title"><span class="h2-num">05</span>Section audit</h2>
+          <p data-od-id="audit-body">Le rapport d'audit est conçu pour être remis à votre autorité de protection des données. En Afrique de l'Ouest, le cadre de référence est celui de la <strong>loi n° 2008-12 du 25 janvier 2008</strong> relative à la protection des données à caractère personnel (Sénégal), complété par l'Acte additionnel CEDEAO <strong>A/SA.1/01/10</strong> — applicable aussi dans l'espace UEMOA — et par la <strong>Convention de Malabo (2014)</strong> sur la cybersécurité et la protection des données.</p>
+          <p>Le régime sénégalais est à deux étages devant la Commission de protection des Données personnelles (CDP) : <strong>déclaration</strong> pour les traitements courants, <strong>autorisation préalable</strong> pour ceux qui présentent des risques particuliers. Le rapport documente aussi la distinction entre <strong>responsable de traitement</strong> et <strong>sous-traitant</strong> — elle détermine qui doit déclarer et qui doit solliciter l'autorisation. Le RGPD n'intervient qu'en complément (fast-follow Europe), jamais comme cadre principal du rapport.</p>
+
+          <div class="callout callout-note" data-od-id="audit-framework">
+            <span class="callout-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6Z"/><path d="M9 12l2 2 4-4"/></svg></span>
+            <span class="callout-body">
+              <span class="callout-label">Cadre de référence</span>
+              <p>Le rapport s'appuie d'abord sur le cadre ouest-africain, et ne mentionne le RGPD qu'en complément :</p>
+              <ul>
+                <li><strong>Loi n° 2008-12</strong> (Sénégal) — traitement des données à caractère personnel</li>
+                <li><strong>Acte additionnel CEDEAO A/SA.1/01/10</strong> — applicable aussi dans l'espace UEMOA</li>
+                <li><strong>Convention de Malabo (2014)</strong> — cybersécurité et protection des données</li>
+                <li><strong>Régime deux étages de la CDP</strong> — déclaration / autorisation préalable</li>
+                <li><strong>Responsable de traitement ≠ sous-traitant</strong> — répartition des obligations</li>
+              </ul>
+            </span>
+          </div>
+
+          <p>Le mode observe-only produit un rapport par tenant, signé : compteurs k-anonymes par type de PII, restaurations incomplètes, cellules dont le compte est inférieur à <code class="inline">k</code>, le tout signé Ed25519 et vérifiable avec <code class="inline">cloison-verify</code>.</p>
+
+          <div class="code-panel" data-od-id="audit-code">
+            <div class="code-head"><span class="dotrow" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span><span class="code-title">rapport — extrait signé, à remettre à votre CDP / DPO</span><button class="copy-btn" type="button" data-copy aria-label="Copier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copier</span></button></div>
+            <div class="code-body"><pre><code>{
+  <span class="key">"tenant"</span>: <span class="str">"acme"</span>,
+  <span class="key">"mode"</span>: <span class="str">"observe-only"</span>,
+  <span class="key">"cadre"</span>: <span class="str">"loi-2008-12 · CEDEAO-A/SA.1/01/10 · Malabo-2014"</span>,
+  <span class="key">"k_anonymity"</span>: 12,
+  <span class="key">"compteurs"</span>: {
+    <span class="key">"patient.nom"</span>: 1842,
+    <span class="key">"patient.date"</span>: 917,
+    <span class="key">"adresse"</span>: 403
+  },
+  <span class="key">"restaurations_incompletes"</span>: 3,
+  <span class="key">"cellules_redactees"</span>: 17,   <span class="cmt">// &lt; k</span>
+  <span class="key">"responsabilite"</span>: <span class="str">"responsable-de-traitement"</span>,
+  <span class="key">"signature_ed25519"</span>: <span class="str">"4F2A…C9D1"</span>
+}</code></pre></div>
+          </div>
+        </section>
+      
+        <nav class="doc-pager" aria-label="Navigation des pages">
+          <a class="prev" href="mobile.html"><small>← Précédent</small><span>Mobile</span></a>
+          <a class="next" href="journal.html"><small>Suivant →</small><span>Journal de transparence</span></a>
+        </nav>
+</article>
+
+      <!-- TOC -->
+      <aside class="docs-toc" data-od-id="toc">
+        <div class="toc-title">Sur cette page</div>
+        <a href="#endpoints">01 &middot; Endpoints</a>
+        <a href="#cle">02 &middot; Clé composite</a>
+        <a href="#exemples">03 &middot; Exemples</a>
+        <a href="#journal">04 &middot; Journal &amp; logs</a>
+        <a href="#audit">05 &middot; Section audit</a>
+      </aside>
     </div>
+  </main>
 
-  </div>
-</div>
-
-<footer>
-  <div class="wrap">
-    <div class="cols">
-      <div class="col">
-        <span class="t">Produit</span>
-        <a href="produit.html">Architecture &amp; promesse</a>
-        <a href="faq.html">FAQ + limites honnêtes</a>
-        <a href="journal.html">Journal de transparence</a>
+  <!-- FOOTER -->
+  <footer class="site-footer" data-od-id="footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a class="brand" href="#top" data-od-id="footer-brand">
+            <span class="brand-mark" aria-hidden="true"></span>
+            <span>CLOISON</span>
+          </a>
+          <p>Le proxy de confidentialité qui transforme vos données en jetons vérifiables — avant, pendant et après l'appel au modèle.</p>
+        </div>
+        <div class="footer-col" data-od-id="footer-produit">
+          <h4>Produit</h4>
+          <ul>
+            <li><a href="produit.html">Le produit</a></li>
+            <li><a href="produit.html">Pseudonymisation</a></li>
+            <li><a href="produit.html">Restauration</a></li>
+            <li><a href="produit.html">Trois niveaux</a></li>
+          </ul>
+        </div>
+        <div class="footer-col" data-od-id="footer-commencer">
+          <h4>Commencer</h4>
+          <ul>
+            <li><a href="install-n0.html">Installer N0</a></li>
+            <li><a href="api.html">Endpoint API</a></li>
+            <li><a href="mobile.html">Mobile</a></li>
+          </ul>
+        </div>
+        <div class="footer-col" data-od-id="footer-verifier">
+          <h4>Vérifier</h4>
+          <ul>
+            <li><a href="journal.html">Journal</a></li>
+            <li><a href="open-core.html">Code ouvert</a></li>
+            <li><a href="faq.html#conformite">Conformité</a></li>
+          </ul>
+        </div>
       </div>
-      <div class="col">
-        <span class="t">Commencer</span>
-        <a href="install-n0.html">Installer N0</a>
-        <a href="mobile.html">Guide mobile Android &amp; iOS</a>
-        <a href="api.html">API + clé composite</a>
-      </div>
-      <div class="col">
-        <span class="t">Vérifier</span>
-        <a href="journal.html">journal.wonkom.ai</a>
-        <a href="open-core.html">Code ouvert</a>
+      <div class="footer-tagline" data-od-id="footer-tagline">
+        <div class="hosts">
+          <a href="https://docs.wonkom.ai" target="_blank" rel="noopener" data-od-id="footer-docs">docs.wonkom.ai</a>
+          <a href="https://api.wonkom.ai" target="_blank" rel="noopener" data-od-id="footer-api">api.wonkom.ai</a>
+          <a href="https://journal.wonkom.ai" target="_blank" rel="noopener" data-od-id="footer-journal">journal.wonkom.ai</a>
+        </div>
+        <span>© 2025 CLOISON · open-core</span>
       </div>
     </div>
-    <div>CLOISON — proxy de confidentialité PII. <span class="pill">open-core</span></div>
-    <div class="mono">docs.wonkom.ai · api.wonkom.ai · journal.wonkom.ai</div>
-  </div>
-</footer>
+  </footer>
 
-<script src="assets/theme.js"></script>
+  <script>
+    (function () {
+      // Theme toggle
+      var btn = document.getElementById('theme-toggle');
+      if (btn) {
+        function sync() {
+          var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+          btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+          btn.setAttribute('aria-label', dark ? 'Activer le thème clair' : 'Activer le thème sombre');
+        }
+        btn.addEventListener('click', function () {
+          var cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+          var next = cur === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', next);
+          try { localStorage.setItem('cloison-theme', next); } catch (e) {}
+          sync();
+        });
+        sync();
+      }
+
+      // Copy buttons (real affordance)
+      document.querySelectorAll('.code-panel').forEach(function (panel) {
+        var cb = panel.querySelector('.copy-btn');
+        var code = panel.querySelector('code');
+        if (!cb || !code) return;
+        cb.addEventListener('click', function () {
+          var text = code.textContent;
+          var done = function () { cb.setAttribute('data-copied', 'true'); setTimeout(function () { cb.setAttribute('data-copied', 'false'); }, 1400); };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done, function () { done(); });
+          } else { done(); }
+        });
+      });
+
+      // Scrollspy for the TOC (no scrollIntoView)
+      var toc = document.getElementById('toc');
+      if (toc && 'IntersectionObserver' in window) {
+        var links = Array.prototype.slice.call(toc.querySelectorAll('a[href^="#"]'));
+        var map = {};
+        links.forEach(function (l) { map[l.getAttribute('href').slice(1)] = l; });
+        var targets = Object.keys(map).map(function (id) { return document.getElementById(id); }).filter(Boolean);
+        var current = null;
+        function setActive(id) {
+          if (current === id) return;
+          if (map[current]) map[current].classList.remove('is-active');
+          if (map[id]) map[id].classList.add('is-active');
+          current = id;
+        }
+        var obs = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) { if (e.isIntersecting) setActive(e.target.id); });
+        }, { rootMargin: '-12% 0px -70% 0px', threshold: 0 });
+        targets.forEach(function (el) { obs.observe(el); });
+      }
+    })();
+  </script>
 </body>
 </html>

@@ -1,19 +1,625 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-theme="light">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="description" content="CLOISON N0 — installer le daemon desktop local en ≤ 10 minutes, sans Rust ni torch : Linux, macOS, Windows. Configuration, vérification, limites." />
-<title>Installer N0 (≤ 10 min) — CLOISON</title>
-<link rel="stylesheet" href="assets/docs.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Installer CLOISON N0 (≤ 10 min) — Proxy de confidentialité PII</title>
+  <meta name="description" content="Installer CLOISON N0 sur votre poste en ≤ 10 minutes : un daemon local compatible OpenAI sur localhost:8787, un coffre chiffré persistant et une authentification 100 % locale. Vérifiable par checksums SHA-256." />
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('cloison-theme'); } catch (e) {}
+      if (!t) t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <style>
+    :root {
+      --bg: #E7E9EE;
+      --bg-2: #DEE1E8;
+      --surface: #FFFFFF;
+      --fg: #191C27;
+      --muted: #535868;
+      --faint: #8A8F9E;
+      --line: #CFD3DC;
+      --line-2: #E3E6EC;
+
+      --jeton: #0B7A85;        /* identité — accent */
+      --jeton-soft: #E1F0F1;
+      --jeton-soft-2: #bfe0e3;
+
+      --edge: #1E7A4D;         /* confiance / succès — vérifié */
+      --edge-soft: #E3F1E9;
+      --edge-line: #c4e2d2;
+
+      --clair: #A9640C;        /* attention honnête — limites */
+      --clair-soft: #F6ECDD;
+      --clair-line: #e4cfae;
+
+      --danger: #AD3B3B;
+      --danger-soft: #F6E4E2;
+
+      --jeton-text: #09646D;
+      --clair-text: #8C5004;
+
+      --header-bg: rgba(231, 233, 238, 0.82);
+
+      --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+      --wrap: 1280px;
+      --radius: 13px;
+      --radius-sm: 9px;
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #0E1119;
+      --bg-2: #141824;
+      --surface: #191F2C;
+      --fg: #E7E9EF;
+      --muted: #A9AFBE;
+      --faint: #79808F;
+      --line: #2A3141;
+      --line-2: #232A38;
+
+      --jeton: #37B5C0;
+      --jeton-soft: rgba(55, 181, 192, 0.14);
+      --jeton-soft-2: rgba(55, 181, 192, 0.22);
+
+      --edge: #3FB878;
+      --edge-soft: rgba(63, 184, 120, 0.14);
+      --edge-line: rgba(63, 184, 120, 0.30);
+
+      --clair: #E2A24C;
+      --clair-soft: rgba(226, 162, 76, 0.14);
+      --clair-line: rgba(226, 162, 76, 0.28);
+
+      --danger: #E06A63;
+      --danger-soft: rgba(224, 106, 99, 0.16);
+
+      --jeton-text: #37B5C0;
+      --clair-text: #E2A24C;
+
+      --header-bg: rgba(14, 17, 25, 0.82);
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 17px/1.62 var(--font-ui);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      transition: background 180ms ease, color 180ms ease;
+    }
+
+    a { color: var(--fg); text-decoration: none; }
+    h1, h2, h3, h4, h5 { margin: 0; font-weight: 750; letter-spacing: -0.02em; }
+    p { margin: 0; }
+    button { font: inherit; cursor: pointer; }
+    ul, ol { margin: 0; padding-left: 0; list-style: none; }
+
+    .wrap { max-width: var(--wrap); margin: 0 auto; padding-left: 28px; padding-right: 28px; }
+    @media (max-width: 620px) { .wrap { padding-left: 20px; padding-right: 20px; } }
+
+    /* ---------- Header ---------- */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 70;
+      background: var(--header-bg);
+      backdrop-filter: saturate(180%) blur(14px);
+      -webkit-backdrop-filter: saturate(180%) blur(14px);
+      border-block-end: 1px solid var(--line-2);
+    }
+    .site-header .wrap {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      height: 64px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 800;
+      font-size: 16.5px;
+      letter-spacing: 0.045em;
+      color: var(--fg);
+      white-space: nowrap;
+    }
+    .brand-mark {
+      width: 11px;
+      height: 11px;
+      border-radius: 2.5px;
+      background: var(--fg);
+      flex: 0 0 auto;
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      margin-inline-start: auto;
+    }
+    .nav a {
+      color: var(--muted);
+      font-size: 14px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: color 160ms ease, background 160ms ease;
+    }
+    .nav a:hover { color: var(--fg); background: var(--bg-2); }
+    .nav a[aria-current="page"] { color: var(--fg); background: var(--bg-2); }
+    .nav a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    @media (max-width: 1040px) { .nav a { display: none; } }
+
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      flex: 0 0 auto;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--fg);
+      transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+    }
+    .icon-btn:hover { background: var(--bg-2); border-color: var(--line); }
+    .icon-btn:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .icon-btn svg { width: 18px; height: 18px; }
+
+    .menu-toggle { margin-inline-start: 4px; display: none; }
+    .theme-toggle .icon-sun { display: none; }
+    :root[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+    :root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+
+    /* ---------- Docs layout ---------- */
+    .docs {
+      display: grid;
+      grid-template-columns: 236px minmax(0, 1fr) 208px;
+      gap: 44px;
+      align-items: start;
+      max-width: var(--wrap);
+      margin: 0 auto;
+      padding: 46px 28px 96px;
+    }
+    .sidebar { position: sticky; top: 86px; max-height: calc(100vh - 104px); overflow-y: auto; min-width: 0; }
+    .toc { position: sticky; top: 86px; max-height: calc(100vh - 104px); overflow-y: auto; min-width: 0; }
+    .article { max-width: 700px; margin-inline: auto; min-width: 0; }
+
+    /* ---------- Sidebar ---------- */
+    .side-brand { display: none; }
+    .side-group { margin-block-end: 30px; }
+    .side-title {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--faint);
+      font-weight: 600;
+      margin-block-end: 12px;
+    }
+    .side-list li { margin-block-end: 2px; }
+    .side-list a {
+      display: block;
+      padding: 7px 12px;
+      padding-inline-start: 12px;
+      border-inline-start: 3px solid transparent;
+      border-start-start-radius: 8px;
+      border-end-start-radius: 8px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.4;
+      transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
+    }
+    .side-list a:hover { color: var(--fg); background: var(--bg-2); }
+    .side-list a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .side-list a[aria-current="page"] {
+      color: var(--fg);
+      font-weight: 600;
+      border-inline-start: 3px solid var(--jeton);
+      background: var(--jeton-soft);
+    }
+
+    /* ---------- TOC ---------- */
+    .toc-title {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--faint);
+      font-weight: 600;
+      margin-block-end: 14px;
+    }
+    .toc-list { border-inline-start: 1px solid var(--line-2); }
+    .toc-list li { margin-block-end: 2px; }
+    .toc-list a {
+      display: block;
+      padding: 5px 12px;
+      padding-inline-end: 0;
+      margin-inline-start: -1px;
+      border-inline-start: 3px solid transparent;
+      border-start-start-radius: 8px;
+      border-end-start-radius: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.4;
+      transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+    }
+    .toc-list a:hover { color: var(--fg); background: var(--bg-2); }
+    .toc-list a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .toc-list a.active {
+      color: var(--jeton-text);
+      border-inline-start: 3px solid var(--jeton);
+      font-weight: 600;
+    }
+
+    /* ---------- Article / prose ---------- */
+    .article .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-block-end: 22px;
+    }
+    .article .eyebrow::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      background: var(--fg);
+      flex: 0 0 auto;
+      opacity: 0.7;
+    }
+    .article .eyebrow .num { color: var(--jeton-text); }
+
+    .step { padding: 56px 0 50px; border-block-start: 1px solid var(--line-2); }
+    .step:first-of-type { border-block-start: none; padding-block-start: 8px; }
+    .step-head { margin-block-end: 32px; }
+    .step-head h2 { font-size: clamp(26px, 3.4vw, 36px); line-height: 1.16; }
+    .step-head .lede { color: var(--muted); font-size: 17.5px; margin-block-start: 14px; max-width: 58ch; }
+
+    .prose { max-width: 68ch; color: var(--fg); font-size: 17px; line-height: 1.7; }
+    .prose + .prose { margin-block-start: 26px; }
+    .prose code { font-size: 0.9em; }
+    strong { font-weight: 640; }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.86em;
+      background: var(--bg-2);
+      border: 1px solid var(--line-2);
+      border-radius: 5px;
+      padding: 1.5px 6px;
+      color: var(--fg);
+      overflow-wrap: anywhere;
+    }
+    .token, .mono { font-family: var(--font-mono); }
+    .token { color: var(--jeton-text); font-size: 0.94em; white-space: nowrap; }
+
+    /* ---------- Code blocks ---------- */
+    .code { margin: 24px 0 10px; }
+    .code-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--faint);
+      background: var(--bg-2);
+      border: 1px solid var(--line);
+      border-block-end: none;
+      padding: 5px 10px;
+      border-start-start-radius: 8px;
+      border-start-end-radius: 8px;
+    }
+    .code-label::before { content: ""; width: 7px; height: 7px; border-radius: 2px; background: var(--jeton); opacity: 0.85; }
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-start-start-radius: 0;
+      border-start-end-radius: var(--radius);
+      border-end-start-radius: var(--radius);
+      border-end-end-radius: var(--radius);
+      padding: 20px 22px;
+      margin: 0;
+      overflow-x: auto;
+      max-width: 100%;
+      font-family: var(--font-mono);
+      font-size: 13.5px;
+      line-height: 1.65;
+      color: var(--fg);
+    }
+    pre code { background: none; border: none; padding: 0; font-size: inherit; color: inherit; }
+    @media (max-width: 620px) { pre { padding: 16px 16px; font-size: 12.5px; } }
+
+    /* ---------- Tables ---------- */
+    .table-wrap { border: 1px solid var(--line-2); border-radius: var(--radius); overflow-x: auto; margin: 24px 0 10px; }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); }
+    th {
+      text-align: start;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: var(--bg-2);
+      font-weight: 600;
+      padding: 11px 15px;
+    }
+    td { padding: 12px 15px; border-block-start: 1px solid var(--line-2); color: var(--fg); font-size: 15px; line-height: 1.5; vertical-align: top; }
+    td code { font-size: 0.84em; }
+    @media (max-width: 620px) { .table-wrap table { min-width: 440px; } }
+
+    /* ---------- Sub-headings & lists ---------- */
+    .sub {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 600;
+      margin: 38px 0 6px;
+    }
+    .checks { max-width: 68ch; }
+    .checks li {
+      position: relative;
+      padding-inline-start: 26px;
+      margin-block-end: 14px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.62;
+    }
+    .checks li::before {
+      content: "";
+      position: absolute;
+      inset-inline-start: 2px;
+      inset-block-start: 9px;
+      width: 9px;
+      height: 9px;
+      border-radius: 2px;
+      background: var(--edge);
+      opacity: 0.85;
+    }
+    .checks strong { color: var(--fg); }
+
+    .rule-list { max-width: 68ch; }
+    .rule-list li {
+      position: relative;
+      padding-inline-start: 0;
+      margin-block-end: 14px;
+      color: var(--fg);
+      font-size: 16px;
+      line-height: 1.62;
+    }
+    .rule-list li b { font-weight: 640; }
+
+    /* ---------- Callouts ---------- */
+    .callout {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: 22px 26px;
+      margin: 26px 0 10px;
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--fg);
+    }
+    .callout .k {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-block-end: 12px;
+    }
+    .callout .k::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      background: var(--fg);
+      flex: 0 0 auto;
+      opacity: 0.7;
+    }
+    .callout .k b { color: var(--fg); font-weight: 600; }
+    .callout p { color: var(--fg); }
+    .callout a { color: var(--jeton-text); border-block-end: 1px solid var(--jeton-soft-2); }
+    .callout a:hover { border-color: var(--jeton-text); }
+
+    .callout-edge { background: var(--edge-soft); border-color: var(--edge-line); }
+    .callout-edge .k { color: var(--edge); }
+    .callout-edge .k::before { background: var(--edge); opacity: 1; }
+    .callout-edge .k b { color: var(--edge); }
+
+    .callout-clair { background: var(--clair-soft); border-color: var(--clair-line); }
+    .callout-clair .k { color: var(--clair-text); }
+    .callout-clair .k::before { background: var(--clair); opacity: 1; }
+    .callout-clair .k b { color: var(--clair-text); }
+
+    /* ---------- Feature tiles ---------- */
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .tile {
+      background: var(--surface);
+      border: 1px solid var(--line-2);
+      border-radius: var(--radius);
+      padding: 24px 24px 26px;
+      transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+    }
+    .tile:hover { border-color: var(--line); box-shadow: 0 16px 40px -24px rgba(25, 28, 39, 0.28); transform: translateY(-2px); }
+    :root[data-theme="dark"] .tile:hover { box-shadow: 0 16px 40px -24px rgba(0, 0, 0, 0.8); }
+    .tile .t { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-block-end: 13px; }
+    .tile h3 { font-size: 19px; line-height: 1.3; letter-spacing: -0.015em; margin-block-end: 9px; }
+    .tile p { color: var(--muted); font-size: 15px; line-height: 1.62; }
+
+    /* ---------- Hero ---------- */
+    .hero { padding-block: 8px 52px; }
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--jeton-text);
+      padding: 7px 14px;
+      border: 1px solid var(--jeton-soft-2);
+      border-radius: 999px;
+      background: var(--jeton-soft);
+      margin-block-end: 24px;
+    }
+    .hero-eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--jeton); }
+    .hero h1 {
+      font-size: clamp(30px, 4vw, 44px);
+      line-height: 1.12;
+      letter-spacing: -0.024em;
+      font-weight: 780;
+      margin: 0 0 22px;
+    }
+    .hero h1 .hl { font-family: var(--font-mono); font-weight: 600; letter-spacing: 0; color: var(--jeton-text); white-space: nowrap; }
+    .hero-lede {
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.6;
+      max-width: 56ch;
+      margin: 0 0 4px;
+    }
+    .hero-callout { margin-block-start: 32px; }
+
+    /* ---------- Footer ---------- */
+    .site-footer {
+      border-block-start: 1px solid var(--line-2);
+      background: var(--bg-2);
+      padding: 64px 0 40px;
+    }
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 1fr 1fr;
+      gap: 32px;
+    }
+    .footer-brand .brand { margin-block-end: 16px; }
+    .footer-brand p { color: var(--muted); font-size: 14.5px; max-width: 34ch; }
+    .footer-col h4 {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--faint);
+      margin: 0 0 18px;
+      font-weight: 600;
+    }
+    .footer-col li { margin-block-end: 11px; }
+    .footer-col a { color: var(--muted); font-size: 15px; transition: color 160ms ease; }
+    .footer-col a:hover { color: var(--fg); }
+    .footer-col a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+
+    .footer-tagline {
+      margin-block-start: 56px;
+      padding-block-start: 26px;
+      border-block-start: 1px solid var(--line-2);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .footer-tagline .hosts { display: flex; flex-wrap: wrap; gap: 0 20px; }
+    .footer-tagline a:hover { color: var(--fg); }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 1220px) {
+      .docs { grid-template-columns: 236px minmax(0, 1fr); gap: 36px; }
+      .toc { display: none; }
+    }
+    @media (max-width: 900px) {
+      .docs { grid-template-columns: 1fr; padding-inline: 22px; }
+      .menu-toggle { display: inline-flex; }
+      .sidebar {
+        position: fixed;
+        inset-inline: 0;
+        inset-block-start: 64px;
+        inset-block-end: 0;
+        background: var(--bg);
+        border-block-end: 1px solid var(--line-2);
+        padding: 22px 24px 34px;
+        max-height: calc(100vh - 64px);
+        overflow-y: auto;
+        transform: translateY(-8px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 180ms ease, transform 180ms ease;
+        z-index: 60;
+        box-shadow: 0 24px 60px -30px rgba(25, 28, 39, 0.4);
+      }
+      :root[data-theme="dark"] .sidebar { box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.85); }
+      body.docs-menu-open .sidebar { opacity: 1; transform: none; pointer-events: auto; }
+      body.docs-menu-open::after {
+        content: "";
+        position: fixed;
+        inset: 64px 0 0 0;
+        background: rgba(14, 17, 25, 0.42);
+        z-index: 55;
+      }
+      .side-brand { display: inline-flex; margin-block-end: 20px; }
+    }
+    @media (max-width: 620px) {
+      .docs { padding-inline: 20px; }
+      .hero { padding-block-end: 40px; }
+      .grid-3 { grid-template-columns: 1fr; }
+      .footer-grid { grid-template-columns: 1fr; gap: 28px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+      html { scroll-behavior: auto; }
+      .btn:active, .tile:hover { transform: none; }
+    }
+      /* ---------- Docs pager (prev / next) ---------- */
+    .doc-pager { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 56px; }
+    .doc-pager a, .doc-pager span { display: block; padding: 16px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); text-decoration: none; transition: border-color 160ms ease, background 160ms ease; }
+    .doc-pager a small, .doc-pager span small { display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+    .doc-pager a span, .doc-pager span span { display: block; font-size: 14.5px; font-weight: 620; }
+    .doc-pager a:hover { border-color: var(--jeton); background: var(--jeton-soft); }
+    .doc-pager .prev { text-align: left; }
+    .doc-pager .next { text-align: right; }
+    .doc-pager .dead { opacity: .45; pointer-events: none; }
+      /* ---------- Docs sidebar nav (canonical) ---------- */
+    .nav-groups { display: grid; gap: 24px; }
+    .nav-group { display: grid; gap: 2px; }
+    .nav-group-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); padding-inline-start: 12px; margin-bottom: 8px; }
+    .nav-link { display: block; padding: 7px 12px; border-inline-start: 2px solid transparent; border-radius: 0 8px 8px 0; color: var(--muted); font-size: 14.5px; line-height: 1.4; transition: color 160ms ease, background 160ms ease, border-color 160ms ease; }
+    .nav-link:hover { color: var(--fg); background: var(--bg-2); }
+    .nav-link:focus-visible { outline: 2px solid var(--jeton); outline-offset: 1px; }
+    .nav-link[aria-current="page"] { color: var(--fg); font-weight: 620; border-inline-start-color: var(--jeton); background: var(--jeton-soft); }
+  </style>
 </head>
 <body>
-
-<header class="top">
-  <div class="wrap">
-    <a class="brand" href="index.html"><span class="dot"></span>CLOISON <small>proxy de confidentialité</small></a>
-    <div class="right">
-      <nav>
+  <header class="site-header" data-od-id="header">
+    <div class="wrap">
+      <a class="brand" href="index.html" data-od-id="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>CLOISON</span>
+      </a>
+      <nav class="nav" aria-label="Navigation principale" data-od-id="nav">
         <a href="produit.html">Le produit</a>
         <a href="install-n0.html" aria-current="page">Installer N0</a>
         <a href="mobile.html">Mobile</a>
@@ -21,64 +627,153 @@
         <a href="journal.html">Journal</a>
         <a href="open-core.html">Open-core</a>
         <a href="faq.html">FAQ</a>
+        <a href="glossaire.html">Glossaire</a>
       </nav>
-      <button class="theme-btn" id="themeBtn" type="button" aria-label="Basculer thème clair / sombre" aria-pressed="false" title="Thème clair / sombre">
-        <svg class="ic ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-        <svg class="ic ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v2.6M12 19.4V22M2 12h2.6M19.4 12H22M4.8 4.8l1.9 1.9M17.3 17.3l1.9 1.9M19.2 4.8l-1.9 1.9M6.7 17.3l-1.9 1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <button class="icon-btn menu-toggle" id="menu-toggle" type="button" aria-label="Ouvrir la navigation" aria-expanded="false" data-od-id="menu-toggle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <button class="icon-btn theme-toggle" id="theme-toggle" type="button" aria-label="Basculer le thème" aria-pressed="false" data-od-id="theme-toggle">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.2M12 19.8V22M22 12h-2.2M4.2 12H2M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6M18.4 18.4l-1.6-1.6M7.2 7.2 5.6 5.6"/></svg>
       </button>
     </div>
-  </div>
-</header>
+  </header>
 
-<section class="hero">
-  <div class="wrap">
-    <div class="eyebrow">N0 — le moteur chez vous</div>
-    <h1>Installer CLOISON N0 en <span class="hl">≤ 10 minutes</span>.</h1>
-    <p class="lede">Un daemon local compatible OpenAI sur <code>localhost:8787</code>.
-      Votre interface IA s'y branche avec deux champs. <strong>Le clair ne quitte jamais
-      votre poste</strong> — coffre chiffré persistant, auth 100&nbsp;% locale.</p>
-    <div class="note">
-      <span class="k">Prérequis</span>
-      <div>Aucun : pas de toolchain Rust, pas de Python, pas de torch. Les binaires par OS
-        sont téléchargés et <b>vérifiés par checksums SHA-256</b> (échec bruyant si
-        l'intégrité n'est pas prouvée).</div>
-    </div>
-  </div>
-</section>
+  <div class="docs" data-od-id="layout">
+    <!-- LEFT SIDEBAR -->
+          <nav class="sidebar" aria-label="Navigation de la documentation" data-od-id="sidebar">
+        <div class="nav-groups">
+          <div class="nav-group">
+            <div class="nav-group-label">Découvrir</div>
+            <a class="nav-link" href="index.html">Accueil</a>
+            <a class="nav-link" href="produit.html">Le produit</a>
+            <a class="nav-link" href="mobile.html">Mobile</a>
+          </div>
+          <div class="nav-group">
+            <div class="nav-group-label">Déployer</div>
+            <a class="nav-link" href="install-n0.html" aria-current="page">Installer N0</a>
+            <a class="nav-link" href="api.html">API</a>
+          </div>
+          <div class="nav-group">
+            <div class="nav-group-label">Vérifier</div>
+            <a class="nav-link" href="journal.html">Journal de transparence</a>
+            <a class="nav-link" href="open-core.html">Open-core</a>
+          </div>
+          <div class="nav-group">
+            <div class="nav-group-label">Référence</div>
+            <a class="nav-link" href="faq.html">FAQ</a>
+            <a class="nav-link" href="glossaire.html">Glossaire</a>
+          </div>
+        </div>
+      </nav>
 
-<div class="doc">
-  <div class="wrap">
 
-    <h2>1 · Linux / macOS</h2>
-    <p>Une seule commande (le script détecte l'OS/arch, télécharge binaire + NER léger +
-      lib onnxruntime, vérifie les checksums, crée <code>~/.cloison</code> et génère la
-      clé locataire affichée une fois) :</p>
-    <pre><code>bash &lt;(curl -fsSL https://raw.githubusercontent.com/coucagog/cloison-proxy/main/install-n0.sh)</code></pre>
+    <!-- ARTICLE -->
+    <main class="article" id="top" data-od-id="article">
+      <!-- HERO -->
+      <section class="hero" data-od-id="hero">
+        <span class="hero-eyebrow" data-od-id="hero-eyebrow"><span class="dot" aria-hidden="true"></span>Guide d'installation · N0</span>
+        <h1 data-od-id="hero-title">Installer CLOISON N0 en <span class="hl">≤ 10 minutes</span>.</h1>
+        <p class="hero-lede" data-od-id="hero-lede">
+          Un daemon local compatible OpenAI sur <code>localhost:8787</code>. Votre interface IA
+          s'y branche avec deux champs. Le clair ne quitte jamais votre poste — coffre chiffré
+          persistant, authentification 100&nbsp;% locale.
+        </p>
+        <div class="callout hero-callout" data-od-id="hero-prereq">
+          <div class="k"><b>Prérequis</b></div>
+          <p>Aucun : pas de toolchain Rust, pas de Python, pas de torch. Les binaires par OS sont
+            téléchargés, puis <strong>vérifiés par checksums SHA-256</strong> — échec bruyant si
+            l'intégrité n'est pas prouvée.</p>
+        </div>
+      </section>
 
-    <h2>2 · Windows (PowerShell)</h2>
-    <pre><code>powershell -ExecutionPolicy Bypass -File https://raw.githubusercontent.com/coucagog/cloison-proxy/main/install-n0.ps1</code></pre>
-    <p>Équivalent Windows : binaire <code>cloison-proxy.exe</code>, Credential Manager
-      pour la passphrase en option.</p>
+      <!-- 01 PRÉREQUIS -->
+      <section class="step" id="prerequis" data-od-id="step-prerequis">
+        <div class="step-head">
+          <span class="eyebrow" data-od-id="prerequis-eyebrow"><span class="num">01</span>Prérequis</span>
+          <h2 data-od-id="prerequis-title">Trois systèmes, une même installation.</h2>
+          <p class="lede" data-od-id="prerequis-lede">Le daemon tourne sur votre poste. Voici ce qu'il faut — et surtout ce qu'il ne faut pas.</p>
+        </div>
+        <div class="grid-3">
+          <article class="tile" data-od-id="prerequis-tile-os">
+            <div class="t">Systèmes</div>
+            <h3>Linux, macOS, Windows</h3>
+            <p>Linux x64/arm64, macOS et Windows x64. Le script détecte l'OS et l'architecture, puis installe le binaire correspondant.</p>
+          </article>
+          <article class="tile" data-od-id="prerequis-tile-toolchain">
+            <div class="t">Aucune toolchain</div>
+            <h3>Pas de Rust, ni Python, ni torch</h3>
+            <p>Rien à compiler chez vous. Le NER léger (modèle int8 + <code>tokenizer.json</code> + <code>label_map.json</code>) est embarqué et chargé dynamiquement.</p>
+          </article>
+          <article class="tile" data-od-id="prerequis-tile-vault">
+            <div class="t">Prêt au lancement</div>
+            <h3>Vérifié au passage</h3>
+            <p>Le script télécharge binaire, NER et lib onnxruntime, contrôle les checksums, crée <code>~/.cloison</code> et affiche la clé locataire une seule fois.</p>
+          </article>
+        </div>
+        <div class="callout callout-clair" data-od-id="prerequis-macos-intel">
+          <div class="k"><b>Limite honnête</b></div>
+          <p><strong>macOS Intel</strong> : Microsoft ne publie plus de lib onnxruntime osx-x86_64.
+            Le binaire macos-x64 fonctionne alors en N0 v1 (gazetteers + alias, warn). Apple Silicon
+            est la cible macOS recommandée — elle seule profite du NER complet.</p>
+        </div>
+      </section>
 
-    <h2>3 · Options communes</h2>
-    <table>
-      <tr><th>Option</th><th>Effet</th></tr>
-      <tr><td><code>--version v0.3.0</code></td><td>installe une version précise (défaut : <code>latest</code>)</td></tr>
-      <tr><td><code>--prefix DIR</code></td><td>répertoire d'installation (défaut <code>~/.cloison</code>)</td></tr>
-      <tr><td><code>--skip-ner</code> / <code>-SkipNer</code></td><td>sans le NER léger (gazetteers + alias seuls — la limite « texte libre » de §6 reste alors assumée)</td></tr>
-    </table>
+      <!-- 02 TÉLÉCHARGEMENT VÉRIFIÉ -->
+      <section class="step" id="telechargement" data-od-id="step-telechargement">
+        <div class="step-head">
+          <span class="eyebrow" data-od-id="telechargement-eyebrow"><span class="num">02</span>Téléchargement vérifié</span>
+          <h2 data-od-id="telechargement-title">Un binaire signé, une empreinte contrôlée.</h2>
+          <p class="lede" data-od-id="telechargement-lede">Chaque vérification échoue bruyamment : si l'empreinte SHA-256 ne correspond pas, l'installation s'arrête net.</p>
+        </div>
 
-    <h2>4 · Composants installés</h2>
-    <table>
-      <tr><th>Élément</th><th>Chemin</th><th>Rôle</th></tr>
-      <tr><td>binaire</td><td><code>~/.cloison/cloison-proxy(.exe)</code></td><td>le daemon (AGPL-3.0)</td></tr>
-      <tr><td>NER léger</td><td><code>~/.cloison/ner/model-int8.onnx</code> + <code>tokenizer.json</code> + <code>label_map.json</code></td><td>PERSON/LOC in-core (N0 v1.2, licence AFL-3.0 — notice dans le bundle)</td></tr>
-      <tr><td>lib onnxruntime</td><td><code>~/.cloison/ner/libonnxruntime.{so,dylib,dll}</code></td><td>chargée dynamiquement (jamais embarquée)</td></tr>
-    </table>
+        <h3 class="sub" data-od-id="telechargement-sub-linux">Linux / macOS</h3>
+        <p class="prose" data-od-id="telechargement-linux-copy">Une seule commande. Le script détecte l'OS et l'architecture, télécharge binaire + NER léger + lib onnxruntime, vérifie les checksums et crée <code>~/.cloison</code>.</p>
+        <figure class="code" data-od-id="telechargement-code-linux">
+          <figcaption class="code-label">bash</figcaption>
+          <pre><code>bash &lt;(curl -fsSL https://raw.githubusercontent.com/coucagog/cloison-proxy/main/install-n0.sh)</code></pre>
+        </figure>
 
-    <h2>5 · Configuration minimale</h2>
-    <p>Le mode N0 s'active en posant <code>CLOISON_VAULT_PATH</code> :</p>
-    <pre><code>export CLOISON_ROLE=edge
+        <h3 class="sub" data-od-id="telechargement-sub-windows">Windows (PowerShell)</h3>
+        <p class="prose" data-od-id="telechargement-windows-copy">Équivalent Windows : binaire <code>cloison-proxy.exe</code>, avec la passphrase confiée au Credential Manager en option.</p>
+        <figure class="code" data-od-id="telechargement-code-windows">
+          <figcaption class="code-label">powershell</figcaption>
+          <pre><code>powershell -ExecutionPolicy Bypass -File https://raw.githubusercontent.com/coucagog/cloison-proxy/main/install-n0.ps1</code></pre>
+        </figure>
+
+        <div class="callout" data-od-id="telechargement-signature">
+          <div class="k"><b>Binaire signé</b></div>
+          <p>L'empreinte SHA-256 est publiée, et la signature du binaire est vérifiée. Rien n'est
+            exécuté tant que l'intégrité n'est pas prouvée : un téléchargement altéré stoppe
+            l'installation au lieu de continuer.</p>
+        </div>
+
+        <h3 class="sub" data-od-id="telechargement-sub-options">Options communes</h3>
+        <div class="table-wrap">
+          <table data-od-id="telechargement-options-table">
+            <thead>
+              <tr><th>Option</th><th>Effet</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>--version v0.3.0</code></td><td>installe une version précise (défaut : <code>latest</code>)</td></tr>
+              <tr><td><code>--prefix DIR</code></td><td>répertoire d'installation (défaut <code>~/.cloison</code>)</td></tr>
+              <tr><td><code>--skip-ner</code> / <code>-SkipNer</code></td><td>sans le NER léger (gazetteers + alias seuls — la limite « texte libre » reste alors assumée)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 03 LANCEMENT -->
+      <section class="step" id="lancement" data-od-id="step-lancement">
+        <div class="step-head">
+          <span class="eyebrow" data-od-id="lancement-eyebrow"><span class="num">03</span>Lancement</span>
+          <h2 data-od-id="lancement-title">Un daemon local, un coffre chiffré.</h2>
+          <p class="lede" data-od-id="lancement-lede">Le daemon écoute sur <code>localhost:8787</code> — local uniquement. L'authentification reste 100&nbsp;% locale : jamais de compte, jamais de clé qui sort.</p>
+        </div>
+        <p class="prose" data-od-id="lancement-copy">Le mode N0 s'active en posant <code>CLOISON_VAULT_PATH</code> : le coffre est chiffré et persistant, le sel de session garde vos conversations restaurables.</p>
+        <figure class="code" data-od-id="lancement-code-env">
+          <figcaption class="code-label">env</figcaption>
+          <pre><code>export CLOISON_ROLE=edge
 export CLOISON_LISTEN_ADDR=127.0.0.1:8787          # local uniquement
 export CLOISON_UPSTREAM_BASE_URL=https://openrouter.ai/api/v1   # votre fournisseur
 export CLOISON_VAULT_PATH=~/.cloison/vault.redb    # coffre persistant
@@ -86,105 +781,270 @@ export CLOISON_VAULT_PASSPHRASE='votre-passphrase' # clé du coffre (jamais pers
 export CLOISON_EXPECTED_ACCESS_TOKEN=mon_jeton      # jeton mn_ local
 export CLOISON_TENANT_KEY_HEX=$(openssl rand -hex 32)  # clé locataire
 cloison-proxy</code></pre>
-    <p>Puis, dans votre interface IA (Open WebUI, LibreChat, bolt.diy, agents…) :</p>
-    <pre><code>Base URL : http://localhost:8787/v1
+        </figure>
+
+        <h3 class="sub" data-od-id="lancement-sub-garanties">Comportements garantis</h3>
+        <ul class="checks" data-od-id="lancement-garanties">
+          <li><strong>Fail-loud au boot</strong> : passphrase absente, mauvaise passphrase ou coffre corrompu → le daemon <strong>refuse de démarrer</strong>, jamais de recréation silencieuse.</li>
+          <li><strong>Keychain OS</strong> (optionnel) : <code>CLOISON_VAULT_KEYCHAIN_SERVICE</code> posé → la passphrase est stockée chiffrée par l'OS (Credential Manager / Keychain / Secret Service), jamais en clair par CLOISON.</li>
+          <li><strong>Sel de session persistant</strong> : vos conversations restent restaurables à travers les redémarrages. Rotation : supprimer <code>&lt;prefix&gt;/.salt</code> puis redémarrer.</li>
+          <li><strong>Généralisation</strong> : date → <code>YYYY-MM</code>, IP → <code>[IP]</code>, carte → <code>•••••••••1234</code>, ville → <code>[VILLE_SN]</code>.</li>
+        </ul>
+
+        <div class="callout callout-edge" data-od-id="lancement-auth">
+          <div class="k"><b>Auth 100 % locale</b></div>
+          <p>Jeton <code>mn_</code> local, clé locataire générée sur place, coffre chiffré AES-256-GCM.
+            Rien ne quitte la machine tant que vous ne l'avez pas demandé — par défaut, aucun reçu
+            ne sort, y compris en audit opt-in.</p>
+        </div>
+      </section>
+
+      <!-- 04 CONFIGURATION -->
+      <section class="step" id="configuration" data-od-id="step-configuration">
+        <div class="step-head">
+          <span class="eyebrow" data-od-id="configuration-eyebrow"><span class="num">04</span>Configuration</span>
+          <h2 data-od-id="configuration-title">Deux champs : base URL + clé composite.</h2>
+          <p class="lede" data-od-id="configuration-lede">Dans votre interface IA existante — Open WebUI, LibreChat, bolt.diy, ou vos agents — remplacez l'endpoint par le daemon local.</p>
+        </div>
+        <figure class="code" data-od-id="configuration-code">
+          <figcaption class="code-label">config</figcaption>
+          <pre><code>Base URL : http://localhost:8787/v1
 Clé      : mn_&lt;jeton_local&gt;.&lt;clé_amont&gt;</code></pre>
-    <p>Référence complète des variables <code>CLOISON_*</code> : <a href="api.html#config">section API</a>.</p>
+        </figure>
 
-    <h3>Comportements garantis</h3>
-    <ul>
-      <li><strong>Fail-loud au boot</strong> : passphrase absente, mauvaise passphrase ou
-        coffre corrompu → le daemon <strong>refuse de démarrer</strong> (jamais de
-        recréation silencieuse).</li>
-      <li><strong>Keychain OS</strong> (optionnel) : <code>CLOISON_VAULT_KEYCHAIN_SERVICE</code>
-        posé → la passphrase est stockée chiffrée par l'OS (Credential Manager / Keychain /
-        Secret Service) — jamais en clair par CLOISON.</li>
-      <li><strong>Sel de session persistant</strong> : vos conversations restent
-        restaurables à travers les redémarrages. Rotation : supprimer
-        <code>&lt;prefix&gt;/.salt</code> puis redémarrer.</li>
-      <li><strong>Généralisation</strong> : date → <code>YYYY-MM</code>, IP → <code>[IP]</code>,
-        carte → <code>•••••••••1234</code>, ville → <code>[VILLE_SN]</code>.</li>
-    </ul>
+        <div class="callout" data-od-id="configuration-endpoint">
+          <div class="k"><b>Votre interface reste la vôtre</b></div>
+          <p>Seul l'endpoint change, aucun code à réécrire. La clé composite marie le jeton
+            <code>mn_</code> local (authentification) et la clé amont (fournisseur) : le proxy
+            authentifie la requête localement, puis la relaie au modèle.</p>
+        </div>
 
-    <h2>6 · Limites honnêtes de N0 (à lire)</h2>
-    <ol>
-      <li><strong>Rappel PERSON/LOC réduit en texte libre</strong> sans NER léger.
-        Avec le NER embarqué (installé par défaut), le fossé mesuré est comblé en grande
-        partie (PERSON 0 → 0.62, LOC +0.18, spécificité 83 %). Un nom hors gazetteer et
-        jamais mentionné reste un risque de clair — documenté, jamais caché.</li>
-      <li><strong>Poste compromis</strong> : N0 ne protège pas contre un malware ou un vol
-        de la machine — le coffre et la clé y vivent.</li>
-      <li><strong>Quasi-identifiants</strong> : signalés (jauge, opt-in), jamais résolus.</li>
-      <li><strong>PII hallucinée</strong> : le modèle peut inventer une PII sans jeton —
-        non résoluble par le proxy seul ; les sentinelles forgées ne sont jamais restaurées.</li>
-      <li><strong><code>/v1/embeddings</code> bloqué</strong> (404) : un embedding de PII
-        reste dérivé de PII.</li>
-      <li><strong>Restauration bornée à la requête</strong> : un jeton d'une requête
-        antérieure n'est jamais restauré (registre + MAC).</li>
-    </ol>
+        <p class="prose" data-od-id="configuration-ref">Référence complète des variables <code>CLOISON_*</code> : voir la <a href="api.html#config">section API</a>.</p>
+      </section>
 
-    <h2>7 · Vérifier que ça marche</h2>
-    <pre><code>curl -s http://localhost:8787/v1/chat/completions \
+      <!-- 05 PREMIER APPEL -->
+      <section class="step" id="premier-appel" data-od-id="step-premier-appel">
+        <div class="step-head">
+          <span class="eyebrow" data-od-id="premier-appel-eyebrow"><span class="num">05</span>Premier appel</span>
+          <h2 data-od-id="premier-appel-title">Une requête, des jetons <span class="token">⟦…⟧</span>, une restauration.</h2>
+          <p class="lede" data-od-id="premier-appel-lede">La PII est remplacée avant l'envoi, puis réintégrée à la réponse. Vous voyez le résultat ; le modèle, lui, n'a vu que des jetons.</p>
+        </div>
+        <figure class="code" data-od-id="premier-appel-code">
+          <figcaption class="code-label">curl</figcaption>
+          <pre><code>curl -s http://localhost:8787/v1/chat/completions \
   -H "Authorization: Bearer mn_&lt;jeton&gt;.&lt;clé_amont&gt;" \
   -H "Content-Type: application/json" \
   -d '{"model":"x","messages":[{"role":"user","content":
        "Contact: Aminata Diop, user@example.com, tel +221 77 123 45 67"}]}'
 # → la réponse contient « Aminata Diop, user@example.com, +221 77 123 45 67 »
 #   (restaurés) et aucune sentinelle ⟦…⟧ résiduelle.</code></pre>
-    <p>Le coffre (<code>~/.cloison/vault.redb</code>) ne contient <strong>aucune valeur en
-      clair</strong> (chiffré AES-256-GCM) : <code>grep Aminata ~/.cloison/vault.redb</code>
-      ne trouve rien.</p>
+        </figure>
 
-    <h2>8 · Mise à jour &amp; avancé</h2>
-    <ul>
-      <li><strong>Mise à jour</strong> : re-exécuter le script (il écrase le binaire ; le
-        coffre et le sel sont conservés — vos conversations restent restaurables).</li>
-      <li><strong>Depuis le code</strong> : <code>cargo build --release -p cloison-proxy</code>
-        puis <code>bash deploy/provision_ner_lite.sh</code> (NER : téléchargement par
-        défaut, <code>--export</code> torch pour la voie d'export avancée).</li>
-      <li><strong>macOS Intel</strong> : microsoft ne publie plus de lib onnxruntime
-        osx-x86_64 → le binaire macos-x64 fonctionne en N0 v1 (gazetteers + alias, warn) ;
-        Apple Silicon est la cible macOS recommandée (NER complet).</li>
-      <li><strong>Audit k-anonyme opt-in</strong> : par défaut, aucun reçu ne sort de la
-        machine. <code>CLOISON_AUDIT_MODE=1</code> + wiring contrôle → alimentation du
-        journal public (compteurs signés, jamais de texte).</li>
-    </ul>
+        <div class="callout callout-edge" data-od-id="premier-appel-restauration">
+          <div class="k"><b>Restauration bornée</b></div>
+          <p>Un jeton d'une requête antérieure n'est jamais restauré (registre + MAC), et une sentinelle
+            <span class="mono">⟦…⟧</span> forgée n'est jamais réintégrée. La coréférence est conservée : la réponse reste
+            exploitable, jamais identifiable.</p>
+        </div>
+      </section>
 
-    <div class="note">
-      <span class="k">Suite</span>
-      <div>Vous préférez le mobile ? Voir le <a href="mobile.html">guide Android</a> —
-        même moteur, dans une app WebView.</div>
-    </div>
+      <!-- 06 VÉRIFICATION -->
+      <section class="step" id="verification" data-od-id="step-verification">
+        <div class="step-head">
+          <span class="eyebrow" data-od-id="verification-eyebrow"><span class="num">06</span>Vérification</span>
+          <h2 data-od-id="verification-title">Trois contrôles, zéro clair hors du poste.</h2>
+          <p class="lede" data-od-id="verification-lede">Les checksums, le journal et l'absence de données en clair — vérifiables à tout moment, sans rien croire sur parole.</p>
+        </div>
 
+        <h3 class="sub" data-od-id="verification-sub-checksum">Vérifier l'installation</h3>
+        <figure class="code" data-od-id="verification-code-checksum">
+          <figcaption class="code-label">bash</figcaption>
+          <pre><code>sha256sum ~/.cloison/cloison-proxy      # comparez à l'empreinte publiée
+~/.cloison/cloison-proxy --version       # le daemon répond</code></pre>
+        </figure>
+
+        <h3 class="sub" data-od-id="verification-sub-coffre">Le coffre ne contient aucune valeur en clair</h3>
+        <p class="prose" data-od-id="verification-coffre-copy">Le coffre (<code>~/.cloison/vault.redb</code>) est chiffré AES-256-GCM. Une recherche de clair ne renvoie rien :</p>
+        <figure class="code" data-od-id="verification-code-grep">
+          <figcaption class="code-label">bash</figcaption>
+          <pre><code>grep -a Aminata ~/.cloison/vault.redb    # → aucune valeur, le coffre est chiffré</code></pre>
+        </figure>
+
+        <div class="callout callout-edge" data-od-id="verification-bilan">
+          <div class="k"><b>Aucune donnée en clair hors du poste</b></div>
+          <p>Binaire signé, checksums contrôlés au téléchargement, coffre chiffré, journal append-only
+            en audit opt-in. Par défaut, aucun reçu ne quitte la machine — et le journal public ne
+            recueille que des compteurs signés, jamais de texte.</p>
+        </div>
+      </section>
+
+      <!-- CONFORMITÉ -->
+      <section class="step" id="conformite" data-od-id="step-conformite">
+        <div class="step-head">
+          <span class="eyebrow" data-od-id="conformite-eyebrow"><span class="num">07</span>Conformité</span>
+          <h2 data-od-id="conformite-title">Le cadre de référence est d'abord le vôtre.</h2>
+          <p class="lede" data-od-id="conformite-lede">CLOISON installe un moteur. La responsabilité juridique du traitement reste la vôtre, et le cadre qui la définit est d'abord régional et national.</p>
+        </div>
+
+        <p class="prose" data-od-id="conformite-copy">Le droit africain de la protection des données personnelles est le socle. C'est lui qui fixe vos obligations de responsable de traitement — bien avant tout texte européen.</p>
+
+        <ul class="rule-list" data-od-id="conformite-framework">
+          <li><b>Loi n° 2008-12 (Sénégal)</b> — le texte national de référence sur la protection des données à caractère personnel.</li>
+          <li><b>Acte additionnel CEDEAO A/SA.1/01/10</b> — le cadre communautaire, applicable également dans l'espace UEMOA. CLOISON s'aligne sur son vocabulaire et ses régimes.</li>
+          <li><b>Convention de Malabo 2014</b> — le cadre continental de cybersécurité et de protection des données qui structure l'approche régionale.</li>
+          <li><b>Régime deux étages de la CDP</b> — <em>déclaration</em> pour les traitements courants, <em>autorisation préalable</em> pour les traitements sensibles : la CDP Sénégal exige le régime adapté à votre traitement.</li>
+          <li><b>Responsable de traitement ≠ sous-traitant</b> — deux régimes distincts. Le proxy N0 s'exécute chez vous comme un outil ; il ne se substitue pas à votre responsabilité de responsable de traitement.</li>
+        </ul>
+
+        <div class="callout" data-od-id="conformite-rgpd">
+          <div class="k"><b>Le RGPD, en complément</b></div>
+          <p>Le RGPD n'est pas le cadre principal ici : il s'ajoute en <em>fast-follow</em> européen,
+            uniquement si vous traitez des données de résidents de l'Union. Le vocabulaire — responsable /
+            sous-traitant, autorisation préalable — est le même, ce qui rend la conformité transposable
+            d'un cadre à l'autre. Le moteur CLOISON, lui, ne change pas.</p>
+        </div>
+
+        <div class="callout callout-clair" data-od-id="conformite-suite">
+          <div class="k"><b>Pour aller plus loin</b></div>
+          <p>Le détail des régimes, des champs couverts et des limites honnêtes est documenté dans la
+            <a href="faq.html">FAQ + limites honnêtes</a>. Vous préférez le mobile ? Voir le
+            <a href="mobile.html">guide Android</a> — même moteur, dans une app WebView.</p>
+        </div>
+      </section>
+    
+        <nav class="doc-pager" aria-label="Navigation des pages">
+          <a class="prev" href="produit.html"><small>← Précédent</small><span>Le produit</span></a>
+          <a class="next" href="mobile.html"><small>Suivant →</small><span>Mobile</span></a>
+        </nav>
+</main>
+
+    <!-- RIGHT TOC -->
+    <aside class="toc" data-od-id="toc" aria-label="Sur cette page">
+      <div class="toc-title">Sur cette page</div>
+      <ul class="toc-list">
+        <li><a href="#prerequis">01 · Prérequis</a></li>
+        <li><a href="#telechargement">02 · Téléchargement vérifié</a></li>
+        <li><a href="#lancement">03 · Lancement</a></li>
+        <li><a href="#configuration">04 · Configuration</a></li>
+        <li><a href="#premier-appel">05 · Premier appel</a></li>
+        <li><a href="#verification">06 · Vérification</a></li>
+        <li><a href="#conformite">07 · Conformité</a></li>
+      </ul>
+    </aside>
   </div>
-</div>
 
-<footer>
-  <div class="wrap">
-    <div class="cols">
-      <div class="col">
-        <span class="t">Produit</span>
-        <a href="produit.html">Architecture &amp; promesse</a>
-        <a href="faq.html">FAQ + limites honnêtes</a>
-        <a href="journal.html">Journal de transparence</a>
+  <!-- FOOTER -->
+  <footer class="site-footer" data-od-id="footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a class="brand" href="index.html" data-od-id="footer-brand">
+            <span class="brand-mark" aria-hidden="true"></span>
+            <span>CLOISON</span>
+          </a>
+          <p>Le proxy de confidentialité qui transforme vos données en jetons vérifiables — avant, pendant et après l'appel au modèle.</p>
+        </div>
+        <div class="footer-col" data-od-id="footer-produit">
+          <h4>Produit</h4>
+          <ul>
+            <li><a href="produit.html">Pseudonymisation</a></li>
+            <li><a href="produit.html">Restauration</a></li>
+            <li><a href="produit.html">Plan de contrôle</a></li>
+            <li><a href="produit.html">Trois niveaux</a></li>
+          </ul>
+        </div>
+        <div class="footer-col" data-od-id="footer-commencer">
+          <h4>Commencer</h4>
+          <ul>
+            <li><a href="install-n0.html">Installer N0</a></li>
+            <li><a href="api.html">Endpoint API</a></li>
+            <li><a href="mobile.html">Mobile</a></li>
+            <li><a href="glossaire.html">Glossaire</a></li>
+          </ul>
+        </div>
+        <div class="footer-col" data-od-id="footer-verifier">
+          <h4>Vérifier</h4>
+          <ul>
+            <li><a href="https://journal.wonkom.ai" target="_blank" rel="noopener">Journal</a></li>
+            <li><a href="open-core.html">Code ouvert</a></li>
+            <li><a href="faq.html">Conformité</a></li>
+          </ul>
+        </div>
       </div>
-      <div class="col">
-        <span class="t">Commencer</span>
-        <a href="install-n0.html">Installer N0</a>
-        <a href="mobile.html">Guide mobile Android &amp; iOS</a>
-        <a href="api.html">API + clé composite</a>
-      </div>
-      <div class="col">
-        <span class="t">Vérifier</span>
-        <a href="journal.html">journal.wonkom.ai</a>
-        <a href="open-core.html">Code ouvert</a>
+      <div class="footer-tagline" data-od-id="footer-tagline">
+        <div class="hosts">
+          <a href="https://docs.wonkom.ai" target="_blank" rel="noopener" data-od-id="footer-docs">docs.wonkom.ai</a>
+          <a href="https://api.wonkom.ai" target="_blank" rel="noopener" data-od-id="footer-api">api.wonkom.ai</a>
+          <a href="https://journal.wonkom.ai" target="_blank" rel="noopener" data-od-id="footer-journal">journal.wonkom.ai</a>
+        </div>
+        <span>© 2025 CLOISON · open-core</span>
       </div>
     </div>
-    <div>CLOISON — proxy de confidentialité PII. <span class="pill">open-core</span></div>
-    <div class="mono">docs.wonkom.ai · api.wonkom.ai · journal.wonkom.ai</div>
-  </div>
-</footer>
+  </footer>
 
-<script src="assets/theme.js"></script>
+  <script>
+    (function () {
+      // Theme toggle
+      var btn = document.getElementById('theme-toggle');
+      if (btn) {
+        function sync() {
+          var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+          btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+          btn.setAttribute('aria-label', dark ? 'Activer le thème clair' : 'Activer le thème sombre');
+        }
+        btn.addEventListener('click', function () {
+          var cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+          var next = cur === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', next);
+          try { localStorage.setItem('cloison-theme', next); } catch (e) {}
+          sync();
+        });
+        sync();
+      }
+
+      // Mobile nav drawer
+      var menuBtn = document.getElementById('menu-toggle');
+      if (menuBtn) {
+        menuBtn.addEventListener('click', function () {
+          var open = document.body.classList.toggle('docs-menu-open');
+          menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+        document.querySelectorAll('.sidebar a, .toc a').forEach(function (a) {
+          a.addEventListener('click', function () {
+            document.body.classList.remove('docs-menu-open');
+            if (menuBtn) menuBtn.setAttribute('aria-expanded', 'false');
+          });
+        });
+      }
+
+      // TOC scroll-spy
+      var links = Array.prototype.slice.call(document.querySelectorAll('.toc-list a'));
+      var targets = links
+        .map(function (l) { return document.querySelector(l.getAttribute('href')); })
+        .filter(Boolean);
+      var line = 104;
+      function spy() {
+        var id = '';
+        for (var i = 0; i < targets.length; i++) {
+          if (targets[i].getBoundingClientRect().top <= line) id = targets[i].id;
+        }
+        // At page bottom, force-activate the last section so it never stays "stuck".
+        if (targets.length && window.innerHeight + window.pageYOffset >= document.body.scrollHeight - 2) {
+          id = targets[targets.length - 1].id;
+        }
+        links.forEach(function (l) {
+          l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+        });
+      }
+      var ticking = false;
+      window.addEventListener('scroll', function () {
+        if (!ticking) {
+          ticking = true;
+          window.requestAnimationFrame(function () { spy(); ticking = false; });
+        }
+      }, { passive: true });
+      spy();
+    })();
+  </script>
 </body>
 </html>
