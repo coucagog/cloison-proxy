@@ -128,3 +128,47 @@ curl -s https://docs.wonkom.ai/assets/docs.css | head -1
 build local documenté) puis **binaires macOS v0.3.1** (remplacer les copies
 v0.3.0). Dettes transverses inchangées (GPU clos — décision pilote ; calibration
 prod à l'arrivée d'un client réel).
+
+---
+
+## ADDENDUM — Uniformisation des coquilles docs-site (gap §3.5 du handoff racine)
+
+> Session suivante (suite du gap « uniformité pixel-perfect des sidebars ») :
+> les 9 pages de `deploy/docs-site/` avaient des coquilles divergentes
+> (wrappers `docs-grid`/`docs-shell`/`docs`/`docs-wrap`/`docs-layout` ;
+> sidebars `sidebar`/`docs-nav`/`docs-sidebar` ; TOC `toc`/`docs-toc`,
+> `toc-title`/`toc-label`…) — générations du template à des moments
+> différents.
+
+### Ce qui a été fait
+
+- **Coquille canonique = `index.html`** (la génération la plus récente) :
+  header sticky (brand carré + nav 8 liens + bascule de thème), grille
+  `docs-grid` 260px/1fr/220px, sidebar 4 groupes, `main.article` (eyebrow,
+  h1, lede, sections), `aside.toc` (label + liste), footer 4 colonnes,
+  4 scripts (thème, drawer no-op, scrollspy TOC, copy des codeblocks).
+- **Normalisation des 8 autres pages** (produit, install-n0, mobile, api,
+  journal, open-core, faq, glossaire) via un script one-shot non versionné :
+  contenu d'article extrait **intact** (les classes de contenu des anciens
+  wrappers sont conservées en classes additionnelles du `main` — ex. le
+  glossaire garde `docs-article`/`article-inner` pour son CSS scopé) ;
+  coquille remplacée par la canonique ; CSS de coquille canonique ajouté
+  après le CSS de contenu propre à chaque page (les sélecteurs legacy morts
+  restent dans les `<style>`, inoffensifs) ; TOC dérivé des h2/h3 réels
+  (h3 → `toc-h3`) ; pager `doc-pager` uniforme ; `aria-current` correct sur
+  chaque page.
+- **Vérifications** : 9/9 pages avec exactement 1 header / 1 sidebar /
+  1 main / 1 toc / 1 footer ; sidebars **identiques 9/9** (hors
+  aria-current) ; ids h2/h3 **1:1 avant/après** (contenu intact) ; tous les
+  hrefs de TOC résolubles ; zéro classe legacy dans le markup.
+- **Déploiement** : commit `e87d2b6` → bundle git → VPS (fetch/ff) → push
+  GitHub (`01f52414..e87d2b6c`) → `deploy-docs.sh` → `https://docs.wonkom.ai`
+  200, re-vérifié **depuis le VPS** (coquilles 1× partout, sidebars
+  identiques en live).
+
+### Dette résiduelle
+
+- Sélecteurs CSS legacy morts dans les `<style>` (ménage possible à la
+  prochaine refonte) ; le **template docs-page d'Open Design** reste la
+  source des divergences — toute future génération devra être re-normalisée
+  ou le template aligné sur la coquille canonique.
