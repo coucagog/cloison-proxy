@@ -391,6 +391,15 @@ prochaine session (N3)**, voir §6 ①.
 - **Quoting PowerShell→ssh** : toute commande distante complexe passe par un
   script base64 (`echo <b64> | base64 -d | bash`) ou un fichier scp'é —
   les guillemets imbriqués sont perdus par le passage natif PowerShell.
+- **`git bundle create` sous sandbox (28/08/2026, session S6 docs)** : échoue
+  (« Refusing to create empty bundle ») — le pipe interne vers pack-objects est
+  bloqué par la sandbox locale (EPERM). Contournement déterministe validé :
+  `git rev-list --objects <tip> | git pack-objects <base>` via pipeline `cmd`
+  (PowerShell direct ajoute un BOM sur la 1re ligne → « expected object ID,
+  got garbage »), puis assembler le bundle v2 à la main (en-tête
+  `# v2 git bundle` + ligne `<sha> refs/heads/main` + pack) et contrôler avec
+  `git bundle verify` avant scp. Le `git fetch` côté VPS reste la porte
+  finale. (`git push` direct depuis le VPS est inchangé.)
 - **Porte de scan** : trivy bloquant (HIGH/CRITICAL corrigeables) sur
   proxy/control ; detect/journal en advisory (écosystèmes tiers) — déviation
   O5 journalisée (DEPLOY-5).

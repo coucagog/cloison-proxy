@@ -188,3 +188,96 @@ n'est plus jamais posée → sidebar invisible) et `open-core`
 recommandé : purger les règles de coquille legacy des `<style>` au lieu de
 l'écrasement par le canonique. Détail complet dans le handoff racine
 `NEXT-SESSION.md` §6-7.
+
+---
+
+## ADDENDUM 2 — Retour pilote §6 corrigé et déployé (TOC/sidebar/pager)
+
+> Session suivante : exécution de la recette pilote (§6 du handoff racine).
+> **Commit `9b2ed20` poussé sur GitHub, déployé en prod le même jour.**
+
+### Ce qui a été fait
+
+- **`_open_design/normalize-docs-site.mjs` enrichi (v2, outil conservé)** :
+  1. `headingLabel` strippe aussi le numéro de tête **collé**
+     (`^\d+[a-z]?(?=\S)` — « 01Endpoints » → « Endpoints »), pas seulement
+     « 01 · » ;
+  2. option **`--strip-legacy-shell`** : purge des règles de coquille legacy
+     retenues (`.sidebar`/`.docs-sidebar`/`.toc`/`.docs-toc`/`.toc-title`/
+     `.toc-label`/`.toc-list`/`.doc-pager`/`.pager`/`.docs-nav`/`.docs-grid`/
+     `.docs-shell`/`.docs-wrap`/`.docs-layout`/`.docs`/`.layout`/
+     `.menu-toggle`/`.menu-btn`/`.side-*`/`.nav-*`/`.site-header`/
+     `.site-footer`/`.footer-*`/`body.docs-menu-open`/`body.drawer-open`,
+     y compris dans les `@media`) — filtre CSS récursif (règles → `@media` →
+     sous-règles), sans toucher aux sélecteurs de contenu (`.article …`,
+     `.callout`, `.code-panel`, `.docs-table`, `.hero`…) ;
+  3. **pager open-core dédoublonné** : suppression du `<div class="pager">`
+     legacy (liens directs) qui coexistait avec le `nav.doc-pager` canonique ;
+  4. **idempotent** : ré-extraction du contenu d'une page déjà normalisée
+     (`<main class="…" id="top" data-od-id="article">`) et déduplication de la
+     coquille canonique (marqueur `================= Header`) avant ré-ajout.
+- **Application** : purge sur `api.html`, `install-n0.html`, `open-core.html`,
+  `mobile.html` (la référence, pour la rendre canonique pure), plus
+  `produit.html`/`faq.html`/`glossaire.html` (ménage §7, même chantier —
+  règles mortes, zéro changement visuel attendu). `journal.html` **exemptée de
+  la purge** (page validée par le pilote ; sa palette legacy `--accent`/
+  `--border` n'a pas les alias `--jeton`/`--line` du canonique — purger la
+  casserait) : seuls ses **labels TOC collés** ont été corrigés (« 01Ce que
+  contient le journal » → « Ce que contient le journal »).
+- **Mécanique de la correction** : après purge, la cascade de chaque page est
+  exactement celle d'index.html (CSS de contenu de la page + coquille
+  canonique) → sidebar/TOC/pager **identiques par construction** à
+  `mobile.html`/`index.html`, scrollspy canonique (script commun) + couleur
+  active `.toc a.active { border-inline-start-color: var(--jeton) }` qui suit
+  au défilement.
+
+### Vérifications (statiques, déterministes)
+
+- 8/8 pages : exactement 1 header / 1 sidebar / 1 main / 1 toc / 1 footer,
+  1 `<style>`, 1 marqueur de coquille canonique.
+- Sidebars **byte-identiques au canonique** 9/9 (hors `aria-current`).
+- Contenu des articles **byte-préservé** (diff : uniquement whitespace
+  d'en-tête de `<main>` ; open-core : + suppression du pager legacy — vérifié
+  au texte près, modulo whitespace).
+- TOC : tous les hrefs résolubles ; **zéro label collé** restant ;
+  `open-core` : 1 `nav.doc-pager`, 0 `div.pager`.
+- Marqueurs legacy (`docs-menu-open`/`drawer-open`/`translateX`/`.docs-nav`/
+  `.docs-toc`/`.pager`/`.layout`) : **0** dans les 8 pages (le seul
+  `pointer-events: none` restant est la règle canonique `.doc-pager .dead`).
+- Tokens canoniques (17 vérifiés : `--jeton`/`--jeton-soft`/`--jeton-text`/
+  `--clair`/`--line`/…) présents dans les 7 pages purgées.
+- **Limite honnête (charte §11)** : captures visuelles headless Edge
+  indisponibles sur cette machine (pipes nommés bloqués par la sandbox
+  locale — erreur mojo 0x5) ; la vérification repose sur la cascade
+  déterministe + diff + structure, et sur le retour visuel pilote à re-faire
+  sur `https://docs.wonkom.ai`.
+
+### Déploiement (flux bundle → VPS → deploy-docs.sh)
+
+- Commit `9b2ed20` (8 fichiers docs-site, +88/−1432).
+- **Leçon opérationnelle** : `git bundle create` échoue sous la sandbox locale
+  (« Refusing to create empty bundle » — pipe interne vers pack-objects
+  bloqué, EPERM). Contournement déterministe : pack manuel
+  (`rev-list --objects` → `pack-objects` via pipeline cmd, sans thin) +
+  en-tête bundle v2 (`# v2 git bundle` + `<sha> refs/heads/main`) —
+  `git bundle verify` OK localement (« complete history ») avant envoi.
+- scp → VPS `/tmp` ; `git fetch` (bundle) + `merge --ff-only` → VPS à
+  `9b2ed209` ; `git push origin main` (GitHub `4a938ed5..9b2ed209`) ;
+  `bash deploy/deploy-docs.sh` → `https://docs.wonkom.ai/` **HTTP 200**.
+- **Vérif production (depuis le VPS)** : 5 pages cibles → 200 ; api TOC
+  « Endpoints » ; open-core 1 `doc-pager` / 0 `div.pager` ; marqueurs legacy
+  **0** sur api/install-n0/open-core/mobile ; labels corrigés présents
+  (journal/mobile/open-core) ; zéro label collé restant. **Non-régression** :
+  `api.wonkom.ai` 401 sans clé (normal), `journal.wonkom.ai` 200, ledger
+  13 lignes (seq 12), caddy actif.
+
+### Dette résiduelle
+
+- `journal.html` conserve sa palette + coquille legacy (`--accent`) — rendu
+  validé pilote, mais la coquille canonique y est en partie inopérante
+  (tokens `--jeton` absents). L'alignement complet passe par le **template
+  docs-page d'Open Design** (ajouter les alias de tokens + régénérer), dette
+  §7 inchangée.
+- `produit/faq/glossaire` purgés (règles mortes) mais non re-testés
+  visuellement — diff statique nul hors retraits CSS.
+- Captures visuelles à re-faire côté humain (pilote).
