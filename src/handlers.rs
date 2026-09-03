@@ -14,8 +14,8 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use cloison_audit::receipt::{self, Counters, Receipt};
 use cloison_core::{
-    derive_key_from_passphrase, Policy, SessionContext, SessionKeys, SessionOptions, Vault,
-    VaultConfig,
+    derive_key_from_passphrase, DetectorKind, Policy, SessionContext, SessionKeys,
+    SessionOptions, SubstitutionMode, Vault, VaultConfig,
 };
 use futures_util::StreamExt;
 use serde_json::Value;
@@ -105,11 +105,28 @@ impl AppState {
         // il alimente les reçus d'audit et le hash de session. En mode N0, la
         // politique N0 s'applique (généralisation des faibles cardinalités
         // explicite — charte §6.1, N0-PREP §4.6).
-        let policy = if config.vault.is_active() {
+        let mut policy = if config.vault.is_active() {
             Policy::n0_for(&config.control.tenant_id)
         } else {
             Policy::default_for(&config.control.tenant_id)
         };
+        // Dette 3 (03/09) — faux réaliste opt-in : remplace les sentinelles par
+        // un faux déterministe (irréversible) pour les types couverts, afin de
+        // résister aux modèles qui nettoient les ⟦…⟧. Types sans générateur :
+        // l'engine retombe sur la sentinelle (sûr).
+        if config.realistic_fake {
+            for kind in [
+                DetectorKind::Person,
+                DetectorKind::Gazetteer("nom_sn".to_string()),
+                DetectorKind::PhoneSn,
+                DetectorKind::Email,
+            ] {
+                policy
+                    .detection
+                    .mode
+                    .insert(kind, SubstitutionMode::RealisticFake);
+            }
+        }
         // N0 — coffre persistant local : clé dérivée de la passphrase (HKDF,
         // jamais persistée), fail-loud au boot (mauvaise passphrase ou coffre
         // corrompu → refus de démarrer, jamais de recréation silencieuse).
