@@ -20,7 +20,10 @@ cd "$TMP"
 
 echo "==> téléchargement + installation de la release publique (prefix local)"
 curl -fsSL https://raw.githubusercontent.com/coucagog/cloison-proxy/main/install-n0.sh -o install-n0.sh
-bash install-n0.sh --prefix "$TMP/prefix"
+# ⚠️ VERSION ÉPINGLÉE v0.3.1 : le bundle NER de la release "latest" est incohérent
+# (inférence en échec sur Linux — constat sonde 03/09 ; v0.3.1 vérifié :
+# ner_actif=1, ner_echecs=0). Ne pas remonter sans re-tester (ner-test.sh).
+bash install-n0.sh --version v0.3.1 --prefix "$TMP/prefix"
 
 # Le chemin réel de la lib onnxruntime dépend de la release : on la cherche et
 # on l'expose à un chemin stable attendu par le compose (ner/libonnxruntime.so).

@@ -8,7 +8,7 @@ use crate::alias::{AliasConfig, AliasExpander, SessionContext};
 use crate::detection::{Detector, DetectorKind, Span};
 use crate::error::{CloisonError, CloisonResult};
 use crate::generalize::Generalizer;
-use crate::policy::Policy;
+use crate::policy::{Policy, SubstitutionMode};
 use crate::quasi_id::{GaugeConfig, QuasiIdGauge, QuasiIdReport};
 use crate::registry::IssuanceRegistry;
 use crate::token::{Sentinel, SessionKeys, Token, TokenBody};
@@ -287,6 +287,19 @@ impl Engine {
             if let Some(replacement) = generalized {
                 text_out = replace_span(&text_out, span.start, span.end, &replacement);
                 continue;
+            }
+
+            // Step 2abis : substitution par faux réaliste (politique par type).
+            // Déterministe dans la session, jamais la valeur réelle,
+            // IRRÉVERSIBLE (rien à restaurer). Types sans générateur → None →
+            // on retombe sur la sentinelle (sûr).
+            if policy.substitution_mode(&span.entity_type) == SubstitutionMode::RealisticFake {
+                if let Some(fake) =
+                    crate::fake::fake_value(&span.value, &span.entity_type, &self.keys)?
+                {
+                    text_out = replace_span(&text_out, span.start, span.end, &fake);
+                    continue;
+                }
             }
 
             // Step 2b: Emit token

@@ -5,6 +5,7 @@
 //! # Modules
 //!
 //! - `error`: Unified error types
+//! - `fake`: Réalistic-fake substitution (déterministe, irréversible)
 //! - `detection`: PII detection (regex, Aho-Corasick gazetteers, Luhn)
 //! - `token`: Tokenization (HMAC-BLAKE3, sentinel format, session key derivation)
 //! - `registry`: Per-request emission registry
@@ -20,6 +21,7 @@ pub mod alias;
 pub mod detection;
 pub mod engine;
 pub mod error;
+pub mod fake;
 pub mod generalize;
 pub mod policy;
 pub mod quasi_id;

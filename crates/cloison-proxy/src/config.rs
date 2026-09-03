@@ -98,6 +98,12 @@ pub struct Config {
     /// **compte** les PII sans rien masquer, produit un reçu signé par requête
     /// et un rapport de conformité k-anonyme. Défaut : désactivé.
     pub audit_mode: bool,
+    /// Substitution par faux réaliste (`CLOISON_REALISTIC_FAKE=1`) : la
+    /// politique remplace PERSON / Gazetteer(nom_sn) / PhoneSn / Email par un
+    /// faux **déterministe dans la session et irréversible** au lieu des
+    /// sentinelles — réservé aux modèles qui nettoient les ⟦…⟧ (constat
+    /// deepseek 03/09/2026). Défaut : 0 (sentinelles).
+    pub realistic_fake: bool,
     /// Chemin vers la clé de signature Ed25519 de l'agent au bord
     /// (`CLOISON_AUDIT_KEYS`) : 32 octets bruts ou 64 hex. Si le fichier
     /// n'existe pas, une clé est générée et écrite (0600) au boot.
@@ -309,6 +315,7 @@ impl std::fmt::Debug for Config {
             .field("session_salt", &hex(&self.session_salt))
             .field("mock_mode", &self.mock_mode)
             .field("audit_mode", &self.audit_mode)
+            .field("realistic_fake", &self.realistic_fake)
             .field("audit_keys", &self.audit_keys)
             .field("audit_k", &self.audit_k)
             .field("audit_ledger_file", &self.audit_ledger_file)
@@ -537,6 +544,9 @@ pub fn load() -> Result<Config, ProxyError> {
         s => Some(PathBuf::from(s)),
     };
 
+    // Faux réaliste (dette 3, 03/09) : opt-in, jamais par défaut.
+    let realistic_fake = env_bool("CLOISON_REALISTIC_FAKE")?;
+
     // B.1 — wiring edge → detect : URL REST du sidecar NER (optionnel).
     let detect = DetectConfig {
         url: match env("CLOISON_DETECT_URL", "") {
@@ -618,6 +628,7 @@ pub fn load() -> Result<Config, ProxyError> {
         session_salt,
         mock_mode,
         audit_mode,
+        realistic_fake,
         audit_keys,
         audit_k,
         audit_ledger_file,
