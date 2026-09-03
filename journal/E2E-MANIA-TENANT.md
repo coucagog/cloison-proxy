@@ -232,8 +232,97 @@ Set-ExecutionPolicy -Scope Process Bypass -Force
 - [x] État initial du serveur restauré et vérifié.
 - [x] Journal complété (ce fichier).
 
+## Session 03/09/2026 — Règlement des dettes (a)(b)(c)(d) + question N0
+
+> Suite du journal. Décision pilote : régler les dettes une bonne fois.
+> Rappel de niveau : la sonde a fait tourner la **configuration** N0 du moteur
+> (coffre + NER + généralisation) sur le VPS Mania = **niveau N3 hébergé**
+> (l'opérateur pourrait lire). N1/N0 exigent le moteur chez le client.
+
+### (a) Dettes produits — RÉGLÉES côté code + doc
+
+- **Crash N0+audit CORRIGÉ** (`failed to hash audit policy`) : cause racine =
+  `serde_json::to_value(&Policy)` refusait les clés `DetectorKind::Gazetteer(…)`
+  (variante à données → clé objet non-string) présentes dans `generalization`
+  de la politique N0. Fix `cloison-audit/src/receipt.rs` : conversion des clés
+  `DetectorKind` en string stable (`Display`) pour `generalization` /
+  `cardinality_thresholds` ; hash **bit-identique** pour les politiques sans
+  clé à données (chemin serveur inchangé). **Testé localement** (toolchain GNU
+  portable) : cloison-audit 19/19 dont 2 régressions nouvelles, cloison-core
+  90 + 17 invariants, EXIT=0. Commit local ; publication CI/VPS à planifier.
+- **Docs corrigées** : `docs/CONFIG.md` (MOCK_MODE ne répond pas lui-même —
+  amont factice 127.0.0.1:1 ; AUDIT_MODE `0`=masquage actif / `1`=observe-only
+  sans masquage ; AUDIT_K plancher 2) ; `deploy/docker-compose.dev.yml`
+  (avertissement image GHCR non publiée → build local ou release).
+- **NER embarqué sur Linux** : échec d'inférence re-confirmé en sonde réelle
+  (`BroadcastIterator 512 by 5755` — bundle `latest` incohérent ; la preuve
+  Windows locale passait). Dégradation gracieuse conforme (spans ignorés,
+  gazetteers+regex ont couvert). **Reste à escalader** (republier un bundle
+  cohérent).
+
+### (b) Phase 1 — gabarit v4 DÉPLOYÉ
+
+- `nouveau-tenant.sh` v4 (dépôt MANIA + `/opt/hermes/gabarit`, backups
+  horodatés ×2) : `PROXY_PII="edge"` (conteneur `${SLUG}-edge` PAR tenant),
+  service edge dans le compose (image locale `mania-cloison-edge`,
+  `CLOISON_AUDIT_MODE=0`, coffre N0 + NER, jeton `mn_` + clé locataire +
+  passphrase coffre générés dans le `.env` 0600, jamais affichés), profil
+  `providers.cloison` (base URL interne sans secret, `key_env=
+  OPENROUTER_API_KEY` — le client saisit la clé composite dans sa WebUI),
+  section SOUL réécrite pour les **sentinelles ⟦…⟧** (+ `[VILLE_SN]`), checks
+  adaptés (probe 404 = auth acceptée), pré-vol sur l'**image** (fail-closed).
+- **Correction critique du même jour** : l'edge sur le seul réseau internal ne
+  peut pas joindre l'amont réel (502 constaté en sonde) → le service edge est
+  sur **deux réseaux** (`$SLUG-net` internal + `bridge` egress) ; l'agent
+  reste sur l'internal seul (barrière egress intacte).
+- Image `mania-cloison-edge:latest` **construite** via
+  `ops/build-cloison-edge.sh` (release publique + debian:bookworm-slim) —
+  correction d'un bug du script (cp même-fichier sous `set -e`).
+- Packs : **toujours PII=0** (activation = décision pilote par verticale).
+
+### (c) Sonde à clé RÉELLE (OpenRouter) — PROUVÉE avec limite honnête
+
+- Tenant jetable + edge (image locale, coffre N0, masquage actif) + clé
+  composite réelle (clé OpenRouter du magasin DSH, **jamais affichée**,
+  `.env` 0600, supprimée au dépouillement).
+- **PROUVÉ** : `hermes -z "Bonjour…"` → réponse « OK » réelle via OpenRouter
+  (deepseek/deepseek-v4-flash) — auth composite, egress 7, masquage avant
+  l'amont (OpenRouter n'a reçu **aucune PII en clair**, uniquement des corps
+  de sentinelles), streaming.
+- **Limite rencontrée (connue, charte §16)** : le modèle **dépouille les
+  crochets ⟦…⟧** dans ses réponses → la restauration échoue et le client voit
+  les corps bruts (dégradation d'usage, **pas de fuite** : les corps sont des
+  HMAC irréversibles sans la clé du coffre). Pistes produit déjà prévues :
+  substitution **faux réaliste** par politique (irréversible, à vérifier
+  avant émission) et robustesse des sentinelles (recherche ouverte).
+- **Pièges de session consignés** : fichier `.env` écrit sans saut de ligne
+  final → l'append `tee -a` a concaténé la clé (corruption silencieuse,
+  corrigée par réécriture + `--force-recreate` de l'agent) ; egress bridge
+  de l'edge ; commandes inline avec `|` interdites (×3) — fichier script,
+  toujours.
+- Jambe GLM (z.ai) : non exécutée (conclusion attendue identique ; à rejouer
+  sur demande). Dépouillement complet, état initial vérifié.
+
+### (d) Manuel EN LIGNE
+
+- `manuel.html` livré dans le repo wonkom puis `deploy-docs.sh` exécuté :
+  **https://docs.wonkom.ai/manuel.html → HTTP 200** (Caddy rechargé). La page
+  n'est pas encore reliée depuis la sidebar du site (uniformité de coquille —
+  à faire proprement).
+
+### Reste ouvert (escalade/arbitrage)
+
+1. Publication du fix (a) via CI/VPS (bundle → GitHub, procédure n3-*.sh).
+2. Bundle NER Linux incohérent (⑥) — republier un bundle cohérent.
+3. Sentinelles vs modèles qui nettoient ⟦…⟧ (deepseek) — faux réaliste par
+   politique + tests.
+4. Activation des packs (`PII=1`) par verticale — décision pilote.
+5. Jambe GLM + rotation des clés (exposées en session, pilote prévenu).
+
 ## Prochaine étape
 
-Arbitrage pilote : (a) escalader/corriger les découvertes ①-⑥ ; (b) patch
-du gabarit (phase 1) dans le dépôt puis sur `/opt/hermes/gabarit` ; (c) sonde
-avec clé réelle ; (d) déploiement du manuel sur docs.wonkom.ai.
+Arbitrage pilote : (1) publier le fix (a) (bundle → GitHub via le VPS,
+procédure n3-*.sh) ; (2) republier un bundle NER cohérent pour Linux ;
+(3) trancher la stratégie sentinelles/faux-réaliste pour les modèles qui
+nettoient ⟦…⟧ ; (4) activer les packs sensibles (`PII=1`) une fois ces
+verrous levés ; (5) relier `manuel.html` à la sidebar du site docs.
