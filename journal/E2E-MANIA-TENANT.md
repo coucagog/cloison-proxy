@@ -312,12 +312,22 @@ Set-ExecutionPolicy -Scope Process Bypass -Force
 
 ### Reste ouvert (escalade/arbitrage)
 
-1. Publication du fix (a) via CI/VPS (bundle → GitHub, procédure n3-*.sh).
-2. Bundle NER Linux incohérent (⑥) — republier un bundle cohérent.
-3. Sentinelles vs modèles qui nettoient ⟦…⟧ (deepseek) — faux réaliste par
-   politique + tests.
-4. Activation des packs (`PII=1`) par verticale — décision pilote.
-5. Jambe GLM + rotation des clés (exposées en session, pilote prévenu).
+1. ~~Publication du fix (a) via CI/VPS~~ **FAIT** (bundle → wonkom → `push origin main`,
+   commits `6dc6153` + `30ccf4c` + `ce1201e`).
+2. ~~Bundle NER Linux incohérent (⑥)~~ **CONTOURNÉ** : release **v0.3.1 épinglée** dans
+   `build-cloison-edge.sh` (vérifié `ner_actif=1, ner_echecs=0` sur wonkom). Le bundle
+   `latest` reste à corriger côté publication.
+3. ~~Sentinelles vs modèles qui nettoient ⟦…⟧~~ **IMPLÉMENTÉ** : `CLOISON_REALISTIC_FAKE=1`
+   — module `cloison-core/src/fake.rs` (faux déterministe par session via le corps du
+   jeton, jamais la valeur réelle, irréversible ; PERSON/Gazetteer(nom_sn)/PhoneSn/Email,
+   repli sentinelle pour les autres types), câblé dans `engine.process_spans` +
+   `config.rs`/`handlers.rs` (opt-in), gabarit v4.1 (pass-through par tenant), docs
+   CONFIG. **Tests : core 96/96 + 17 invariants, proxy check EXIT=0.** Poussé (`ce1201e`).
+   ⚠️ Pas encore en release : l'image Mania (v0.3.1) ne la porte pas — voir NEXT-SESSION.
+4. ~~Activation des packs~~ **FAIT** : sante, droit, finance, gouvernement, ong = `PII=1`
+   (VPS + repo MANIA, backups `.bak-20260903`). Les autres packs restent `PII=0`.
+5. Jambe GLM + rotation des clés (exposées en session, pilote prévenu — il s'en charge
+   avant la prochaine session).
 
 ## Prochaine étape
 
