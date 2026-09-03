@@ -41,10 +41,10 @@
 | `CLOISON_NER_TOKENIZER` *(N0 v1.2 ④)* | edge | non | absent | chemin du `tokenizer.json` HF du NER léger (obligatoire avec `CLOISON_NER_MODEL_ONNX`) |
 | `CLOISON_ONNX_LIB` *(N0 v1.2 ④)* | edge | non | `libonnxruntime.so` | chemin de la lib onnxruntime chargée dynamiquement (provisionnée avec le daemon — jamais embarquée dans le binaire) |
 | `CLOISON_NER_THRESHOLD` *(N0 v1.2 ④)* | edge | non | `0.70` | seuil de score minimal du NER léger (balayage ARBITRAGE-04 : 0.70 = meilleur F1 PERSON/LOC) |
-| `CLOISON_MOCK_MODE` | edge | non | `0` | `1` = prérequis assouplis (clé de dev) — jamais en prod |
-| `CLOISON_AUDIT_MODE` | edge | non | `0` | `1` = observe-only (reçus signés, rapport k-anonyme) |
+| `CLOISON_MOCK_MODE` | edge | non | `0` | `1` = prérequis assouplis (clé de dev) — jamais en prod. **Ne répond PAS lui-même** : l'amont par défaut devient `http://127.0.0.1:1` (toute requête → 502). Pour un faux LLM local, laisser `=0` et pointer `CLOISON_UPSTREAM_BASE_URL` vers `deploy/mock_llm.py` (constat sonde 02-03/09/2026) |
+| `CLOISON_AUDIT_MODE` | edge | non | `0` | **`0` = MASQUAGE ACTIF** (le produit promis) ; `1` = **observe-only** (détecte et compte, **ne masque rien** — reçus signés, rapport k-anonyme) |
 | `CLOISON_AUDIT_KEYS` | edge | **oui** | absent (clé générée 0600) | chemin clé Ed25519 de l'agent (32 o bruts ou 64 hex) |
-| `CLOISON_AUDIT_K` | edge | non | `5` | seuil k-anonyme (plancher 2) |
+| `CLOISON_AUDIT_K` | edge | non | `5` | seuil k-anonyme (plancher 2 — toute valeur <2 est ramenée à 2) |
 | `CLOISON_AUDIT_LEDGER_FILE` | edge | non | absent (mémoire seule) | persistance des reçus d'audit en JSONL append-only **0600**, rechargé au boot (survit au restart) |
 | `CLOISON_TENANT_ID` *(C)* | edge | non | `default` | locataire porté par les reçus d'audit et les vérifications de jeton (doit correspondre au tenant provisionné dans le contrôle) |
 | `CLOISON_CONTROL_URL` *(C)* | edge | non | absent (N0) | URL de base du plan de contrôle — posée → **auth par hash** (`POST /v1/control/verify`), **ingest automatique** des reçus d'audit (`POST /v1/control/ingest`) et **long-poll** `GET /v1/control/version` (rotation). Absente → auth locale statique (`CLOISON_EXPECTED_ACCESS_TOKEN`), pas d'ingest |

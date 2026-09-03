@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CLOISON — Manuel d'utilisation (périmètre prouvé)</title>
+<style>
+  :root{
+    --ink:#191C27;
+    --ink-soft:#535868;
+    --ink-faint:#8A8F9E;
+    --paper:#E7E9EE;
+    --paper-2:#DEE1E8;
+    --panel:#FFFFFF;
+    --line:#CFD3DC;
+    --line-2:#E3E6EC;
+    --clair:#A9640C;
+    --clair-bg:#F6ECDD;
+    --jeton:#0B7A85;
+    --jeton-bg:#E1F0F1;
+    --edge:#1E7A4D;
+    --edge-bg:#E3F1E9;
+    --danger:#AD3B3B;
+    --danger-bg:#F6E4E2;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --wrap:1060px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#EDE9E1; --ink-soft:#B9B4A8; --ink-faint:#8A8F9E;
+      --paper:#15171C; --paper-2:#1B1E24; --panel:#21242B;
+      --line:#34383F; --line-2:#2A2D33;
+      --clair:#E8A45C; --clair-bg:#2E2416;
+      --jeton:#4FC3D0; --jeton-bg:#12282B;
+      --edge:#5CC08A; --edge-bg:#122820;
+      --danger:#E07A7A; --danger-bg:#2E1A1A;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#EDE9E1; --ink-soft:#B9B4A8; --ink-faint:#8A8F9E;
+    --paper:#15171C; --paper-2:#1B1E24; --panel:#21242B;
+    --line:#34383F; --line-2:#2A2D33;
+    --clair:#E8A45C; --clair-bg:#2E2416;
+    --jeton:#4FC3D0; --jeton-bg:#12282B;
+    --edge:#5CC08A; --edge-bg:#122820;
+    --danger:#E07A7A; --danger-bg:#2E1A1A;
+  }
+  :root[data-theme="light"]{
+    --ink:#191C27; --ink-soft:#535868; --ink-faint:#8A8F9E;
+    --paper:#E7E9EE; --paper-2:#DEE1E8; --panel:#FFFFFF;
+    --line:#CFD3DC; --line-2:#E3E6EC;
+    --clair:#A9640C; --clair-bg:#F6ECDD;
+    --jeton:#0B7A85; --jeton-bg:#E1F0F1;
+    --edge:#1E7A4D; --edge-bg:#E3F1E9;
+    --danger:#AD3B3B; --danger-bg:#F6E4E2;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:var(--sans);font-size:17px;line-height:1.62;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  }
+  a{color:var(--jeton)}
+  .wrap{max-width:var(--wrap);margin:0 auto;padding:0 24px}
+  .mono{font-family:var(--mono)}
+
+  /* header */
+  header.top{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--paper) 86%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .top .wrap{display:flex;align-items:center;gap:18px;height:60px}
+  .brand{display:flex;align-items:baseline;gap:10px;font-weight:800;letter-spacing:-.02em}
+  .brand .dot{width:11px;height:11px;border-radius:2px;background:var(--ink);display:inline-block;position:relative;top:0}
+  .brand small{font-family:var(--mono);font-weight:500;font-size:11px;letter-spacing:.06em;color:var(--ink-faint);text-transform:uppercase}
+  .top nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12px;letter-spacing:.03em;text-transform:uppercase;align-items:center}
+  .top nav a{color:var(--ink-soft);text-decoration:none}
+  .top nav a:hover{color:var(--ink)}
+  @media(max-width:860px){.top nav{display:none}}
+
+  /* hero */
+  .hero{padding:64px 0 28px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
+  .hero h1{font-size:clamp(30px,5.4vw,52px);line-height:1.05;letter-spacing:-.03em;font-weight:800;margin:12px 0 0;max-width:22ch}
+  .lede{margin:20px 0 0;max-width:66ch;color:var(--ink-soft);font-size:clamp(16px,2vw,19px)}
+
+  /* toc */
+  .toc{margin:34px 0 0;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 24px}
+  .toc h2{font-size:13px;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 10px}
+  .toc ol{margin:0;padding:0 0 0 20px;columns:2;column-gap:40px}
+  @media(max-width:700px){.toc ol{columns:1}}
+  .toc li{margin:4px 0;break-inside:avoid}
+  .toc a{text-decoration:none;color:var(--ink-soft)}
+  .toc a:hover{color:var(--ink)}
+
+  /* accordions (sections) */
+  .sec{border-top:1px solid var(--line)}
+  .sec > summary{list-style:none;cursor:pointer;user-select:none;display:flex;align-items:center;gap:16px;padding:32px 2px}
+  .sec > summary::-webkit-details-marker{display:none}
+  .sec > summary::before{content:"▸";font-family:var(--mono);font-size:21px;line-height:1;color:var(--ink-faint);transition:transform .18s ease}
+  .sec[open] > summary::before{transform:rotate(90deg)}
+  .sec > summary .sum-body{flex:1 1 auto;min-width:0}
+  .sec > summary .idx{font-family:var(--mono);font-size:12px;color:var(--ink-faint);letter-spacing:.08em;margin:0 0 2px}
+  .sec > summary h2{font-size:clamp(22px,3.4vw,32px);letter-spacing:-.02em;line-height:1.1;font-weight:800;margin:0}
+  .sec .sec-body{padding:4px 2px 40px}
+  h3{font-size:19px;margin:26px 0 8px}
+  h4{font-size:16.5px;margin:20px 0 6px;font-weight:700}
+  .idx{font-family:var(--mono);font-size:12px;color:var(--ink-faint);letter-spacing:.08em}
+  p.intro{margin:14px 0 0;color:var(--ink-soft);max-width:66ch}
+  p{max-width:72ch}
+  ul,ol{max-width:72ch;padding-left:22px}
+  li{margin:5px 0}
+
+  /* nested volets (A/B) */
+  .volet{margin:10px 0;border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden}
+  .volet > summary{list-style:none;cursor:pointer;user-select:none;display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--paper-2);font-weight:700;font-size:16px}
+  .volet > summary::-webkit-details-marker{display:none}
+  .volet > summary::before{content:"▸";font-family:var(--mono);font-size:15px;line-height:1;color:var(--ink-faint);transition:transform .18s ease}
+  .volet[open] > summary::before{transform:rotate(90deg)}
+  .volet > summary small{font-weight:500;color:var(--ink-soft);font-size:14px}
+  .volet .volet-body{padding:18px 22px 24px}
+
+  /* OS + étapes */
+  .os{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--jeton);font-weight:700;margin:24px 0 2px}
+  .os:first-child{margin-top:0}
+  .step{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);margin:16px 0 6px}
+
+  /* code blocks with copy */
+  .cmd{position:relative;margin:18px 0;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .cmd .bar{display:flex;align-items:center;gap:7px;padding:9px 14px;border-bottom:1px solid var(--line-2);background:var(--paper-2)}
+  .cmd .bar i{width:10px;height:10px;border-radius:50%;background:#c6cad3;display:inline-block}
+  .cmd .bar span{margin-left:6px;font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);letter-spacing:.04em}
+  .cmd .copy{
+    position:absolute;top:8px;right:12px;z-index:2;
+    font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--ink-soft);background:var(--panel);border:1px solid var(--line);
+    border-radius:7px;padding:4px 10px;cursor:pointer;
+  }
+  .cmd .copy:hover{color:var(--edge);border-color:var(--edge)}
+  .cmd .copy.ok{color:var(--edge);border-color:var(--edge)}
+  .cmd pre{margin:0;padding:14px 16px;overflow-x:auto}
+  .cmd code{font-family:var(--mono);font-size:13.5px;line-height:1.6;color:var(--ink)}
+  .cmd code .c{color:var(--ink-faint)}
+  .cmd code .v{color:var(--clair)}
+
+  /* badges / cards */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin:22px 0 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px 18px}
+  .card .tag{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--edge)}
+  .card h3{margin:6px 0 4px;font-size:16px}
+  .card p{margin:0;font-size:14.5px;color:var(--ink-soft)}
+  .card .num{font-family:var(--mono);font-size:13px;color:var(--jeton)}
+
+  table{width:100%;max-width:900px;border-collapse:collapse;margin:18px 0;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th,td{padding:9px 14px;text-align:left;border-bottom:1px solid var(--line-2);font-size:14.5px;vertical-align:top}
+  th{font-family:var(--mono);font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);background:var(--paper-2)}
+  tr:last-child td{border-bottom:none}
+  td.mono,th.mono{font-family:var(--mono);font-size:12.5px}
+
+  .note{display:flex;gap:12px;margin:20px 0;padding:15px 18px;border-radius:12px;background:var(--edge-bg);border:1px solid color-mix(in srgb,var(--edge) 45%,transparent);color:var(--ink);max-width:78ch;font-size:15px}
+  .note.warn{background:var(--danger-bg);border-color:color-mix(in srgb,var(--danger) 40%,transparent)}
+  .note.info{background:var(--jeton-bg);border-color:color-mix(in srgb,var(--jeton) 40%,transparent)}
+  .note b{font-weight:700}
+  .note .k{font-family:var(--mono);font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;padding-top:2px;flex:0 0 auto;opacity:.75}
+
+  .ok-mark{color:var(--edge);font-weight:700}
+  footer{border-top:1px solid var(--line);padding:34px 0 60px;color:var(--ink-faint);font-size:14px}
+  footer .mono{font-size:12.5px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><span class="dot"></span> CLOISON <small>manuel d'utilisation</small></div>
+    <nav>
+      <a href="#d01">Installation</a>
+      <a href="#d02">Prouvé</a>
+      <a href="#d03">Vérifier</a>
+      <a href="#d04">E2E passerelle</a>
+      <a href="#d05">Audit</a>
+      <a href="#d06">Benchmark</a>
+      <a href="#d07">Limites</a>
+      <a href="#" id="themeBtn" title="Basculer le thème" style="font-size:15px;letter-spacing:0">◐</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">Périmètre honnête — ne couvre que ce qui est <b>prouvé</b></div>
+    <h1>Manuel d'utilisation du proxy de confidentialité CLOISON</h1>
+    <p class="lede">Installer et configurer le daemon local (N0) par script ou à la main, vérifier le masquage, rejouer les preuves de bout en bout, activer l'audit signé et reproduire le benchmark GO/NO-GO. Chaque bloc se copie d'un clic.</p>
+    <div class="toc">
+      <h2>Sommaire</h2>
+      <ol>
+        <li><a href="#d01">Installation &amp; configuration (script + manuel)</a></li>
+        <li><a href="#d02">Ce qui est prouvé (et où)</a></li>
+        <li><a href="#d03">Vérifier l'installation</a></li>
+        <li><a href="#d04">Preuves E2E de la passerelle</a></li>
+        <li><a href="#d05">Mode Audit &amp; journal de transparence</a></li>
+        <li><a href="#d06">Benchmark GO/NO-GO (afroxlmr)</a></li>
+        <li><a href="#d07">Limites honnêtes &amp; niveaux N0–N3</a></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- 01 · INSTALLATION & CONFIGURATION -->
+  <details class="sec" id="d01" open>
+    <summary>
+      <div class="sum-body">
+        <div class="idx">01 — Installation</div>
+        <h2>Installation &amp; configuration</h2>
+      </div>
+    </summary>
+    <div class="sec-body">
+
+      <!-- Volets A · Script -->
+      <details class="volet" id="d01a" open>
+        <summary>A · Script <small>(recommandé)</small></summary>
+        <div class="volet-body">
+          <p class="intro">Le parcours script installe le binaire, génère la configuration locale (<span class="mono">n0.env</span> en <span class="mono">0600</span>, ou <span class="mono">n0.env.ps1</span> sous Windows), le script de démarrage <span class="mono">start-n0</span>, puis affiche la clé composite <b>une seule fois</b>. Trois étapes par OS.</p>
+          <p>Distribution par release GitHub : binaire par OS, NER léger embarqué (ONNX int8, 135 Mo), lib onnxruntime, checksums SHA-256 vérifiés. Aucune toolchain Rust, aucun torch.</p>
+
+          <div class="os">Windows</div>
+          <div class="step">1 · Installation</div>
+          <div class="cmd"><button class="copy" data-target="c-sw-install">Copier</button>
+            <div class="bar"><i></i><i></i><i></i><span>PowerShell — installation</span></div>
+            <pre><code id="c-sw-install">powershell -ExecutionPolicy Bypass -File https://raw.githubusercontent.com/coucagog/cloison-proxy/main/install-n0.ps1</code></pre>
+          </div>
+          <div class="step">2 · Configuration</div>
+          <div class="cmd"><button class="copy" data-target="c-sw-config">Copier</button>
+            <div class="bar"><i></i><i></i><i></i><span>PowerShell — configuration</span></div>
+            <pre><code id="c-sw-config">powershell -ExecutionPolicy Bypass -File .\deploy\configure-n0.ps1          # interactif
+powershell -ExecutionPolicy Bypass -File .\deploy\configure-n0.ps1 -Start   # configure PUIS démarre</code></pre>
+          </div>
+          <div class="step">3 · Démarrage</div>
+          <div class="cmd"><button class="copy" data-target="c-sw-start">Copier</button>
+            <div class="bar"><i></i><i></i><i></i><span>PowerShell — démarrage</span></div>
+            <pre><code id="c-sw-start">powershell -ExecutionPolicy Bypass -File $env:USERPROFILE\.cloison\start-n0.ps1</code></pre>
+          </div>
+
+          <div class="os">Linux</div>
+          <div class="step">1 · Installation</div>
+          <div class="cmd"><button class="copy" data-target="c-slin-install">Copier</button>
+            <div class="bar"><i></i><i></i><i></i><span>bash — installation</span></div>
+            <pre><code id="c-slin-install">bash &lt;(curl -fsSL https://raw.githubusercontent.com/coucagog/cloison-proxy/main/install-n0.sh)</code></pre>
+          </div>
+          <div class="step">2 · Configuration</div>
+          <div class="cmd"><button class="copy" data-target="c-slin-config">Copier</button>
+            <div class="bar"><i></i><i></i><i></i><span>bash — configuration</span></div>
+            <pre><code id="c-slin-config">bash deploy/configure-n0.sh          # interactif
+bash deploy/configure-n0.sh --start  # configure PUIS démarre</code></pre>
+          </div>
+          <div class="step">3 · Démarrage</div>
+          <div class="cmd"><button class="copy" data-target="c-slin-start">Copier</button>
+            <div class="bar"><i></i><i></i><i></i><span>bash — démarrage</span></div>
+            <pre><code id="c-slin-start">~/.cloison/start-n0.sh</code></pre>
+          </div>
+
+          <div class="os">macOS</div>
+          <div class="step">1 · Installation</div>
+          <div class="cmd"><button class="copy" data-target="c-smac-install">Copier</button>
+            <div class="bar"><i></i><i></i><i></i><span>bash — installation</span></div>
+            <pre><code id="c-smac-install">bash &lt;(curl -fsSL https://raw.githubusercontent.com/coucagog/cloison-proxy/main/install-n0.sh)</code></pre>
+          </div>
+          <div class="step">2 · Configuration</div>
+          <div class="cmd"><button class="copy" data-target="c-smac-config">Copier</button>
+            <div class="bar"><i></i><i></i><i></i><span>bash — configuration</span></div>
+            <pre><code id="c-smac-config">bash deploy/configure-n0.sh          # interactif
+bash deploy/configure-n0.sh --start  # configure PUIS démarre</code></pre>
+          </div>
+          <div class="step">3 · Démarrage</div>
+          <div class="cmd"><button class="copy" data-target="c-smac-start">Copier</button>
+            <div class="bar"><i></i><i></i><i></i><span>bash — démarrage</span></div>
+            <pre><code id="c-smac-start">~/.cloison/start-n0.sh</code></pre>
+          </div>
+
+          <h4>Ce que font les scripts configure-n0</h4>
+          <p>Ils génèrent la configuration locale — <span class="mono">~/.cloison/n0.env</span> (<span class="mono">0600</span>) sur Linux/macOS, <span class="mono">%USERPROFILE%\.cloison\n0.env.ps1</span> sur Windows — le script <span class="mono">start-n0</span>, et affichent la clé composite <b>une seule fois</b>. Idempotents : rejouables, ils ne démarrent le daemon qu'avec <span class="mono">--start</span> / <span class="mono">-Start</span>.</p>
+
+          <h4>Options communes (script d'installation)</h4>
+          <table>
+            <tr><th>Option</th><th>Effet</th></tr>
+            <tr><td class="mono">--version v0.3.1</td><td>installe une version précise (défaut : <span class="mono">latest</span>)</td></tr>
+            <tr><td class="mono">--prefix DIR</td><td>répertoire d'installation (défaut <span class="mono">~/.cloison</span>)</td></tr>
+            <tr><td class="mono">--skip-ner / -SkipNer</td><td>sans le NER léger (gazetteers + alias seuls — la limite « texte libre » de §07 reste alors assumée)</td></tr>
+          </table>
+          <p>Composants installés : binaire <span class="mono">cloison-proxy(.exe)</span> · NER léger <span class="mono">ner/model-int8.onnx</span> + <span class="mono">tokenizer.json</span> + <span class="mono">label_map.json</span> · lib <span class="mono">onnxruntime</span> (chargée dynamiquement).</p>
+          <div class="note"><span class="k">Mise à jour</span><div>Re-exécuter le script : il écrase le binaire mais <b>conserve</b> le coffre <span class="mono">vault.redb</span> et le sel <span class="mono">.salt</span> — vos conversations restent restaurables.</div></div>
+          <div class="note warn"><span class="k">Périmètre prouvé</span><div>Les scripts <span class="mono">configure-n0</span> sont <b>nouveaux — à valider</b>. L'installation (<span class="mono">install-n0</span>) et le daemon, eux, sont prouvés (journaux <span class="mono">STACK-N0 → N0V13</span>).</div></div>
+        </div>
+      </details>
+
+      <!-- Volets B · Manuel -->
+      <details class="volet" id="d01b">
+        <summary>B · Manuel</summary>
+        <div class="volet-body">
+          <p class="intro">Le mode N0 s'active en posant <span class="mono">CLOISON_VAULT_PATH</span> : coffre chiffré AES-256-GCM persistant, auth 100 % locale, fail-loud au boot. Le daemon expose un endpoint <b>compatible OpenAI</b> sur <span class="mono">http://localhost:8787</span>.</p>
+
+          <h4>Linux / macOS</h4>
+          <div class="cmd"><button class="copy" data-target="c-run">Copier</button>
+            <div class="bar"><i></i><i></i><i></i><span>bash — config N0</span></div>
+            <pre><code id="c-run">export CLOISON_ROLE=edge
+export CLOISON_LISTEN_ADDR=127.0.0.1:8787
+export CLOISON_UPSTREAM_BASE_URL=https://openrouter.ai/api/v1
+export CLOISON_VAULT_PATH=~/.cloison/vault.redb
+export CLOISON_VAULT_PASSPHRASE='votre-passphrase'
+export CLOISON_EXPECTED_ACCESS_TOKEN=mon_jeton
+export CLOISON_TENANT_KEY_HEX=$(openssl rand -hex 32)
+cloison-proxy</code></pre>
+          </div>
+
+          <h4>Windows (PowerShell)</h4>
+          <div class="cmd"><button class="copy" data-target="c-runwin">Copier</button>
+            <div class="bar"><i></i><i></i><i></i><span>PowerShell — config N0</span></div>
+            <pre><code id="c-runwin">$env:CLOISON_ROLE='edge'
+$env:CLOISON_LISTEN_ADDR='127.0.0.1:8787'
+$env:CLOISON_UPSTREAM_BASE_URL='https://openrouter.ai/api/v1'
+$env:CLOISON_VAULT_PATH="$env:USERPROFILE\.cloison\vault.redb"
+$env:CLOISON_VAULT_PASSPHRASE='votre-passphrase'
+$env:CLOISON_EXPECTED_ACCESS_TOKEN='mon_jeton'
+$env:CLOISON_TENANT_KEY_HEX=(-join (1..32 | ForEach-Object { '{0:x2}' -f (Get-Random -Max 256) }))
+cloison-proxy.exe</code></pre>
+          </div>
+
+          <h4>NER léger embarqué (optionnel mais recommandé — prouvé)</h4>
+          <p>Ajouter les chemins pour couvrir les noms/lieux en texte libre (distilbert ONNX int8, ~11 ms/doc) ; absent → dégradation gracieuse sur N0 v1 (gazetteers + alias), avec avertissement :</p>
+          <div class="cmd"><button class="copy" data-target="c-ner">Copier</button>
+            <div class="bar"><i></i><i></i><i></i><span>variables NER (à poser avant le lancement)</span></div>
+            <pre><code id="c-ner">export CLOISON_NER_MODEL_ONNX=~/.cloison/ner/model-int8.onnx
+export CLOISON_NER_TOKENIZER=~/.cloison/ner/tokenizer.json
+export CLOISON_ONNX_LIB=libonnxruntime.so   # .dylib (macOS) / onnxruntime.dll (Windows)</code></pre>
+          </div>
+
+          <h4>Brancher votre interface IA : deux champs</h4>
+          <div class="cmd"><button class="copy" data-target="c-champs">Copier</button>
+            <div class="bar"><i></i><i></i><i></i><span>configuration client</span></div>
+            <pre><code id="c-champs">Base URL : http://localhost:8787/v1
+Clé      : mn_mon_jeton.sk-or-v1-&lt;votre-cle-fournisseur&gt;</code></pre>
+          </div>
+          <div class="note"><span class="k">Clé composite</span><div>Le format est <span class="mono">mn_&lt;jeton&gt;.&lt;clé amont&gt;</span>, découpé sur le <b>premier point</b>. La partie gauche autorise localement ; la partie droite (votre clé fournisseur) est transmise à l'amont <b>uniquement via l'en-tête</b> — jamais en URL, jamais en log.</div></div>
+
+          <h4>Comportements garantis (prouvés)</h4>
+          <ul>
+            <li><b>Fail-loud au boot</b> : passphrase absente, mauvaise ou coffre corrompu → le daemon refuse de démarrer (jamais de recréation silencieuse).</li>
+            <li><b>Sel de session persistant</b> (<span class="mono">vault.redb.salt</span>, 0600) : mêmes jetons à travers les redémarrages. Rotation : supprimer le fichier et redémarrer.</li>
+            <li><b>Généralisation des faibles cardinalités</b> : date → <span class="mono">YYYY-MM</span>, IP → <span class="mono">[IP]</span>, carte bancaire → masque, ville → <span class="mono">[VILLE_SN]</span> — jamais tokenisées.</li>
+            <li><b>Alias intra-session (v1.1)</b> : « Mamadou » établi → « Momo » masqué aussi (jamais les pronoms).</li>
+            <li><b><span class="mono">/v1/embeddings</span> : bloqué</b> (404) par défaut.</li>
+          </ul>
+        </div>
+      </details>
+
+    </div>
+  </details>
+
+  <!-- 02 · CE QUI EST PROUVÉ -->
+  <details class="sec" id="d02">
+    <summary>
+      <div class="sum-body">
+        <div class="idx">02 — Périmètre</div>
+        <h2>Ce qui est prouvé</h2>
+      </div>
+    </summary>
+    <div class="sec-body">
+      <p class="intro">Ce manuel ne documente que des comportements <b>déjà prouvés</b>, chacun avec sa trace dans les journaux du dépôt. Tout le reste (intégrations en cours) n'y figure pas.</p>
+      <div class="cards">
+        <div class="card">
+          <div class="tag">Prouvé en local</div>
+          <h3>Daemon N0 sur Windows</h3>
+          <p>Smoke test réel : <span class="num">exit 0</span> (cœur) et <span class="num">exit 0</span> (NER embarqué). Masquage amont, restauration client, coffre sans clair, ville généralisée <span class="mono">[VILLE_SN]</span>, embeddings bloqués (404).</p>
+          <p class="mono">journal/STACK-N0V13.md · NEXT-SESSION.md §8</p>
+        </div>
+        <div class="card">
+          <div class="tag">Prouvé E2E</div>
+          <h3>Passerelle OpenAI-compatible</h3>
+          <p>Contre faux LLM : <span class="num">12/12</span> (non-stream, stream, tool-calls, 401, jeton forgé…). Contre LLM réel (OpenRouter, gpt-4o-mini) : <span class="num">8/8</span> — le fournisseur ne reçoit que des sentinelles.</p>
+          <p class="mono">journal/STACK-7.md</p>
+        </div>
+        <div class="card">
+          <div class="tag">Prouvé en stack</div>
+          <h3>Audit signé + journal de transparence</h3>
+          <p>Reçus Ed25519 (compteurs, jamais de texte), rapports k-anonymes, journal append-only vérifiable, ingestion control → ledger testée de bout en bout.</p>
+          <p class="mono">journal/STACK-4.md · STACK-5.md</p>
+        </div>
+        <div class="card">
+          <div class="tag">Prouvé par benchmark</div>
+          <h3>Fossé ouest-africain (verdict GO)</h3>
+          <p>Grille pré-enregistrée v1.1, modèles réels sur CPU : <span class="num">PERSON 0.937</span> · LOC 0.835 · CNI/MAIL/TEL 1.000 · macro 0.954 · spécificité 0.77.</p>
+          <p class="mono">journal/STACK-8.md · bench/cloison-bench/results/</p>
+        </div>
+      </div>
+      <div class="note info"><span class="k">Rappel</span><div>CLOISON <b>pseudonymise</b> (réversible au bord) plutôt que d'anonymiser : le fournisseur LLM ne reçoit que des sentinelles <span class="mono">⟦…⟧</span> et les vraies valeurs sont restaurées dans la réponse, uniquement si elles ont été émises pendant la requête.</div></div>
+    </div>
+  </details>
+
+  <!-- 03 · VÉRIFIER -->
+  <details class="sec" id="d03">
+    <summary>
+      <div class="sum-body">
+        <div class="idx">03 — Vérification</div>
+        <h2>Vérifier</h2>
+      </div>
+    </summary>
+    <div class="sec-body">
+      <p class="intro">Deux contrôles : le smoke test distribué (prouvé <span class="ok-mark">exit 0</span> sur Windows réel) et le roundtrip manuel qui reproduit la preuve e2e des journaux.</p>
+
+      <h3>Smoke test (Windows)</h3>
+      <div class="cmd"><button class="copy" data-target="c-smoke">Copier</button>
+        <div class="bar"><i></i><i></i><i></i><span>PowerShell</span></div>
+        <pre><code id="c-smoke">powershell -ExecutionPolicy Bypass -File https://raw.githubusercontent.com/coucagog/cloison-proxy/main/smoke-n0.ps1</code></pre>
+      </div>
+      <p>Ce que le smoke prouve : boot du daemon N0 (coffre persistant, fail-loud, sel 0600), NER embarqué chargé, <b>masquage amont</b> (sentinelles <span class="mono">⟦…⟧</span>, aucune PII), <b>restauration client</b> complète, ville généralisée <span class="mono">[VILLE_SN]</span>, coffre sans clair, embeddings → 404.</p>
+
+      <h3>Roundtrip manuel (le scénario prouvé des journaux)</h3>
+      <div class="cmd"><button class="copy" data-target="c-curl">Copier</button>
+        <div class="bar"><i></i><i></i><i></i><span>curl — chat completions via le daemon</span></div>
+        <pre><code id="c-curl">curl http://127.0.0.1:8787/v1/chat/completions \
+  -H "Authorization: Bearer mn_mon_jeton.sk-or-v1-XXXX" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Appelez Xolani Ndlovu au 77 123 45 67, il habite a Ziguinchor."}]}'</code></pre>
+      </div>
+      <p>Résultat prouvé : l'amont ne reçoit que <span class="mono">Appelez ⟦…·PE⟧ ⟦…·PE⟧ au ⟦…·PH⟧, il habite à [VILLE_SN].</span> — le nom (hors gazetteer) est masqué par le NER embarqué, le téléphone <span class="mono">+221</span> par les regex, la ville est généralisée ; la réponse du client contient les <b>vraies valeurs restaurées</b>, zéro jeton résiduel.</p>
+      <div class="note warn"><span class="k">Attention</span><div>Un jeton non résoluble n'est <b>jamais</b> émis brut : il devient un marqueur neutre <span class="mono">[REDACTED]</span> + un compteur s'incrémente (fail-loud).</div></div>
+    </div>
+  </details>
+
+  <!-- 04 · E2E PASSERELLE -->
+  <details class="sec" id="d04">
+    <summary>
+      <div class="sum-body">
+        <div class="idx">04 — Preuves de bout en bout</div>
+        <h2>Preuves E2E de la passerelle</h2>
+      </div>
+    </summary>
+    <div class="sec-body">
+      <p class="intro">Le harnais <span class="mono">deploy/e2e_reel.sh</span> prouve le masquage <b>anti-pass-through</b> : il vérifie que le corps reçu par l'amont contient des sentinelles <span class="mono">⟦</span> et PAS la PII. Résultats historiques : mock <span class="ok-mark">12/12</span>, LLM réel <span class="ok-mark">8/8</span>.</p>
+
+      <h3>Mode mock (sans clé, sans réseau externe)</h3>
+      <div class="cmd"><button class="copy" data-target="c-e2em">Copier</button>
+        <div class="bar"><i></i><i></i><i></i><span>bash — E2E faux LLM</span></div>
+        <pre><code id="c-e2em">cd cloison
+sudo -E bash deploy/e2e_reel.sh</code></pre>
+      </div>
+
+      <h3>Mode réel (OpenRouter, gpt-4o-mini)</h3>
+      <div class="cmd"><button class="copy" data-target="c-e2er">Copier</button>
+        <div class="bar"><i></i><i></i><i></i><span>bash — E2E LLM réel</span></div>
+        <pre><code id="c-e2er">cd cloison
+CLOISON_E2E_MODE=real OPENROUTER_API_KEY=&lt;votre-cle&gt; bash deploy/e2e_reel.sh</code></pre>
+      </div>
+      <p>Scénarios couverts (prouvés) : chat non-stream, stream SSE (sentinelle découpée sur les chunks), tool-calls (arguments masqués/restaurés, stream compris), 401 sur clé invalide, jeton forgé → marqueur neutre, <span class="mono">/v1/models</span>, completions legacy.</p>
+    </div>
+  </details>
+
+  <!-- 05 · AUDIT -->
+  <details class="sec" id="d05">
+    <summary>
+      <div class="sum-body">
+        <div class="idx">05 — Conformité</div>
+        <h2>Mode Audit &amp; journal</h2>
+      </div>
+    </summary>
+    <div class="sec-body">
+      <p class="intro">Observe-only : le proxy détecte et <b>compte</b> sans rien masquer, émet des <b>reçus signés Ed25519</b> (compteurs uniquement — jamais de texte) et sert un rapport de conformité <b>k-anonyme</b> (défaut k=5).</p>
+
+      <h3>Activer le mode audit</h3>
+      <div class="cmd"><button class="copy" data-target="c-audit">Copier</button>
+        <div class="bar"><i></i><i></i><i></i><span>variables — mode audit</span></div>
+        <pre><code id="c-audit">export CLOISON_AUDIT_MODE=1
+export CLOISON_AUDIT_KEYS=/data/audit_key        # clé Ed25519 de l'agent
+export CLOISON_AUDIT_LEDGER_FILE=/data/audit_ledger.jsonl   # reçus persistés (0600)
+export CLOISON_AUDIT_K=5                          # seuil k-anonymat</code></pre>
+      </div>
+
+      <h3>Lire le rapport de conformité</h3>
+      <div class="cmd"><button class="copy" data-target="c-report">Copier</button>
+        <div class="bar"><i></i><i></i><i></i><span>curl — rapport k-anonyme signé</span></div>
+        <pre><code id="c-report">curl "http://127.0.0.1:8787/v1/audit/report?period=daily" \
+  -H "Authorization: Bearer mn_mon_jeton.sk-or-v1-XXXX"</code></pre>
+      </div>
+      <p>Chaque réponse non-stream porte aussi l'en-tête <span class="mono">X-Cloison-Audit-Receipt</span> (reçu signé, base64url). Les périodes valides : <span class="mono">hourly | daily | weekly | all</span>. Les cellules sous le seuil k ne sont <b>jamais</b> publiées.</p>
+      <div class="note info"><span class="k">Chaîne de confiance</span><div>En stack serveur, <span class="mono">cloison-control</span> contresigne les reçus et les engage dans le <b>journal de transparence</b> append-only (chaîne de hachage, signatures Ed25519, checkpoint anti-troncature) — vérifiable publiquement via <span class="mono">cloison-verify</span> (WASM inclus). Prouvé par tests (STACK-4/5) et en production.</div></div>
+    </div>
+  </details>
+
+  <!-- 06 · BENCH -->
+  <details class="sec" id="d06">
+    <summary>
+      <div class="sum-body">
+        <div class="idx">06 — Benchmark</div>
+        <h2>Benchmark GO/NO-GO</h2>
+      </div>
+    </summary>
+    <div class="sec-body">
+      <p class="intro">Le fossé ouest-africain est mesuré sur un jeu 100 % synthétique sénégalais (seed 42, 500 docs, 0 PII réelle), contre une baseline <b>Presidio forte</b>, avec une grille de scoring <b>pré-enregistrée</b> (v1.1, non modifiable). Verdict : <span class="ok-mark">GO</span>.</p>
+
+      <div class="cmd"><button class="copy" data-target="c-bench">Copier</button>
+        <div class="bar"><i></i><i></i><i></i><span>bash — harnais de benchmark</span></div>
+        <pre><code id="c-bench">cd bench/cloison-bench
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python -m spacy download fr_core_news_md
+pytest test_benchmark.py                      # 32 tests du harnais
+CLOISON_OFFLINE=1 python3 run_detect_target.py --offline   # détecteur cible</code></pre>
+      </div>
+
+      <h3>Résultats mesurés (modèles réels sur CPU, reproductibles)</h3>
+      <table>
+        <tr><th>Métrique</th><th>Baseline Presidio forte</th><th>CLOISON (afroxlmr + consensus)</th><th>Grille v1.1</th></tr>
+        <tr><td>PERSON</td><td class="mono">0.518</td><td class="mono">0.937</td><td class="mono">≥ 0.638 ✅</td></tr>
+        <tr><td>LOC</td><td class="mono">0.596</td><td class="mono">0.835</td><td class="mono">≥ 0.746 ✅</td></tr>
+        <tr><td>CNI / MAIL / TEL</td><td class="mono">1.000 / 0.985 / 0.652</td><td class="mono">1.000 / 1.000 / 1.000</td><td class="mono">non-régression ✅</td></tr>
+        <tr><td>Macro F1</td><td class="mono">0.750</td><td class="mono">0.954</td><td class="mono">≥ 0.850 ✅</td></tr>
+        <tr><td>Spécificité non-PII</td><td class="mono">0.42</td><td class="mono">0.77</td><td class="mono">≥ 0.60 ✅</td></tr>
+      </table>
+      <div class="note"><span class="k">Leçon du GO</span><div>Seul <span class="mono">afroxlmr</span> (MasakhaNER) + gazetteer <span class="mono">ville_sn</span> + fusion consensus remplissent les <b>5 conditions simultanées</b>. La détection des noms sénégalais n'est pas couverte par les outils génériques du marché — c'est le fossé mesuré.</div></div>
+    </div>
+  </details>
+
+  <!-- 07 · LIMITES -->
+  <details class="sec" id="d07">
+    <summary>
+      <div class="sum-body">
+        <div class="idx">07 — Honnêteté</div>
+        <h2>Limites &amp; niveaux N0–N3</h2>
+      </div>
+    </summary>
+    <div class="sec-body">
+      <p class="intro">À lire avant d'acheter. Ce que le produit ne prétend pas résoudre est rendu visible, jamais dissimulé.</p>
+      <ul>
+        <li><b>Quasi-identifiants</b> : « le patient de 42 ans opéré le 3 mars à Ziguinchor » peut ré-identifier sans aucun nom. La jauge (opt-in) <b>signale</b> la densité ; elle ne résout rien.</li>
+        <li><b>PII hallucinée</b> : le modèle peut inventer une donnée sans jeton (grounding) — hors de portée d'un proxy, item de recherche.</li>
+        <li><b>Poste compromis</b> : N0 ne protège pas contre un malware ou le vol du poste (le coffre et sa clé y vivent).</li>
+        <li><b>Sans NER embarqué</b> : un nom hors gazetteer jamais mentionné peut partir en clair (limite N0 v1, levée par le NER léger v1.2).</li>
+        <li><b>Embeddings</b> : <span class="mono">/v1/embeddings</span> est bloqué par défaut (un embedding de PII reste dérivé de PII).</li>
+      </ul>
+      <h3>Les quatre niveaux (ce que l'opérateur peut lire)</h3>
+      <table>
+        <tr><th>Niveau</th><th>Où tourne le moteur</th><th>Ce que l'opérateur lit</th></tr>
+        <tr><td><b>N0 · local</b></td><td>poste de l'utilisateur</td><td><b>rien</b> — promesse absolue (hors poste compromis)</td></tr>
+        <tr><td><b>N1 · site</b></td><td>serveur du client</td><td>seul le client, chez lui</td></tr>
+        <tr><td><b>N2 · enclave</b></td><td>matériel scellé attesté</td><td>personne, et c'est prouvé</td></tr>
+        <tr><td><b>N3 · hébergé</b></td><td>chez l'éditeur</td><td>l'éditeur lit le clair — entrée de gamme, jamais l'argument</td></tr>
+      </table>
+      <div class="note warn"><span class="k">Ne pas confondre</span><div>Pour le fournisseur LLM qui ne peut pas inverser les sentinelles, la donnée pseudonymisée est <b>anonyme</b> ; pour qui détient la table de correspondance, elle reste <b>personnelle</b>. L'endroit où vit le coffre décide de qui porte la responsabilité.</div></div>
+    </div>
+  </details>
+
+  <footer>
+    <div class="wrap">
+      <div class="pill" style="font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase">CLOISON · manuel d'utilisation</div>
+      <p style="margin:12px 0 0;max-width:70ch">Périmètre : uniquement les comportements prouvés (journaux STACK-7, STACK-8, STACK-4/5, STACK-N0 → N0V13). Les intégrations en cours (ex. MANIA.SN) sont documentées séparément dans <span class="mono">journal/INTEGRATION-MANIA-SN.md</span>.</p>
+      <p class="mono" style="margin:14px 0 0">Document d'explication — pas un avis juridique. Licence passerelle : AGPL-3.0 · moteur : Apache-2.0.</p>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  /* Thème : auto (OS) + bascule manuelle, sans stockage */
+  var btn = document.getElementById('themeBtn');
+  function currentTheme(){
+    var m = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return m ? 'dark' : 'light';
+  }
+  document.documentElement.setAttribute('data-theme', currentTheme());
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(){
+      document.documentElement.setAttribute('data-theme', currentTheme());
+    });
+  }
+  btn.addEventListener('click', function(e){
+    e.preventDefault();
+    var cur = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+  });
+
+  /* Ancres : ouvrir le <details> ciblé (natif) */
+  document.querySelectorAll('a[href^="#"]').forEach(function(a){
+    a.addEventListener('click', function(){
+      var id = a.getAttribute('href').slice(1);
+      if(!id) return;
+      var el = document.getElementById(id);
+      if(el && el.tagName === 'DETAILS'){ el.open = true; }
+    });
+  });
+
+  /* Clique-to-copy : navigator.clipboard + repli execCommand (file://) */
+  function copyText(t){
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(t);
+    }
+    return new Promise(function(res, rej){
+      var ta = document.createElement('textarea');
+      ta.value = t; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      try { document.execCommand('copy') ? res() : rej(new Error('copy')); }
+      catch(e){ rej(e); } finally { document.body.removeChild(ta); }
+    });
+  }
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var el = document.getElementById(btn.getAttribute('data-target'));
+      var t = el ? el.textContent : '';
+      copyText(t).then(function(){
+        var old = btn.textContent;
+        btn.textContent = 'Copié ✓'; btn.classList.add('ok');
+        setTimeout(function(){ btn.textContent = old; btn.classList.remove('ok'); }, 1400);
+      }).catch(function(){
+        btn.textContent = 'Sélectionnez le bloc';
+        setTimeout(function(){ btn.textContent = 'Copier'; }, 1600);
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -51,6 +51,10 @@ services:
   # Port publié : 8787 (seul service exposé hors du réseau interne).
   # ---------------------------------------------------------------------------
   edge:
+    # ⚠️ L'image GHCR n'est PAS publiée (`docker pull` → unauthorized, constat
+    # sonde 02-03/09/2026) : construire en local (build: ci-dessous) ou utiliser
+    # la release publique (deploy/install-n0.sh). Le `image:` ne sert qu'au nom
+    # local après build.
     image: ghcr.io/coucagog/cloison-proxy:edge
     build:
       context: ..

@@ -209,13 +209,51 @@ pub fn hash_session_ref(tenant_id: &str, session_ref: &str) -> String {
 ///   triés — un ensemble n'a pas d'ordre, deux permutations doivent produire
 ///   le même hash ;
 /// - aucun espace blanc.
+///
+/// Fix N0+audit (crash « failed to hash audit policy » en production) : les
+/// `HashMap<DetectorKind, _>` de la Policy ne passent pas `serde_json::to_value`
+/// quand une clé est une variante **à données** (`Gazetteer("ville_sn")` → clé
+/// objet, refusée : « key must be a string »). Les clés de `generalization` et
+/// `cardinality_thresholds` sont donc converties en leur forme string stable
+/// (`Display` du kind). Les variantes unitaires ont un Display identique à leur
+/// nom serde → le hash des politiques sans clé à données (chemin serveur) est
+/// **bit-identique** à l'ancien format.
 pub fn policy_hash(policy: &cloison_core::Policy) -> AuditResult<String> {
-    let mut value = serde_json::to_value(policy)?;
+    let mut map = serde_json::Map::new();
+    map.insert(
+        "tenant_id".to_string(),
+        serde_json::to_value(&policy.tenant_id)?,
+    );
+    map.insert(
+        "detection".to_string(),
+        serde_json::to_value(&policy.detection)?,
+    );
+    map.insert(
+        "generalization".to_string(),
+        kind_map_to_value(&policy.generalization)?,
+    );
+    map.insert(
+        "cardinality_thresholds".to_string(),
+        kind_map_to_value(&policy.cardinality_thresholds)?,
+    );
+    let mut value = serde_json::Value::Object(map);
     canonicalize(&mut value);
     let canonical = serde_json::to_string(&value)?;
     let mut hasher = Sha256::new();
     hasher.update(canonical.as_bytes());
     Ok(hex_bytes(&hasher.finalize()))
+}
+
+/// Série un `HashMap<DetectorKind, T>` en objet JSON à clés **string**
+/// (`Display` du kind) — serde_json refuse les clés non-string.
+fn kind_map_to_value<T: serde::Serialize>(
+    m: &std::collections::HashMap<cloison_core::DetectorKind, T>,
+) -> AuditResult<serde_json::Value> {
+    let mut out = serde_json::Map::new();
+    for (k, v) in m {
+        out.insert(k.to_string(), serde_json::to_value(v)?);
+    }
+    Ok(serde_json::Value::Object(out))
 }
 
 /// Normalisation canonique récursive d'une valeur JSON (voir `policy_hash`).
@@ -396,5 +434,27 @@ mod tests {
         assert_ne!(h1, h3);
         assert_eq!(h1.len(), 64, "sha256 hex length");
         assert!(!h1.contains("sess-abc"), "session ref must not leak");
+    }
+
+    #[test]
+    fn policy_hash_accepts_n0_policy_with_gazetteer_keys() {
+        // Régression du crash « failed to hash audit policy » (mode N0 + audit) :
+        // la politique N0 porte une clé DetectorKind::Gazetteer("ville_sn")
+        // dans `generalization` — le hash doit réussir et être déterministe.
+        let p = cloison_core::Policy::n0_for("sonde");
+        let h1 = policy_hash(&p).expect("n0 policy must hash");
+        let h2 = policy_hash(&p).expect("deterministic");
+        assert_eq!(h1, h2);
+        assert_eq!(h1.len(), 64);
+    }
+
+    #[test]
+    fn policy_hash_server_path_unchanged_for_default_policy() {
+        // Le chemin serveur (politique par défaut, maps vides) doit rester
+        // bit-identique au format historique (clés d'objets triées).
+        let p = cloison_core::Policy::default_for("tenant-42");
+        let h1 = policy_hash(&p).expect("default policy must hash");
+        let h2 = policy_hash(&p).expect("deterministic");
+        assert_eq!(h1, h2);
     }
 }
