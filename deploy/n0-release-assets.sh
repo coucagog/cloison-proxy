@@ -131,12 +131,17 @@ ls -la "$ALL"
 echo "==> checksums.txt :"
 cat "$ALL/checksums.txt"
 
-# --- 4. Publication via l'API GitHub ------------------------------------------
-# (RELEASE_ID est résolu en tête de script — section 0.)
-
+# --- 4. Uploads bundle + libs (AVANT les checksums) ----------------------------
+# Leçon v0.3.2 : les checksums doivent couvrir TOUS les assets de la release —
+# donc bundle et libs sont uploadés AVANT le calcul (l'ordre historique mettait
+# les checksums avant ces uploads : 4 entrées au lieu de 8, installateurs KO).
 upload() { # upload <fichier>
   local f="$1" name
   name="$(basename "$f")"
+  if echo "$EXISTING" | grep -qx "$name"; then
+    echo "==> déjà présent : $name (skip)"
+    return 0
+  fi
   echo "==> upload $name ($(du -h "$f" | cut -f1))"
   # Les uploads d'assets passent par uploads.github.com (pas api.github.com).
   curl -fsSL -X POST -H "Authorization: token $TOKEN" \
@@ -145,11 +150,26 @@ upload() { # upload <fichier>
     "https://uploads.github.com/repos/$REPO/releases/$RELEASE_ID/assets?name=$name" >/dev/null
 }
 
-for f in "$WORK"/cloison-n0-ner-lite.tar.gz "$WORK"/cloison-n0-onnxruntime-*.tar.gz "$ALL"/checksums.txt; do
+EXISTING="$(curl -fsSL -H "Authorization: token $TOKEN" "$API/releases/$RELEASE_ID/assets?per_page=100" | python3 -c 'import json,sys; [print(a["name"]) for a in json.load(sys.stdin)]')"
+
+for f in "$WORK"/cloison-n0-ner-lite.tar.gz "$WORK"/cloison-n0-onnxruntime-*.tar.gz; do
   upload "$f"
 done
 
-# --- 5. Publication de la release (draft → publiée) ---------------------------
+# --- 5. checksums.txt (remplace la version précédente, jamais de doublon) ------
+AID_OLD="$(curl -fsSL -H "Authorization: token $TOKEN" "$API/releases/$RELEASE_ID/assets?per_page=100" | python3 -c '
+import json, sys
+for a in json.load(sys.stdin):
+    if a.get("name") == "checksums.txt":
+        print(a["id"]); break
+')"
+if [ -n "$AID_OLD" ]; then
+  curl -fsSL -X DELETE -H "Authorization: token $TOKEN" "$API/releases/assets/$AID_OLD" >/dev/null
+  echo "checksums.txt remplacé (asset $AID_OLD supprimé)"
+fi
+upload "$ALL/checksums.txt"
+
+# --- 6. Publication de la release (draft → publiée) ---------------------------
 echo "==> publication de la release ($TAG)…"
 curl -fsSL -X PATCH -H "Authorization: token $TOKEN" \
   -H "Content-Type: application/json" \
