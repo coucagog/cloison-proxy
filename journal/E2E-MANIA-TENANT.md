@@ -403,8 +403,13 @@ verrous levés ; (5) relier `manuel.html` à la sidebar du site docs.
 
 ### Reste ouvert
 
-- Bundle NER « latest » toujours incohérent sur Linux (v0.3.2 épinglée OK) —
-  à réparer côté publication (NEXT-SESSION item 3).
+- ~~Bundle NER « latest » incohérent sur Linux~~ → **RÉSOLU PAR LA MESURE
+  (04/09)** : sha256 identiques 6/6 entre le bundle v0.3.1, le bundle v0.3.2
+  et le volume `detect` actuel ; NER **vérifié sur l'image Mania** (`ner_actif=1,
+  ner_echecs=0`, labels=9) ; et `releases/latest` == v0.3.2 (bundle cohérent
+  servi). Reste : revérifier à la PROCHAINE régénération du volume (la cause
+  du 512×5755 n'est pas élucidée, seulement contournée).
 - macOS = copies v0.3.0 (runners en panne).
-- Arbitrage pilote sentinelles vs faux réaliste par tenant/verticale (item 2).
+- Arbitrage pilote sentinelles vs faux réaliste par tenant/verticale :
+  **dossier prêt** — `journal/ARBITRAGE-05-SENTINELLES-VS-FAKE.md`.
 - `manuel.html` → sidebar (item 4) ; jambe GLM (item 5).
