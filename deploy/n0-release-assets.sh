@@ -93,8 +93,26 @@ tar -czf "$WORK/cloison-n0-onnxruntime-aarch64-apple-darwin.tar.gz" -C "$WORK" l
 # COMPLETS : tous les assets publiés (binaires + bundle + libs) — un
 # checksums.txt sans les binaires ferait échouer les installateurs
 # (leçon v0.3.0 : les checksums ne couvraient que les fichiers modèles).
+# On TÉLÉCHARGE donc tous les assets déjà présents sur la release (binaires
+# uploadés par la CI ou par le pipeline manuel), puis checksums sur
+# l'ensemble. checksums.txt lui-même est exclu (un checksum de lui-même ne
+# peut pas être stable d'une exécution à l'autre).
 echo "==> checksums (tous les assets, binaires inclus)…"
-(cd "$WORK" && sha256sum cloison-proxy-* cloison-n0-* 2>/dev/null | sort -k2 > checksums.txt)
+ALL="$WORK/all"; mkdir -p "$ALL"
+curl -fsSL -H "Authorization: token $TOKEN" "$API/releases/$RELEASE_ID/assets?per_page=100" | python3 -c '
+import json, sys
+for a in json.load(sys.stdin):
+    if a.get("name") != "checksums.txt":
+        print(a["name"])
+        print(a["browser_download_url"])
+' | while read -r name; do
+  read -r url
+  curl -fsSL -o "$ALL/$name" "$url"
+done
+ls -la "$ALL"
+(cd "$ALL" && sha256sum * | sort -k2 > checksums.txt)
+echo "==> checksums.txt :"
+cat "$ALL/checksums.txt"
 
 # --- 4. Publication via l'API GitHub ------------------------------------------
 # NB : `GET /releases/tags/{tag}` ne renvoie PAS les releases en DRAFT
@@ -119,7 +137,7 @@ upload() { # upload <fichier>
     "https://uploads.github.com/repos/$REPO/releases/$RELEASE_ID/assets?name=$name" >/dev/null
 }
 
-for f in "$WORK"/cloison-n0-ner-lite.tar.gz "$WORK"/cloison-n0-onnxruntime-*.tar.gz "$WORK"/checksums.txt; do
+for f in "$WORK"/cloison-n0-ner-lite.tar.gz "$WORK"/cloison-n0-onnxruntime-*.tar.gz "$ALL"/checksums.txt; do
   upload "$f"
 done
 
