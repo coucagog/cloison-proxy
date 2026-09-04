@@ -400,6 +400,7 @@ fn test_config(mock_url: &str) -> Config {
         tenant_key: TEST_TENANT_KEY,
         session_salt: TEST_SESSION_SALT,
         mock_mode: true,
+        realistic_fake: false, // sentinelles — le faux réaliste est testé dans cloison-core
         // STACK-4 : audit désactivé par défaut — comportement STACK-3 inchangé.
         audit_mode: false,
         audit_keys: None,
