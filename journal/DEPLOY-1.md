@@ -4,6 +4,12 @@
 > `journal/STACK-9.md` (préparation wonkom.ai). Série `DEPLOY-N` : un journal
 > par campagne de déploiement ; ce fichier couvre l'installation sur le
 > nouveau VPS vierge.
+>
+> **MAJ adresses IP (fin août 2026, décision pilote)** : **wonkom/CLOISON =
+> `144.217.81.251`** (ce serveur) · **Mania = `51.38.179.242`**
+> (`vps-6dcf6a6b`, Debian 13). L'ancienne IP wonkom citée ci-dessous
+> (`51.38.179.242`) est désormais le serveur de Mania. Voir
+> `journal/INTEGRATION-MANIA-SN.md` §0.
 
 ## Objectif
 

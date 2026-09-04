@@ -2,6 +2,12 @@
 
 > Journal de développement — écrit au fil de l'eau. Gabarit : note technique §13.
 > Suite directe du STACK-8 (verdict GO). Session de déploiement, 20 août 2026.
+>
+> **MAJ adresses IP (fin août 2026, décision pilote)** : la cible DNS citée
+> dans ce journal (`51.38.179.242`) est **dépassée** — depuis DEPLOY-1,
+> wonkom/CLOISON vit sur **`144.217.81.251`**, et `51.38.179.242` est
+> désormais le serveur de Mania (`vps-6dcf6a6b`). Voir
+> `journal/INTEGRATION-MANIA-SN.md` §0.
 
 ## Objectif
 
