@@ -150,7 +150,7 @@ upload() { # upload <fichier>
     "https://uploads.github.com/repos/$REPO/releases/$RELEASE_ID/assets?name=$name" >/dev/null
 }
 
-EXISTING="$(curl -fsSL -H "Authorization: token $TOKEN" "$API/releases/$RELEASE_ID/assets?per_page=100" | python3 -c 'import json,sys; [print(a["name"]) for a in json.load(sys.stdin)]')"
+EXISTING="$(curl -fsSL -H "Authorization: token $TOKEN" "$API/releases/$RELEASE_ID/assets?per_page=100" | python3 -c 'import json,sys; [print(a["name"]) for a in json.load(sys.stdin) if a["name"] != "checksums.txt"]')"
 
 for f in "$WORK"/cloison-n0-ner-lite.tar.gz "$WORK"/cloison-n0-onnxruntime-*.tar.gz; do
   upload "$f"
