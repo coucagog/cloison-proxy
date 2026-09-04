@@ -37,6 +37,20 @@ trap 'rm -rf "$WORK"' EXIT
 TOKEN="$(sed -nE 's#https://[^:]+:([^@]+)@github\.com#\1#p' "$HOME/.git-credentials" | head -1)"
 [[ -n "$TOKEN" ]] || { echo "❌ jeton GitHub introuvable dans ~/.git-credentials" >&2; exit 1; }
 
+# --- 0. Release cible ----------------------------------------------------------
+# NB : `GET /releases/tags/{tag}` ne renvoie PAS les releases en DRAFT
+# (comportement GitHub) — chercher dans la liste des releases. Résolu AVANT
+# les checksums (qui listent les assets de la release — leçon v0.3.2 :
+# RELEASE_ID était résolu après la section checksums, `unbound variable`).
+RELEASE_ID="$(curl -fsSL -H "Authorization: token $TOKEN" "$API/releases?per_page=30" | python3 -c '
+import json, sys
+for r in json.load(sys.stdin):
+    if r.get("tag_name") == "'"$TAG"'":
+        print(r["id"]); break
+')"
+[[ -n "$RELEASE_ID" ]] || { echo "❌ release $TAG introuvable (la CI l'a-t-elle créée ?)" >&2; exit 1; }
+echo "release $TAG : id=$RELEASE_ID"
+
 # --- 1. Bundle NER léger (artefacts validés du volume detect) ----------------
 # Le volume docker est root-only : accès via sudo (le script tourne sur le VPS,
 # debian NOPASSWD — charte §12).
@@ -115,16 +129,7 @@ echo "==> checksums.txt :"
 cat "$ALL/checksums.txt"
 
 # --- 4. Publication via l'API GitHub ------------------------------------------
-# NB : `GET /releases/tags/{tag}` ne renvoie PAS les releases en DRAFT
-# (comportement GitHub) — chercher dans la liste des releases.
-RELEASE_ID="$(curl -fsSL -H "Authorization: token $TOKEN" "$API/releases?per_page=30" | python3 -c '
-import json, sys
-for r in json.load(sys.stdin):
-    if r.get("tag_name") == "'"$TAG"'":
-        print(r["id"]); break
-')"
-[[ -n "$RELEASE_ID" ]] || { echo "❌ release $TAG introuvable (la CI l'a-t-elle créée ?)" >&2; exit 1; }
-echo "release $TAG : id=$RELEASE_ID"
+# (RELEASE_ID est résolu en tête de script — section 0.)
 
 upload() { # upload <fichier>
   local f="$1" name
