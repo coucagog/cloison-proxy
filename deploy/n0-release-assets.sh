@@ -117,11 +117,14 @@ curl -fsSL -H "Authorization: token $TOKEN" "$API/releases/$RELEASE_ID/assets?pe
 import json, sys
 for a in json.load(sys.stdin):
     if a.get("name") != "checksums.txt":
+        print(a["id"])
         print(a["name"])
-        print(a["browser_download_url"])
-' | while read -r name; do
-  read -r url
-  curl -fsSL -o "$ALL/$name" "$url"
+' | while read -r aid; do
+  read -r name
+  # Draft : browser_download_url répond 404 tant que la release n'est pas
+  # publiée — passer par l'API asset avec le jeton (leçon v0.3.2).
+  curl -fsSL -H "Authorization: token $TOKEN" -H "Accept: application/octet-stream" \
+    -o "$ALL/$name" "$API/releases/assets/$aid"
 done
 ls -la "$ALL"
 (cd "$ALL" && sha256sum * | sort -k2 > checksums.txt)
