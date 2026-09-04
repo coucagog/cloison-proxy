@@ -336,3 +336,75 @@ procédure n3-*.sh) ; (2) republier un bundle NER cohérent pour Linux ;
 (3) trancher la stratégie sentinelles/faux-réaliste pour les modèles qui
 nettoient ⟦…⟧ ; (4) activer les packs sensibles (`PII=1`) une fois ces
 verrous levés ; (5) relier `manuel.html` à la sidebar du site docs.
+
+---
+
+## Session 04/09/2026 — Release CLOISON v0.3.2 (faux réaliste) PUBLIÉE + edge Mania reconstruit
+
+> Suite du journal. Objectif = NEXT-SESSION item 1 : rendre `CLOISON_REALISTIC_FAKE`
+> effectif côté tenants (l'image Mania v0.3.1 ne portait pas `ce1201e`).
+
+### Release v0.3.2 — publiée sur coucagog/cloison-proxy
+
+- **9 assets** : linux x86_64 + windows (mingw, nommé `-msvc` comme v0.3.1) +
+  macOS (copies v0.3.0, caveat dans le corps) + bundle NER (identique v0.3.1,
+  `ner_echecs=0`) + 3 libs onnxruntime + **checksums 8 entrées** (leçon v0.3.0
+  appliquée). Téléchargements publics 200.
+- **Portes VPS (rustdev)** : tests workspace verts + e2e_n0 **8 passed**.
+  ⚠️ Les portes avaient D'ABORD échoué : `Config.realistic_fake` absent des
+  initialisateurs des tests e2e du proxy (cassé par `ce1201e`, jamais vu en
+  local car la porte locale était `cargo check`, pas `cargo test` — la release
+  a été **arrêtée avant publication**, portes corrigées, relancée).
+- **Smoke Windows réel** : exit 0 (masquage + restauration prouvés), sha256 du
+  binaire == checksums.
+- **Runners toujours en panne** → builds manuels sur wonkom (doctrine
+  STACK-N0V13 §10).
+
+### Image mania-cloison-edge reconstruite (VPS Mania)
+
+- Pin `--version v0.3.2` posé dans `/opt/hermes/gabarit/ops/build-cloison-edge.sh`
+  (backup `.bak-<stamp>` — le script n'avait AUCUN pin, il installait `latest`) ;
+  image reconstruite, **backup tag `mania-cloison-edge:backup-20260904-222634`** ;
+  **aucun conteneur tenant touché** (aucun `-edge` en service ; seuls les
+  prochains provisionnements PII=1 consomment `:latest`).
+- **Sonde faux réaliste PROUVÉE (parcours réel, donnée synthétique)** : edge
+  v0.3.2 isolé + mock local → le « fournisseur » a reçu
+  `Maimouna Yacine, +221 77 256 51 21, [VILLE_SN]` — **zéro PII réelle, zéro
+  sentinelle, ville généralisée** ; le client reçoit le faux (irréversible,
+  conforme au contrat). Nettoyage complet, aucun résidu, état initial vérifié.
+
+### Corrections de fond committées (monorepo)
+
+- `n0-release-assets.sh` : `RELEASE_ID` résolu en tête (était après les
+  checksums → `unbound variable`) ; **uploads bundle+libs AVANT checksums**
+  (la leçon v0.3.0 avait récidivé : 4 entrées au lieu de 8) ; téléchargement
+  des assets par l'API avec jeton (`browser_download_url` = **404 sur un
+  DRAFT**) ; `checksums.txt` exclu du skip et remplacé sans doublon.
+- Bits exécutables `deploy/*.sh` restaurés dans git (644 par checkout Windows →
+  `Permission denied` en prod).
+- Hygiène : en-têtes IP des journaux (DEPLOY-1, STACK-9), journaux
+  E2E-OPEN-DESIGN + MOBILE-BUILD-LOCAL versionnés, fix wasm `Cargo.toml`.
+
+### Pièges payés (à retenir pour la prochaine release manuelle)
+
+1. **Une porte locale `cargo check` ne couvre pas les tests** — la CI les
+   couvrait, les runners en panne ne le font plus : la porte VPS doit être
+   `cargo test` et son exit code doit faire foi (un pipeline interne à
+   `bash -lc` masque l'échec).
+2. **Draft GitHub** : les `browser_download_url` répondent 404 tant que la
+   release n'est pas publiée → API asset + jeton.
+3. **Checksums après les uploads de TOUT**, jamais avant ; et un `EXISTING`
+   capturé avant une suppression ment ensuite (skip inopportun).
+4. **Modes git perdus par Windows** : `chmod +x` dans l'index pour tout script
+   exécuté en prod.
+5. Le quoting PowerShell→SSH a mordu **trois fois de plus** (grep `\|`/`df|tail`,
+   parenthèses ERE échappées à tort, here-strings CRLF) — fichier script LF,
+   toujours, même pour un `tail`.
+
+### Reste ouvert
+
+- Bundle NER « latest » toujours incohérent sur Linux (v0.3.2 épinglée OK) —
+  à réparer côté publication (NEXT-SESSION item 3).
+- macOS = copies v0.3.0 (runners en panne).
+- Arbitrage pilote sentinelles vs faux réaliste par tenant/verticale (item 2).
+- `manuel.html` → sidebar (item 4) ; jambe GLM (item 5).
