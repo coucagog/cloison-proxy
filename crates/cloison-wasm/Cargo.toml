@@ -6,6 +6,18 @@ license.workspace = true
 repository.workspace = true
 description = "CLOISON — module navigateur @cloison/core : tokenize/restore in-browser (wasm-bindgen), coffre in-memory (0 valeur persistée en clair)."
 
+[lib]
+# wasm-pack exige un cdylib pour cibler wasm32 (build mobile réel — le cargo
+# check de la CI ne le détecte pas ; constat session MOBILE-BUILD-LOCAL).
+crate-type = ["cdylib", "rlib"]
+
+[package.metadata.wasm-pack.profile.release]
+# Le wasm-opt (binaryen) téléchargé par wasm-pack est trop vieux : son
+# validateur rejette les opérations bulk-memory (memory.copy/fill) émises par
+# la toolchain actuelle. On saute l'optimisation (wasm un peu plus gros,
+# build déterministe — constat session MOBILE-BUILD-LOCAL).
+wasm-opt = false
+
 [dependencies]
 # Le moteur (détection, jetons, restauration) — les bindings `cloison*`
 # (cloisonInitSession, cloisonTokenize, cloisonRestore, …) vivent dans
