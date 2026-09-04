@@ -259,6 +259,7 @@ fn proxy_config(mock_url: &str, control_url: &str, audit_mode: bool) -> Config {
         tenant_key: TEST_TENANT_KEY,
         session_salt: TEST_SESSION_SALT,
         mock_mode: true,
+        realistic_fake: false, // sentinelles — le faux réaliste est testé dans cloison-core
         audit_mode,
         audit_keys: None,
         audit_k: 5,

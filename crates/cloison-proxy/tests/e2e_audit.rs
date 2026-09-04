@@ -244,6 +244,7 @@ fn audit_config(mock_url: &str, seed_path: Option<&std::path::Path>) -> Config {
         tenant_key: TEST_TENANT_KEY,
         session_salt: TEST_SESSION_SALT,
         mock_mode: true,
+        realistic_fake: false, // sentinelles — le faux réaliste est testé dans cloison-core
         audit_mode: true,
         audit_keys: seed_path.map(|p| p.to_path_buf()),
         audit_k: 5,

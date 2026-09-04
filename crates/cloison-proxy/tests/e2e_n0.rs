@@ -153,6 +153,7 @@ fn n0_config(mock_url: &str, dir: &Path, passphrase: &str) -> Config {
         tenant_key: TEST_TENANT_KEY,
         session_salt: salt,
         mock_mode: true,
+        realistic_fake: false, // sentinelles — le faux réaliste est testé dans cloison-core
         audit_mode: false,
         audit_keys: None,
         audit_k: 5,
