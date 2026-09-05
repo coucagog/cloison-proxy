@@ -412,4 +412,8 @@ verrous levés ; (5) relier `manuel.html` à la sidebar du site docs.
 - macOS = copies v0.3.0 (runners en panne).
 - Arbitrage pilote sentinelles vs faux réaliste par tenant/verticale :
   **dossier prêt** — `journal/ARBITRAGE-05-SENTINELLES-VS-FAKE.md`.
-- `manuel.html` → sidebar (item 4) ; jambe GLM (item 5).
+- ~~`manuel.html` → sidebar~~ **FAIT (04/09)** : lien « Manuel d'utilisation »
+  dans le groupe Déployer des 9 pages (sidebars uniformes 9/9 vérifiées) +
+  lien retour « Documentation » dans le header du manuel ; déployé sur
+  docs.wonkom.ai, vérifié en prod (10 pages 200, lien 9/9, non-régression).
+- Jambe GLM (item 5).
