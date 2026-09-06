@@ -509,3 +509,79 @@ verrous levés ; (5) relier `manuel.html` à la sidebar du site docs.
   trancher).
 - Arbitrage sentinelles/faux pour `demo-cloison` selon le comportement du
   modèle réel après re-sonde (matrice ARBITRAGE-05 §6).
+
+---
+
+## Session 06/09/2026 — Phase serveur : release v0.3.3, edge re-déployé, re-sonde VERTE
+
+> Suite du journal. Tout exécuté sur les serveurs avec les helpers
+> `SERVEUR/` (wonkom) et `MANIA.SN/.tmp-deploy/` (Mania) — jamais d'inline.
+
+### Release v0.3.3 (wonkom, builds manuels)
+
+- Commit `3c73888` publié : bundle→wonkom→`push origin main` (fast-forward).
+- `release-v033.sh` (adapté de v0.3.2) : portes `cargo test --locked`
+  workspace + `e2e_n0` 8/8 **exécutées** (jamais `cargo check` seul), builds
+  linux-gnu + windows-gnu (mingw), macOS copiés de v0.3.2 (caveat runners),
+  tag `v0.3.3` poussé, draft créé (`release_id=383526345`).
+- **Leçon v0.3.2 récidivée 1** : la résolution du `release_id` par
+  `GET /releases?per_page=5` ne voit pas le draft → reprise
+  `rel-v033-resume.sh` (liste `per_page=100` + repli sur l'ID candidat vérifié
+  par son tag — procédure éprouvée du 04/09).
+- **Leçon v0.3.2 récidivée 2 (la vraie)** : `n0-release-assets.sh` calculait
+  encore les checksums AVANT l'upload bundle+libs → 4 entrées au lieu de 8,
+  installateurs KO — le commentaire « uploads AVANT checksums » existait mais
+  le code n'avait jamais été réordonné. Réparé à la main
+  (`rel-v033-fixchecks.sh`, 8 entrées) **puis corrigé pour de bon dans le
+  dépôt** (réordonnancement §3/§4, commit de cette session).
+- Release v0.3.3 complète : 9 assets, checksums 8 entrées, downloads publics
+  200. Smoke Windows du binaire **publié** (sha256 vérifié, rapatrié via
+  wonkom) : sonde locale verte (0 échec NER long message, zéro valeur réelle
+  côté mock, restaurations exactes ; `[VILLE_SN]` = généralisation
+  irréversible **par conception** — test `test_n0_policy_ville_sn_…`).
+
+### Rebuild edge + re-déploiement demo-cloison (Mania)
+
+- `rebuild-edge-v033.sh` : image `mania-cloison-edge` reconstruite pin
+  v0.3.3 (checksums vérifiés), backup `backup-20260906-092209`, rollback
+  documenté.
+- `deploy-demo-edge-v033.sh` : `compose up -d` → **seul l'edge recréé**
+  (agent/webui intacts). 0 échec NER au boot.
+
+### 🔵 Cause racine des `UpstreamTimeout` (nouveau, pas dans le 05-06)
+
+- Symptôme : requêtes réelles (prompt SOUL 6737 tokens) → `UpstreamTimeout`
+  `error sending request` par paires à 5 s (connect_timeout), requêtes
+  triviales OK. Réseau/DNS/IPv6/firewall/TLS **tous exonérés** (A/B edges
+  jetables v0.3.2 ET v0.3.3 → 200 en <1 s ; curl dual-réseau OK ; tcpdump +
+  conntrack OK).
+- **Cause** : `mem_limit: 256m` + `cpus: 0.5` de l'edge dans le compose v4.1.
+  En v0.3.2 le NER mourait instantanément sur les gros prompts (bug 512) donc
+  ne coûtait rien ; en v0.3.3 le **fenêtrage travaille vraiment** (26 fenêtres
+  × ONNX) → 240/256 MiB au repos, `memory.peak` = limite exacte, CPU saturé à
+  50 % → le connect amont explose les 5 s. Preuve : `docker stats`
+  94 % + `memory.peak` == limite.
+- **Correctif** : tenant `mem_limit 1g` + `cpus 2.0` (backup compose horodaté)
+  **+ gabarit vivant `nouveau-tenant.sh` patché pareil** (backup horodaté) —
+  à reporter au dépôt ManIA.
+
+### Clé composite : transitoire de rotation (WebUI)
+
+- La WebUI synchronise le composite dans le `.env` home hermes ET le
+  `CLOISON_TOKEN` du `.env` tenant — une re-saisie a fait osciller le jeton
+  (A→B→A→B) pendant la session, d'où des 401 intermittents non liés à
+  l'edge. Stabilisé sur le composite original après re-saisie pilote ;
+  vérification par empreintes uniquement (jamais de clé affichée).
+
+### Re-sonde réelle VERTE (DeepSeek direct)
+
+- `hermes -z` roundtrip PII synthétique : réponse complète, **restaurations
+  exactes** (Aminata Diop, email, téléphone ; ville = `[VILLE_SN]` par
+  conception), **zéro valeur réelle dans les logs edge** (Aminata/Diop/email/
+  tél/Ziguinchor = 0), **0 échec NER** sur le vrai prompt 6737 tokens.
+- Le modèle (deepseek-v4-flash servi en « deepseek-chat ») a **préservé les
+  sentinelles** (restauration exacte) — à verser à la matrice
+  ARBITRAGE-05 §6 (sentinelles par défaut tiennent sur DeepSeek direct).
+- 🔴 `response_format` 400 toujours présent (3× pendant la sonde, Hermes
+  retente et aboutit) — décision : strip côté edge (retry sans
+  `response_format` sur ce 400 précis) ou config Hermes — **à trancher**.

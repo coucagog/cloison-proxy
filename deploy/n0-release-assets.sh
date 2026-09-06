@@ -103,38 +103,12 @@ tar -xzf "$WORK/ort-osx.tgz" -C "$WORK"
 cp "$WORK/onnxruntime-osx-arm64-$ORT_VER/lib/libonnxruntime.dylib" "$WORK/libonnxruntime.dylib"
 tar -czf "$WORK/cloison-n0-onnxruntime-aarch64-apple-darwin.tar.gz" -C "$WORK" libonnxruntime.dylib
 
-# --- 3. Checksums -------------------------------------------------------------
-# COMPLETS : tous les assets publiés (binaires + bundle + libs) — un
-# checksums.txt sans les binaires ferait échouer les installateurs
-# (leçon v0.3.0 : les checksums ne couvraient que les fichiers modèles).
-# On TÉLÉCHARGE donc tous les assets déjà présents sur la release (binaires
-# uploadés par la CI ou par le pipeline manuel), puis checksums sur
-# l'ensemble. checksums.txt lui-même est exclu (un checksum de lui-même ne
-# peut pas être stable d'une exécution à l'autre).
-echo "==> checksums (tous les assets, binaires inclus)…"
-ALL="$WORK/all"; mkdir -p "$ALL"
-curl -fsSL -H "Authorization: token $TOKEN" "$API/releases/$RELEASE_ID/assets?per_page=100" | python3 -c '
-import json, sys
-for a in json.load(sys.stdin):
-    if a.get("name") != "checksums.txt":
-        print(a["id"])
-        print(a["name"])
-' | while read -r aid; do
-  read -r name
-  # Draft : browser_download_url répond 404 tant que la release n'est pas
-  # publiée — passer par l'API asset avec le jeton (leçon v0.3.2).
-  curl -fsSL -H "Authorization: token $TOKEN" -H "Accept: application/octet-stream" \
-    -o "$ALL/$name" "$API/releases/assets/$aid"
-done
-ls -la "$ALL"
-(cd "$ALL" && sha256sum * | sort -k2 > checksums.txt)
-echo "==> checksums.txt :"
-cat "$ALL/checksums.txt"
-
-# --- 4. Uploads bundle + libs (AVANT les checksums) ----------------------------
-# Leçon v0.3.2 : les checksums doivent couvrir TOUS les assets de la release —
-# donc bundle et libs sont uploadés AVANT le calcul (l'ordre historique mettait
-# les checksums avant ces uploads : 4 entrées au lieu de 8, installateurs KO).
+# --- 3. Uploads bundle + libs (AVANT les checksums) ----------------------------
+# Leçon v0.3.2 (appliquée pour de bon le 06/09/2026) : les checksums doivent
+# couvrir TOUS les assets de la release — donc bundle et libs sont uploadés
+# AVANT le calcul. L'ordre historique mettait les checksums avant ces uploads :
+# 4 entrées au lieu de 8, installateurs KO (récidive constatée sur v0.3.3,
+# réparée à la main par /tmp/rel-v033-fixchecks.sh).
 upload() { # upload <fichier>
   local f="$1" name
   name="$(basename "$f")"
@@ -155,6 +129,34 @@ EXISTING="$(curl -fsSL -H "Authorization: token $TOKEN" "$API/releases/$RELEASE_
 for f in "$WORK"/cloison-n0-ner-lite.tar.gz "$WORK"/cloison-n0-onnxruntime-*.tar.gz; do
   upload "$f"
 done
+
+# --- 4. Checksums -------------------------------------------------------------
+# COMPLETS : tous les assets publiés (binaires + bundle + libs) — un
+# checksums.txt sans les binaires ferait échouer les installateurs
+# (leçon v0.3.0 : les checksums ne couvraient que les fichiers modèles).
+# On TÉLÉCHARGE donc tous les assets déjà présents sur la release (binaires
+# uploadés par la CI ou par le pipeline manuel, bundle et libs par l'étape 3),
+# puis checksums sur l'ensemble. checksums.txt lui-même est exclu (un checksum
+# de lui-même ne peut pas être stable d'une exécution à l'autre).
+echo "==> checksums (tous les assets, binaires + bundle + libs inclus)…"
+ALL="$WORK/all"; mkdir -p "$ALL"
+curl -fsSL -H "Authorization: token $TOKEN" "$API/releases/$RELEASE_ID/assets?per_page=100" | python3 -c '
+import json, sys
+for a in json.load(sys.stdin):
+    if a.get("name") != "checksums.txt":
+        print(a["id"])
+        print(a["name"])
+' | while read -r aid; do
+  read -r name
+  # Draft : browser_download_url répond 404 tant que la release n'est pas
+  # publiée — passer par l'API asset avec le jeton (leçon v0.3.2).
+  curl -fsSL -H "Authorization: token $TOKEN" -H "Accept: application/octet-stream" \
+    -o "$ALL/$name" "$API/releases/assets/$aid"
+done
+ls -la "$ALL"
+(cd "$ALL" && sha256sum * | sort -k2 > checksums.txt)
+echo "==> checksums.txt :"
+cat "$ALL/checksums.txt"
 
 # --- 5. checksums.txt (remplace la version précédente, jamais de doublon) ------
 AID_OLD="$(curl -fsSL -H "Authorization: token $TOKEN" "$API/releases/$RELEASE_ID/assets?per_page=100" | python3 -c '
