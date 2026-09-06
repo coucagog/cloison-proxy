@@ -608,3 +608,15 @@ verrous levés ; (5) relier `manuel.html` à la sidebar du site docs.
   sans clé (`invalid api key` ~1/30 s — bruit cosmétique, les messages
   utilisateur passent avec leur clé) : le gateway ne charge pas
   `OPENROUTER_API_KEY` dans son env ; à traiter côté WebUI/gabarit ManIA.
+
+### Push ManIA (même session)
+
+- Dépôt `github.com/coucagog/ManIA` (privé) : commit `135aab0` poussé sur
+  `master` et vérifié (`FETCH_HEAD` = `135aab0f` après fetch) — contient les
+  correctifs du gabarit : egress user-defined (05/09), garde `sh -c` sans
+  `-l` (05/09), **limites edge 1g/2.0** (06/09) + versions v4.1 (en-tête
+  compose + README). Jeton `ghp_…` lu dans `SERVEUR_mania.sn.txt` (ligne
+  dédiée, jamais affiché) ; push via
+  `git -c http.sslBackend=openssl push https://…@github.com/…`.
+  Le gabarit vivant du VPS Mania était déjà aligné (backups horodatés) —
+  dépôt et vivant sont désormais cohérents.
