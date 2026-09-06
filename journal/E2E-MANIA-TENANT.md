@@ -585,3 +585,26 @@ verrous levés ; (5) relier `manuel.html` à la sidebar du site docs.
 - 🔴 `response_format` 400 toujours présent (3× pendant la sonde, Hermes
   retente et aboutit) — décision : strip côté edge (retry sans
   `response_format` sur ce 400 précis) ou config Hermes — **à trancher**.
+
+### v0.3.3.1 — dégradation `response_format` (même session, décision pilote : strip côté edge)
+
+- **Code** (`upstream.rs`, commit `7295c06`) : un 400 `response_format type
+  is unavailable` + `response_format` présent dans le corps → UN réessai sans
+  `response_format` (stream et non-stream) ; tout autre 400 reste un 502.
+  Tests : lib 26/26 + e2e 12/12 (dont `response_format_400_retried_…`).
+- **Release v0.3.3.1** (wonkom) : portes `cargo test` + `e2e_n0` 8/8, builds
+  linux/windows, 9 assets, checksums 8 entrées **d'office** (le script
+  `n0-release-assets.sh` réordonné a fait son travail — plus de fixchecks
+  manuel). Leçon appliquée : `release_id` capturé directement à la création
+  du draft (plus de lookup fragile).
+- **Rebuild edge pin v0.3.3.1** (Mania, backup `backup-20260906-103255`) +
+  re-déploiement (seul l'edge recréé) + roundtrip réel : **le 400 est
+  intercepté par l'edge** (`amont refuse response_format (400) — réessai
+  dégradé` dans le log) → zéro 400 remonté au client, réponse OK.
+- **Latence résiduelle** (101 s sur roundtrip SOUL) = NER fenêtré sur le
+  prompt système (~26 fenêtres) + DeepSeek direct lent depuis OVH — la couche
+  de retries (≈1 min) est éliminée.
+- **Dette notée (côté ManIA)** : les health checks du gateway tapent l'edge
+  sans clé (`invalid api key` ~1/30 s — bruit cosmétique, les messages
+  utilisateur passent avec leur clé) : le gateway ne charge pas
+  `OPENROUTER_API_KEY` dans son env ; à traiter côté WebUI/gabarit ManIA.
