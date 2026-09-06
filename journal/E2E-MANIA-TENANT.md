@@ -678,3 +678,69 @@ verrous levés ; (5) relier `manuel.html` à la sidebar du site docs.
   (le prompt Hermes porte des mémoires utilisateur → risque à mesurer avant).
 - **Bruit cosmétique** : health checks du gateway sans clé (`invalid api key`
   en rafales ~30 s) — dette côté ManIA déjà notée.
+
+---
+
+## Session 06/09/2026 (nuit) — MAJ Hermes : tenant + gabarit (exercice complet, leçons figées en skill)
+
+> Objectif pilote : voir et exécuter la mise à jour d'Hermes (agent, WebUI,
+> gabarit), conformément à la doc. Exécution autonome (scripts fichiers,
+> helpers ssh/scp).
+
+### État des lieux (pré-vol)
+
+- Flotte réelle : **7 tenants** (ridwan, skd, agnes, khalil, oniang, wagui,
+  demo-cloison) — tous sur l'image agent du **22/08** (faeda64a) et la webui
+  maison du 22/08 ; edge demo-cloison = v0.3.3.1.
+- 🔵 **Divergence gabarit vivant ↔ dépôt confirmée** malgré l'annonce de la
+  session serveur : `sha256` vivant `b8f5c554…` ≠ dépôt `04405b5f…` — la
+  seule différence mesurée (`diff -u`) = l'en-tête du compose généré « v2 »
+  resté dans le vivant (« v4.1 » dans le dépôt `135aab0`).
+- Résidu constaté : conteneur anonyme `eager_vaughan` (2 semaines, image
+  959c503e…) — probablement un reste des tests A/B d'edges de la session
+  serveur ; nettoyage laissé à la décision pilote.
+
+### MAJ de l'agent de demo-cloison (procédure canonique + leçon nouvelle)
+
+- 🔵 **Leçon payée** : `docker compose pull` **global** échoue — `mania-webui`
+  et `mania-cloison-edge` sont des images **locales** (`pull access denied`)
+  et le pull de l'agent est interrompu. La procédure STACK §217-228 (pull
+  global) ne couvrait que les images hub. Correctif : **pull scopé**
+  `docker compose pull <slug>-agent`.
+- Chemin complet rejoué : `down` → `docker volume rm demo-cloison_hermes-agent-src`
+  → pull scopé → `up -d` → webui healthy → agent 200.
+- **Vraie montée** : agent `faeda64a` (22/08) → `87fd56a0` (19:45Z le 06/09).
+  La dérive agent↔init webui redoutée (DEPLOY-2 §9) ne s'est PAS produite :
+  le correctif editable du Dockerfile mania-webui a tenu.
+- **Preuves post-MAJ** : profil `custom:cloison` = **1** (config.yaml survit
+  dans hermes-home), paire egress/edge 7/404, **activation réelle OK** (la
+  clé composite a survécu — aucune re-saisie WebUI nécessaire).
+- « Resource is still in use » au `down` (services partagés attachés au réseau
+  internal) : inoffensif, `up -d` réutilise le réseau.
+
+### Gabarit + WebUI (contrôles)
+
+- Gabarit vivant **aligné sur le dépôt** (backup `bak-20260906-195556`,
+  `sha256` vivant == `04405b5f…` == dépôt) — cohérence réelle cette fois.
+- Habillage mania-webui vérifié : **1 1 1** (le contrôle obligatoire de la
+  procédure WebUI, déroulé à blanc).
+
+### Skill `maj-hermes` (but final STACK §911)
+
+- Écrite (format STACK-3 §59-64, miroir de `redemarrer-stack`) et **posée
+  dans le hermes-home de `ridwan`** (`skills/ops/maj-hermes/SKILL.md`,
+  frontmatter dès l'octet 0, chown 1000:1000 — survit aux MAJ). Copie locale
+  de référence : `SERVEUR/skill-maj-hermes/SKILL.md`.
+- Figés dedans : volume rm obligatoire, **pull scopé** (leçon du jour),
+  paire de versions via `docker-compose.two-container.yml`, habillage 1 1 1,
+  gabarit vivant→dépôt même session, rollback par retag de l'ancien ID
+  d'image, jamais de secret, confirmation humaine pour le destructif.
+
+### Reste ouvert (décisions pilote)
+
+- **Mettre à jour les 6 autres tenants** (ridwan, skd, agnes, khalil, oniang,
+  wagui — tous facturables) : même procédure, par tenant, avec fenêtre
+  (le down coupe le service quelques minutes) — décision et calendrier MLS.
+- Conteneur `eager_vaughan` : identifier puis supprimer (décision pilote).
+- La leçon « pull scopé » devrait être reversée dans les journaux MANIA
+  (STACK §217-228) lors d'une prochaine session de doc.
