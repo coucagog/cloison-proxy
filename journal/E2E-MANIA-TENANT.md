@@ -744,3 +744,54 @@ verrous levés ; (5) relier `manuel.html` à la sidebar du site docs.
 - Conteneur `eager_vaughan` : identifier puis supprimer (décision pilote).
 - La leçon « pull scopé » devrait être reversée dans les journaux MANIA
   (STACK §217-228) lors d'une prochaine session de doc.
+
+---
+
+## Session 06/09/2026 (fin de nuit) — Chantier « forcer la PII depuis l'admin » + pull scopé au provisioning
+
+> Décision pilote : l'admin doit pouvoir **forcer la pseudonymisation** depuis
+> l'interface (un secteur non sensible peut traiter des données sensibles —
+> « défaut par secteur, verdict humain », STACK-5 §59) ; et le provisioning
+> doit **puller l'agent** pour ne pas donner naissance à des tenants vieux.
+
+### Livré (3 étages + gabarit)
+
+1. **Démon** (`/opt/mania-provisiond/main.py`, backup
+   `main.py.bak-20260906-202622`) : `ProvisionRequest.force_pii: bool|None` +
+   `argv.append("--pii")` si vrai ; `py_compile` OK, `systemctl restart`
+   (doctrine), service `active`. Le démon n'est pas versionné (vit sur le VPS,
+   backups horodatés comme d'habitude).
+2. **Gabarit** (`nouveau-tenant.sh`, vivant + dépôt `55986fd`) : **pull scopé
+   de l'agent** avant `up -d` (`docker compose pull "$SLUG-agent"` — jamais
+   global, images maison locales) ; échec non fatal **fail-VISIBLE** (le
+   rapport le signale, la naissance se fait sur l'image locale connue).
+3. **App mania-app** (`c90b21c`, poussé + vérifié) : `ProvisionPanel` —
+   case « Données sensibles — forcer la pseudonymisation » (transmet
+   `forcePii`) + budget de sondage 3 min → **11 min** (pull + boot froid) ;
+   route admin `/api/admin/provision` — booléen STRICT (`=== true`, jamais
+   d'élévation accidentelle) ; `provisiond.ts` — `force_pii` dans le payload.
+
+### Preuves
+
+- **E2E du drapeau** (chemin démon, comme l'admin) : tenant jetable
+  `testforcepii`, `pack=commerce` (PII=0) + `force_pii=true` → **né
+  pseudonymisé** (profil `custom:cloison`=1, egress curl=7, edge présent,
+  route 307, agent 200, rc 0) — seul `--pii` peut élever, preuve faite.
+  Déprovisionné proprement (DB d'abord, zéro résidu). Le pull scopé a été
+  exercé au passage (image déjà à jour).
+- **Déploiement app en prod** : le VPS n'a AUCUN identifiant git (dépôt
+  privé, dernier pull 23/08) → livraison par **bundle git**
+  (`git bundle create` → scp → `fetch` + `merge --ff-only`), aucun jeton sur
+  le serveur. Build OK (Next 16.2.6, TS 15 s, 43/43 pages), conteneur
+  recréé, non-régression : `/` 200 · `/agent-ia` 200 · `/admin` 307 ·
+  `/dashboard` 307 · `/offres` 404.
+- `tsc --noEmit` local vert avant commit.
+
+### Notes / dettes
+
+- La case est visible dans `/admin/demandes` (panel de provisionnement) — le
+  pilote fait le dernier contrôle visuel au clic.
+- Dette documentaire : la leçon « pull scopé » reste à reverser dans
+  STACK §217-228 (ManIA) ; la skill `maj-hermes` la porte déjà.
+- Le démon (main.py) gagnerait à être versionné quelque part — piste, à
+  trancher.
