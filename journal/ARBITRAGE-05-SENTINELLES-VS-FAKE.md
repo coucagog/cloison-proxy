@@ -117,3 +117,12 @@ est : **ne jamais mélanger sans vérifier la restauration complète**.
 - **Dettes de cohérence consignées** (dépôt ↔ gabarit, cosmétiques, à corriger
   au prochain commit du gabarit) : `services/gabarit/README.md` dit encore
   « v3 » et l'en-tête du compose généré « v2 » alors que le script est v4.1.
+
+- **Fait mesuré à verser (06/09, re-sonde réelle `demo-cloison`)** : sur
+  DeepSeek **direct** (`deepseek-chat` servi par l'edge v0.3.3.1), le modèle
+  **préserve les sentinelles** — restauration exacte prouvée (`Aminata Diop`,
+  email, téléphone restitués ; ville `[VILLE_SN]` par conception). Le
+  dépouillement mesuré les 02-03/09 concernait `deepseek-v4-flash` servi via
+  OpenRouter. → Le défaut « sentinelles » **tient** sur cette configuration ;
+  l'opt-in faux réaliste ne se justifie que si un dépouillement est MESURÉ
+  sur le tenant concerné (condition (a) de la politique).

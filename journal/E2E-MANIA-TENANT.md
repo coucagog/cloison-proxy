@@ -620,3 +620,61 @@ verrous levés ; (5) relier `manuel.html` à la sidebar du site docs.
   `git -c http.sslBackend=openssl push https://…@github.com/…`.
   Le gabarit vivant du VPS Mania était déjà aligné (backups horodatés) —
   dépôt et vivant sont désormais cohérents.
+
+---
+
+## Session 06/09/2026 (soir) — Boucle complète : suppression propre + recréation manuelle + re-sonde VERTE
+
+> Objectif pilote : prouver de bout en bout, à la main, la création d'un
+> tenant CLOISON — repartir de zéro avec le gabarit **entièrement corrigé** et
+> l'edge **v0.3.3.1**. Exécution : scripts fichiers (`.tmp-deploy/`), helpers
+> ssh/scp, jamais d'inline. Les gestes client (clé composite) ont été faits
+> par le pilote dans la WebUI.
+
+### Suppression propre (vérifiée)
+
+- `desprovisionner-tenant.sh demo-cloison` (confirmation par retape du slug) :
+  lignes DB supprimées **en transaction AVANT** toute destruction ; conteneurs
+  (3) + volumes (3) + réseaux (2, y compris `egress`) + dossier retirés ;
+  comptes User intacts. Vérification résiduelle : conteneurs/volumes/réseaux =
+  0, dossier absent, 2ᵉ passage du script → « Rien à faire ». Slug libre.
+
+### Recréation manuelle (gabarit v4.1 complet)
+
+- `nouveau-tenant.sh demo-cloison … --owner=mls@gcouca.com --pack=ong` :
+  egress user-defined OK (plus d'erreur alias), **câblage du profil
+  `custom:cloison` AUTOMATIQUE** (garde corrigée — plus de `cable-profil`
+  manuel), edge `mem_limit 1g` + `cpus 2.0` **dans le compose neuf**
+  (vérifié : `Memory=1073741824, NanoCpus=2000000000`), Route 307 · Agent 200
+  · Egress 7 · Edge 404 · Profil 1 · SOUL posée.
+- Amont DeepSeek direct (`CLOISON_UPSTREAM_BASE_URL=https://api.deepseek.com/v1`,
+  modèle `deepseek-chat`) posé ; edge recréé seul.
+- Clé composite **neuve** (nouveau `.env`) saisie **une seule fois** dans la
+  WebUI (leçon de la rotation A→B→A→B : jamais de re-saisie) ; activation
+  `hermes -z Bonjour` → réponse réelle.
+
+### Re-sonde réelle VERTE (16:31Z, ~109 s de roundtrip)
+
+- Réponse : `Aminata Diop, aminata.diop@example.sn, +221 77 123 45 67,
+  [VILLE_SN]` — **restaurations exactes** (le modèle a préservé les
+  sentinelles) ;
+- Logs edge : **0 occurrence** d'`Aminata`/email/tél/`Ziguinchor` (zéro valeur
+  en clair chez le fournisseur) ; **0 échec NER** ; **2 retries
+  `response_format`** interceptés par v0.3.3.1 (`amont refuse
+  response_format (400) — réessai dégradé`) → zéro 400 remonté au client.
+- Image edge `:latest` = **v0.3.3.1** (créée 10:33Z, backup
+  `backup-20260906-103255` conservé) ; TLS `demo-cloison.mania.sn` → 307 OK.
+
+### Mesures à verser
+
+- **Matrice ARBITRAGE-05 §6** : sur DeepSeek direct (deepseek-chat), les
+  **sentinelles tiennent** (restauration exacte) — le défaut « sentinelles »
+  est confirmé pour cette configuration ; le faux réaliste reste réservé aux
+  modèles dépouilleurs mesurés.
+- **Latence** : 109 s confirmés = NER fenêtré sur le prompt système (~26
+  fenêtres ONNX) à **chaque** requête + DeepSeek direct lent. Pistes à
+  arbitrer : mémoïsation du masquage du prompt système par empreinte de
+  contenu, ou fenêtres NER sautées sur les messages `system` avec garde-fou
+  (le prompt Hermes porte des mémoires utilisateur → risque à mesurer avant).
+- **Bruit cosmétique** : health checks du gateway sans clé (`invalid api key`
+  en rafales ~30 s) — dette côté ManIA déjà notée.
