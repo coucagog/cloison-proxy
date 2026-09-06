@@ -60,6 +60,9 @@ enum MockMode {
     ChatForgedSentinel,
     /// Toujours 500 (test fail-loud amont).
     AlwaysError,
+    /// Premier appel : 400 « response_format type is unavailable » ; appel
+    /// suivant : écho (dégradation retry de l'edge, un seul réessai).
+    ResponseFormat400ThenOk,
 }
 
 /// Serveur mock axum + captures (header Authorization, corps reçus).
@@ -160,6 +163,24 @@ async fn mock_chat(
             Json(json!({"error": {"message": "mock failure", "type": "server_error", "code": "mock_error"}})),
         )
             .into_response(),
+        MockMode::ResponseFormat400ThenOk => {
+            let n = bodies_seen.lock().unwrap().len();
+            if n == 1 {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({
+                        "error": {
+                            "message": "This response_format type is unavailable now",
+                            "type": "invalid_request_error",
+                            "code": "invalid_request_error"
+                        }
+                    })),
+                )
+                    .into_response()
+            } else {
+                chat_echo_with(&body, None).into_response()
+            }
+        }
     }
 }
 
@@ -889,4 +910,40 @@ async fn upstream_error_yields_502() {
     .await;
     assert_eq!(status, StatusCode::BAD_GATEWAY);
     assert!(resp_body.contains("upstream_error"), "{resp_body}");
+}
+
+/// Dégradation `response_format` (DeepSeek direct) : le mock refuse une fois
+/// (400 « response_format type is unavailable ») puis accepte — l'edge
+/// réessaie exactement UNE fois SANS `response_format` et le client reçoit
+/// 200 (zéro retry client, fini la triple latence).
+#[tokio::test]
+async fn response_format_400_retried_without_response_format() {
+    let mock = MockUpstream::start(MockMode::ResponseFormat400ThenOk).await;
+    let (_state, app) = proxy_app(&mock.url()).await;
+
+    let body = json!({
+        "model": "mock-echo",
+        "response_format": {"type": "json_object"},
+        "messages": [{"role": "user", "content": "Contact: user@example.com"}]
+    });
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let resp: Value = serde_json::from_str(&resp_body).unwrap();
+    let content = resp["choices"][0]["message"]["content"].as_str().unwrap();
+    assert!(content.contains("user@example.com"), "contenu restauré : {content}");
+
+    assert_eq!(mock.body_count(), 2, "exactement un réessai");
+    let second = mock.last_body();
+    assert!(
+        second.get("response_format").is_none(),
+        "le réessai est dépourvu de response_format : {second}"
+    );
 }

@@ -60,54 +60,80 @@ impl UpstreamClient {
 
     /// Non-stream `chat/completions` : envoie le corps (déjà tokenisé) avec
     /// `Authorization: Bearer <cle_amont>`.
+    ///
+    /// Dégradation ciblée : un 400 « response_format type is unavailable »
+    /// (DeepSeek direct) déclenche UN réessai sans `response_format` — le
+    /// client évite la triple latence de ses propres retries. Tout autre 400
+    /// reste un 502 (jamais de retry aveugle).
     pub async fn chat_completions(
         &self,
         upstream_key: &Zeroizing<String>,
         body: serde_json::Value,
     ) -> Result<serde_json::Value, ProxyError> {
+        let url = self.url(&self.config.chat_completions_path)?;
         let resp = self
             .http
-            .post(self.url(&self.config.chat_completions_path)?)
+            .post(url.clone())
             .bearer_auth(upstream_key.as_str())
             .json(&body)
             .send()
             .await?;
-        check_success(resp).await
+        let status = resp.status().as_u16();
+        let text = resp.text().await.unwrap_or_default();
+        if response_format_400(status, &body, &text) {
+            tracing::warn!("amont refuse response_format (400) — réessai dégradé sans response_format");
+            let stripped = strip_response_format(&body);
+            let resp = self
+                .http
+                .post(url)
+                .bearer_auth(upstream_key.as_str())
+                .json(&stripped)
+                .send()
+                .await?;
+            return check_success(resp).await;
+        }
+        result_from_parts(status, &text)
     }
 
     /// Stream `chat/completions` : retourne la réponse HTTP brute (corps lu
     /// ensuite par `stream::sse_response`). Statut non 2xx → 502 avant tout
-    /// octet SSE.
+    /// octet SSE. Même dégradation `response_format` que le non-stream.
     pub async fn chat_completions_stream(
         &self,
         upstream_key: &Zeroizing<String>,
         body: serde_json::Value,
     ) -> Result<reqwest::Response, ProxyError> {
+        let url = self.url(&self.config.chat_completions_path)?;
         let resp = self
             .http
-            .post(self.url(&self.config.chat_completions_path)?)
+            .post(url.clone())
             .bearer_auth(upstream_key.as_str())
             .header(reqwest::header::ACCEPT, "text/event-stream")
             .json(&body)
             .send()
             .await?;
         if resp.status().is_success() {
-            Ok(resp)
-        } else {
-            let status = resp.status();
-            // Le corps amont est tronqué (limite de logs) et ne contient de
-            // toute façon pas la clé (elle n'a jamais quitté le header).
-            let body_text = resp.text().await.unwrap_or_default();
-            tracing::warn!(
-                status = %status.as_u16(),
-                body = %crate::errors::truncate(&body_text, 1024),
-                "upstream non-2xx on stream request"
-            );
-            Err(
-                ProxyError::new(ErrorKind::Upstream, "upstream returned an error status")
-                    .with_field("status", status.as_u16().to_string()),
-            )
+            return Ok(resp);
         }
+        let status = resp.status().as_u16();
+        let body_text = resp.text().await.unwrap_or_default();
+        if response_format_400(status, &body, &body_text) {
+            tracing::warn!("amont refuse response_format (400) — réessai dégradé sans response_format (stream)");
+            let stripped = strip_response_format(&body);
+            let resp = self
+                .http
+                .post(url)
+                .bearer_auth(upstream_key.as_str())
+                .header(reqwest::header::ACCEPT, "text/event-stream")
+                .json(&stripped)
+                .send()
+                .await?;
+            if resp.status().is_success() {
+                return Ok(resp);
+            }
+            return stream_error(resp).await;
+        }
+        stream_error_from_parts(status, &body_text)
     }
 
     /// Non-stream `completions` (legacy).
@@ -144,24 +170,65 @@ impl UpstreamClient {
 /// Vérifie le statut ; parse le JSON du corps. Statut non 2xx → 502 (le corps
 /// amont, tronqué, ne va que dans les logs).
 async fn check_success(resp: reqwest::Response) -> Result<serde_json::Value, ProxyError> {
-    let status = resp.status();
-    if status.is_success() {
-        resp.json().await.map_err(|e| {
+    let status = resp.status().as_u16();
+    let text = resp.text().await.unwrap_or_default();
+    result_from_parts(status, &text)
+}
+
+/// Statut + corps déjà lus → résultat (JSON si 2xx, 502 sinon).
+fn result_from_parts(status: u16, text: &str) -> Result<serde_json::Value, ProxyError> {
+    if (200..300).contains(&status) {
+        serde_json::from_str(text).map_err(|e| {
             ProxyError::new(ErrorKind::Upstream, "invalid JSON from upstream")
                 .with_field("detail", crate::errors::truncate(&e.to_string(), 512))
         })
     } else {
-        let body = resp.text().await.unwrap_or_default();
         tracing::warn!(
-            status = %status.as_u16(),
-            body = %crate::errors::truncate(&body, 1024),
+            status = %status,
+            body = %crate::errors::truncate(text, 1024),
             "upstream non-2xx response"
         );
-        Err(
-            ProxyError::new(ErrorKind::Upstream, "upstream returned an error status")
-                .with_field("status", status.as_u16().to_string()),
-        )
+        Err(ProxyError::new(ErrorKind::Upstream, "upstream returned an error status")
+            .with_field("status", status.to_string()))
     }
+}
+
+/// Erreur stream (statut non 2xx, après retry éventuel) — même contrat.
+async fn stream_error(resp: reqwest::Response) -> Result<reqwest::Response, ProxyError> {
+    let status = resp.status().as_u16();
+    let text = resp.text().await.unwrap_or_default();
+    stream_error_from_parts(status, &text)
+}
+
+fn stream_error_from_parts(status: u16, text: &str) -> Result<reqwest::Response, ProxyError> {
+    tracing::warn!(
+        status = %status,
+        body = %crate::errors::truncate(text, 1024),
+        "upstream non-2xx on stream request"
+    );
+    Err(ProxyError::new(ErrorKind::Upstream, "upstream returned an error status")
+        .with_field("status", status.to_string()))
+}
+
+/// Marqueur du 400 DeepSeek direct : `response_format` présent dans le corps
+/// ET corps d'erreur « response_format type is unavailable » — les DEUX
+/// conditions (jamais de strip sur un 400 quelconque).
+const RESPONSE_FORMAT_UNAVAILABLE: &str = "response_format type is unavailable";
+
+fn response_format_400(status: u16, body: &serde_json::Value, text: &str) -> bool {
+    status == 400
+        && body.get("response_format").is_some()
+        && text.contains(RESPONSE_FORMAT_UNAVAILABLE)
+}
+
+/// Dégradation ciblée : retire `response_format` du corps (le seul champ
+/// touché — le reste, déjà tokenisé, est transmis à l'identique).
+fn strip_response_format(body: &serde_json::Value) -> serde_json::Value {
+    let mut stripped = body.clone();
+    if let Some(obj) = stripped.as_object_mut() {
+        obj.remove("response_format");
+    }
+    stripped
 }
 
 #[cfg(test)]
@@ -207,5 +274,28 @@ mod url_tests {
             url.as_str(),
             "https://openrouter.ai/api/v1/chat/completions"
         );
+    }
+
+    #[test]
+    fn strip_response_format_removes_only_that_key() {
+        let body = serde_json::json!({
+            "model": "deepseek-chat",
+            "response_format": {"type": "json_object"},
+            "messages": [{"role": "user", "content": "ok"}],
+        });
+        let stripped = strip_response_format(&body);
+        assert!(stripped.get("response_format").is_none());
+        assert_eq!(stripped["model"], "deepseek-chat");
+        assert_eq!(stripped["messages"][0]["content"], "ok");
+    }
+
+    #[test]
+    fn response_format_400_requires_marker_and_field() {
+        let body = serde_json::json!({"response_format": {"type": "json_object"}});
+        let marker = r#"{"error":{"message":"This response_format type is unavailable now"}}"#;
+        assert!(response_format_400(400, &body, marker));
+        assert!(!response_format_400(400, &serde_json::json!({"model": "x"}), marker));
+        assert!(!response_format_400(400, &body, r#"{"error":{"message":"autre"}}"#));
+        assert!(!response_format_400(500, &body, marker));
     }
 }
