@@ -1,10 +1,11 @@
 # CLOISON — ARBITRAGE-05 : sentinelles ⟦…⟧ vs faux réaliste (par tenant/verticale)
 
-> Document d'aide à la décision **pilote** — les faits sont mesurés, la décision
-> n'est PAS pré-enregistrée (elle revient à MLS, par tenant et par verticale).
+> Document d'aide à la décision **pilote** — les faits sont mesurés. La
+> **politique générale a été actée par MLS le 05/09/2026** (voir §6) ; l'opt-in
+> « faux réaliste » reste décidé **par tenant**, sur mesures.
 > Rédigé le 04/09/2026, après la publication de la release **v0.3.2** qui rend
 > l'option `CLOISON_REALISTIC_FAKE` effective (gabarit v4.1 : pass-through par
-> tenant, défaut `0` = sentinelles).
+> tenant, défaut `0` = sentinelles). Décision consignée le 05/09/2026 (§6).
 > Références : `journal/E2E-MANIA-TENANT.md` (sondes 02-03/09 et 04/09),
 > `journal/INTEGRATION-MANIA-SN.md` §4, `crates/cloison-core/src/fake.rs`,
 > `docs/CONFIG.md`, charte `Doc_REF/CLOISON-NOTE-TECHNIQUE.md` §16.
@@ -64,3 +65,55 @@ est : **ne jamais mélanger sans vérifier la restauration complète**.
   à spécifier) — piste, non implémentée.
 - Détection automatique du dépouillement de sentinelles (heuristique sur le
   flux de réponse) pour suggérer la bascule — piste, non implémentée.
+
+---
+
+## 6. ✅ DÉCISION MLS (05/09/2026) — politique par verticale
+
+> Validée par le pilote le 05/09/2026. Ce qui est figé ici est la **politique
+> générale** ; l'opt-in reste décidé **par tenant**, sur les 4 conditions
+> mesurées ci-dessous.
+
+- **Défaut partout : sentinelles** (`CLOISON_REALISTIC_FAKE=0`). **Aucun
+  changement en production** : le défaut est déjà `0` dans le gabarit v4.1
+  (vérifié : `nouveau-tenant.sh` L331, repo `ManIA` commit `6d4d96c`), et
+  aucun tenant en service n'est `PII=1` (`ridwan`/`skd`/`agnes` provisionnés
+  avant l'activation du 03/09). Section SOUL « # Pseudonymisation » posée au
+  provisioning (L394-436) : l'agent traite `⟦…⟧` comme la valeur, n'en parle
+  jamais.
+
+- **Matrice par verticale (packs `PII=1`)** :
+
+  | Verticale | Flux dominant | Politique |
+  |---|---|---|
+  | `sante` | documentaire (comptes rendus, fiches) | **Sentinelles** |
+  | `droit` | documentaire (contrats, actes) | **Sentinelles** |
+  | `finance` | documentaire (devis, factures) | **Sentinelles** |
+  | `gouvernement` | documentaire (actes administratifs) | **Sentinelles** |
+  | `ong` | mixte (correspondance de masse) | **Sentinelles par défaut** ; faux = opt-in par tenant |
+
+- **Opt-in « faux réaliste »** — uniquement si les 4 conditions sont
+  **mesurées** sur le tenant concerné : (a) le modèle servi dépouille `⟦…⟧` ;
+  (b) flux conversationnel dominant ; (c) aucun flux documentaire via les
+  skills mania ; (d) client informé de l'irréversibilité (ligne d'onboarding
+  AVANT la mise en service).
+
+- **Procédure d'application** (le jour où un tenant le justifie) : décision
+  MLS → sauvegarde `.env.bak-<stamp>` → pose `CLOISON_REALISTIC_FAKE=1` dans
+  `/opt/hermes/<slug>/.env` (0600, **fichier script** scp'é, jamais inline) →
+  `docker compose up -d` (l'edge seul est recréé) → **sonde de restauration
+  complète** (kit `SERVEUR/` : `mock-llm.py` + `sonde-phase*.sh` /
+  `probe-fake-v032.sh` adaptés à l'edge du tenant ; preuves par appels réels :
+  zéro PII/sentinelle chez le fournisseur, faux déterministes côté client,
+  tous les types couverts y compris les replis sentinelles) → journaliser →
+  reverser au dépôt si le gabarit bouge.
+
+- **Nuance retenue** : le faux ne couvre que PERSON / Gazetteer(nom_sn) /
+  PhoneSn / Email ; les autres types restent en sentinelles (ville →
+  `[VILLE_SN]`). Sur un modèle dépouilleur, le faux ne supprime donc pas
+  **toute** dégradation — la condition (a) se mesure sur le tenant, pas en
+  laboratoire.
+
+- **Dettes de cohérence consignées** (dépôt ↔ gabarit, cosmétiques, à corriger
+  au prochain commit du gabarit) : `services/gabarit/README.md` dit encore
+  « v3 » et l'en-tête du compose généré « v2 » alors que le script est v4.1.

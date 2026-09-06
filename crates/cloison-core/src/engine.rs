@@ -659,6 +659,9 @@ mod tests {
         let original = "Nom: Aminata Diop, tel +221 77 123 45 67";
         let result = engine.tokenize(original, &policy, "req-cap").unwrap();
         assert!(!result.text_out.contains("Aminata"));
+        // 05/09/2026 : le patronyme seul est masqué par le gazetteer `nom_sn`
+        // (ajout des patronymes — avant ce correctif, « Diop » partait en clair).
+        assert!(!result.text_out.contains("Diop"), "patronyme masqué");
 
         let restored = engine.restore(&result.text_out, "req-cap").unwrap();
         assert_eq!(
@@ -666,7 +669,10 @@ mod tests {
             "nom capitalisé + téléphone restaurés"
         );
         assert_eq!(restored.counters.blocked, 0, "aucun jeton bloqué");
-        assert_eq!(restored.counters.restored, 2, "nom + téléphone restaurés");
+        assert_eq!(
+            restored.counters.restored, 3,
+            "prénom + patronyme + téléphone restaurés"
+        );
     }
 
     #[test]

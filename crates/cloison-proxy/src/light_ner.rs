@@ -15,6 +15,18 @@
 //! Dégradation gracieuse OBLIGATOIRE (ARBITRAGE-04 §4.3) : modèle absent,
 //! lib onnxruntime absente, tokenizer invalide, prédiction en échec → le
 //! daemon reste en N0 v1 (gazetteers + alias), `warn`, jamais d'erreur.
+//!
+//! Correctifs 05/09/2026 (premier tenant MANIA réel, `demo-cloison`) :
+//! 1. **Chunking** : le graphe ONNX a des embeddings de position figés à 512.
+//!    Tout texte > 512 tokens faisait échouer l'inférence (`512 by N` —
+//!    mesuré : `512 by 6737` en prod, `512 by 720` reproduit en local). Le
+//!    sidecar Python tronquait (`truncation=True, max_length=512`) et perdait
+//!    donc la FIN du texte ; ici on **fenêtre avec chevauchement** : toute la
+//!    longueur est couverte, chaque fenêtre reçoit son propre `[CLS]`.
+//! 2. **`[CLS]`** : le sidecar référence encode avec les tokens spéciaux
+//!    (défaut HF). Le portage initial encodait sans eux — qualité dégradée
+//!    (mesuré : « Aminata Diop » non détecté comme PERSON alors que la LOC
+//!    l'était). Chaque fenêtre est donc préfixée de `[CLS]`.
 
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
@@ -22,6 +34,39 @@ use std::sync::{Mutex, OnceLock};
 use cloison_core::detection::{DetectorKind, Span};
 
 pub use crate::config::LightNerConfig;
+
+/// Taille max d'une fenêtre d'inférence, **en tokens de contenu** (sans le
+/// `[CLS]` préfixé) : 511 + 1 = 512 positions = la limite des embeddings de
+/// position du graphe ONNX exporté.
+pub(crate) const MAX_WINDOW_TOKENS: usize = 511;
+
+/// Chevauchement entre fenêtres consécutives, en tokens — évite de couper
+/// une entité en plein milieu (un span chevauché est retrouvé entier par au
+/// moins une fenêtre).
+pub(crate) const WINDOW_OVERLAP_TOKENS: usize = 64;
+
+/// Découpe `[0, len)` en fenêtres `(start, end)` de ≤ `max_tokens` tokens
+/// avec chevauchement de `overlap` tokens. Couvre TOUT l'intervalle : aucune
+/// perte de queue (contrairement à la troncature HF du sidecar).
+///
+/// Panique si `max_tokens <= overlap` (invariant d'appel).
+pub(crate) fn windows(len: usize, max_tokens: usize, overlap: usize) -> Vec<(usize, usize)> {
+    assert!(max_tokens > overlap, "max_tokens doit dépasser l'overlap");
+    let mut out = Vec::new();
+    if len == 0 {
+        return out;
+    }
+    let mut start = 0usize;
+    while start < len {
+        let end = (start + max_tokens).min(len);
+        out.push((start, end));
+        if end == len {
+            break;
+        }
+        start = end - overlap;
+    }
+    out
+}
 
 /// NER léger embarqué (PERSON/LOC). Stateless après chargement ; `Send+Sync`
 /// (partagé par `Arc` dans `AppState`). La session ONNX est gardée dans un
@@ -121,6 +166,11 @@ impl LightNer {
     /// Détecte PERSON/LOC dans `text` (offsets **octets** — contrat interne
     /// du core, `merge_*_spans` : `text.len()`, `is_char_boundary` et
     /// `text[start..end]` sont des octets Rust).
+    ///
+    /// Fenêtrage (correctif 05/09) : le texte entier est encodé UNE fois
+    /// (offsets absolus), puis inféré par fenêtres ≤ 511 tokens, chacune
+    /// préfixée de `[CLS]`. Les spans de toutes les fenêtres sont fusionnés
+    /// (déduplication des recouvrements) : toute la longueur est couverte.
     pub fn detect(&self, text: &str) -> Vec<Span> {
         if text.trim().is_empty() {
             return Vec::new();
@@ -134,28 +184,60 @@ impl LightNer {
         };
         let ids = encoding.get_ids();
         let mask = encoding.get_attention_mask();
+        let offsets = encoding.get_offsets();
         if ids.is_empty() {
             return Vec::new();
         }
+
+        let cls_id = self
+            .tokenizer
+            .token_to_id("[CLS]")
+            .unwrap_or(101); // id [CLS] BERT canonique en repli
+
+        let mut all: Vec<Span> = Vec::new();
+        for (start, end) in windows(ids.len(), MAX_WINDOW_TOKENS, WINDOW_OVERLAP_TOKENS) {
+            if let Some(mut spans) =
+                self.detect_window(&ids[start..end], &mask[start..end], &offsets[start..end], cls_id)
+            {
+                all.append(&mut spans);
+            }
+        }
+        dedup_spans(all)
+    }
+
+    /// Infère UNE fenêtre de tokens (préfixée de `[CLS]`) et retourne les
+    /// spans (offsets octets **absolus** du texte d'origine — les offsets du
+    /// tokenizer sont relatifs au texte complet, la fenêtre ne les décale
+    /// pas). `None` = échec d'inférence (dégradation gracieuse, warn).
+    fn detect_window(
+        &self,
+        ids: &[u32],
+        mask: &[u32],
+        offsets: &[(usize, usize)],
+        cls_id: u32,
+    ) -> Option<Vec<Span>> {
+        let n = ids.len() + 1; // + [CLS] préfixé
         // Le tokenizer `tokenizers` (HF) renvoie des IDs u32 ; le graphe ONNX
         // attend int64 (input_ids/attention_mask) — conversion explicite.
-        let ids_i64: Vec<i64> = ids.iter().map(|&i| i as i64).collect();
-        let mask_i64: Vec<i64> = mask.iter().map(|&i| i as i64).collect();
-        let input_ids = match ort::value::Tensor::from_array((vec![1usize, ids.len()], ids_i64)) {
+        let mut ids_i64: Vec<i64> = Vec::with_capacity(n);
+        ids_i64.push(i64::from(cls_id));
+        ids_i64.extend(ids.iter().map(|&i| i64::from(i)));
+        let mut mask_i64: Vec<i64> = Vec::with_capacity(n);
+        mask_i64.push(1);
+        mask_i64.extend(mask.iter().map(|&i| i64::from(i)));
+
+        let input_ids = match ort::value::Tensor::from_array((vec![1usize, n], ids_i64)) {
             Ok(t) => t,
             Err(e) => {
                 tracing::warn!(detail = ?e, "NER léger : tensor input_ids — spans ignorés");
-                return Vec::new();
+                return None;
             }
         };
-        let attention_mask = match ort::value::Tensor::from_array((
-            vec![1usize, mask.len()],
-            mask_i64,
-        )) {
+        let attention_mask = match ort::value::Tensor::from_array((vec![1usize, n], mask_i64)) {
             Ok(t) => t,
             Err(e) => {
                 tracing::warn!(detail = ?e, "NER léger : tensor attention_mask — spans ignorés");
-                return Vec::new();
+                return None;
             }
         };
 
@@ -164,7 +246,7 @@ impl LightNer {
             Ok(s) => s,
             Err(e) => {
                 tracing::warn!(detail = %e, "NER léger : verrou session — spans ignorés");
-                return Vec::new();
+                return None;
             }
         };
         let wanted: Vec<String> = session
@@ -173,12 +255,12 @@ impl LightNer {
             .map(|i| i.name().to_string())
             .collect();
         let run = if wanted.iter().any(|n| n == "token_type_ids") {
-            let seg = vec![0i64; ids.len()];
-            match ort::value::Tensor::from_array((vec![1usize, ids.len()], seg)) {
+            let seg = vec![0i64; n];
+            match ort::value::Tensor::from_array((vec![1usize, n], seg)) {
                 Ok(tt) => session.run(ort::inputs![input_ids, attention_mask, tt]),
                 Err(e) => {
                     tracing::warn!(detail = ?e, "NER léger : tensor token_type_ids — spans ignorés");
-                    return Vec::new();
+                    return None;
                 }
             }
         } else {
@@ -189,7 +271,7 @@ impl LightNer {
             Ok(o) => o,
             Err(e) => {
                 tracing::warn!(detail = ?e, "NER léger : inférence échouée — spans ignorés");
-                return Vec::new();
+                return None;
             }
         };
         // Sortie : le tenseur `logits` (1, seq, labels). `get("logits")` cible
@@ -197,21 +279,21 @@ impl LightNer {
         let first_output = outputs.values().next();
         let logits_value = outputs.get("logits").or(first_output.as_deref());
         let Some(logits_value) = logits_value else {
-            return Vec::new();
+            return None;
         };
         // Logits (1, seq, labels) en f32.
         let (shape, logits): (&ort::value::Shape, &[f32]) =
             match logits_value.try_extract_tensor::<f32>() {
                 Ok(v) => v,
-                Err(_) => return Vec::new(),
+                Err(_) => return None,
             };
         if shape.as_ref().len() != 3 {
-            return Vec::new();
+            return None;
         }
         let seq_len = shape.as_ref()[1] as usize;
         let num_labels = shape.as_ref()[2] as usize;
         if seq_len == 0 || num_labels == 0 {
-            return Vec::new();
+            return None;
         }
 
         // argmax + softmax (équivalent `_detect_onnx` du sidecar).
@@ -242,8 +324,11 @@ impl LightNer {
         // **octets** relatifs au texte d'origine — exactement le contrat du
         // core (`text.len()`, `is_char_boundary`, `text[start..end]` sont
         // des octets Rust). Aucune conversion nécessaire.
-        let offsets = encoding.get_offsets();
-        self.align_spans(&pred_ids, &probs, offsets)
+        // Le `[CLS]` préfixé n'a pas d'offset : on aligne avec un slot nul.
+        let mut offs = Vec::with_capacity(offsets.len() + 1);
+        offs.push((0usize, 0usize));
+        offs.extend_from_slice(offsets);
+        Some(self.align_spans(&pred_ids, &probs, &offs))
     }
 
     /// Aligne tokens → offsets caractères ; regroupe les tokens contigus de
@@ -325,6 +410,24 @@ impl LightNer {
     }
 }
 
+/// Déduplique les spans issus de fenêtres chevauchantes : doublons exacts et
+/// spans **contenus** par un autre de même type (la zone de chevauchement est
+/// inférée deux fois — on garde le plus long / le plus confiant).
+fn dedup_spans(mut spans: Vec<Span>) -> Vec<Span> {
+    spans.sort_by(|a, b| (a.start, b.end).cmp(&(b.start, b.end)));
+    let mut out: Vec<Span> = Vec::new();
+    for s in spans {
+        let covered = out.iter().any(|k| {
+            k.entity_type == s.entity_type && k.start <= s.start && s.end <= k.end
+        });
+        if !covered {
+            out.push(s);
+        }
+    }
+    out.sort_by_key(|s| (s.start, s.end));
+    out
+}
+
 /// Charge `label_map.json` (id2label) à côté du modèle ONNX — convention
 /// DEPLOY-8. Vide si absent (les IDs numériques servent alors de labels).
 fn load_label_map(model_path: &Path) -> Vec<(i64, String)> {
@@ -342,4 +445,68 @@ fn load_label_map(model_path: &Path) -> Vec<(i64, String)> {
         .collect();
     out.sort_by_key(|(k, _)| *k);
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn windows_cover_whole_range_without_overlap_loss() {
+        // 1000 tokens, fenêtres de 511, overlap 64 : tout l'intervalle est couvert.
+        let ws = windows(1000, 511, 64);
+        assert_eq!(ws.first().map(|w| w.0), Some(0));
+        assert_eq!(ws.last().map(|w| w.1), Some(1000));
+        // contiguïté : chaque fenêtre démarre avant la fin de la précédente
+        for pair in ws.windows(2) {
+            let (_, prev_end) = pair[0];
+            let (next_start, _) = pair[1];
+            assert!(next_start < prev_end, "overlap manquant entre fenêtres");
+        }
+    }
+
+    #[test]
+    fn windows_small_input_is_single_window() {
+        assert_eq!(windows(10, 511, 64), vec![(0, 10)]);
+        assert_eq!(windows(0, 511, 64), Vec::<(usize, usize)>::new());
+    }
+
+    #[test]
+    fn windows_exact_multiple_is_covered() {
+        let ws = windows(511, 511, 64);
+        assert_eq!(ws, vec![(0, 511)]);
+        let ws2 = windows(512, 511, 64);
+        assert_eq!(ws2.last().map(|w| w.1), Some(512));
+        assert_eq!(ws2.len(), 2);
+    }
+
+    #[test]
+    #[should_panic(expected = "max_tokens doit dépasser l'overlap")]
+    fn windows_rejects_overlap_ge_max() {
+        let _ = windows(100, 10, 10);
+    }
+
+    #[test]
+    fn dedup_removes_contained_same_kind() {
+        let mk = |kind: DetectorKind, start: usize, end: usize| Span {
+            entity_type: kind,
+            start,
+            end,
+            score: 0.9,
+            value: String::new(),
+        };
+        let spans = vec![
+            mk(DetectorKind::Person, 0, 12),
+            mk(DetectorKind::Person, 0, 5),   // contenu → retiré
+            mk(DetectorKind::Person, 8, 12),  // contenu → retiré
+            mk(DetectorKind::Location, 20, 30), // autre type, conservé
+            mk(DetectorKind::Person, 0, 12),  // doublon exact → retiré
+        ];
+        let out = dedup_spans(spans);
+        assert_eq!(out.len(), 2);
+        assert_eq!(
+            out.iter().filter(|s| s.entity_type == DetectorKind::Person).count(),
+            1
+        );
+    }
 }

@@ -410,10 +410,102 @@ verrous levés ; (5) relier `manuel.html` à la sidebar du site docs.
   servi). Reste : revérifier à la PROCHAINE régénération du volume (la cause
   du 512×5755 n'est pas élucidée, seulement contournée).
 - macOS = copies v0.3.0 (runners en panne).
-- Arbitrage pilote sentinelles vs faux réaliste par tenant/verticale :
-  **dossier prêt** — `journal/ARBITRAGE-05-SENTINELLES-VS-FAKE.md`.
+- ~~Arbitrage pilote sentinelles vs faux réaliste par tenant/verticale~~ →
+  **ACTÉ le 05/09** : politique générale validée par MLS (sentinelles partout
+  par défaut ; faux = opt-in par tenant sous 4 conditions mesurées ; zéro
+  changement en prod — aucun tenant PII=1 en service). Détail :
+  `journal/ARBITRAGE-05-SENTINELLES-VS-FAKE.md` §6.
 - ~~`manuel.html` → sidebar~~ **FAIT (04/09)** : lien « Manuel d'utilisation »
   dans le groupe Déployer des 9 pages (sidebars uniformes 9/9 vérifiées) +
   lien retour « Documentation » dans le header du manuel ; déployé sur
   docs.wonkom.ai, vérifié en prod (10 pages 200, lien 9/9, non-régression).
 - Jambe GLM (item 5).
+
+---
+
+## Session 05-06/09/2026 — Tenant MANIA réel `demo-cloison` : premier run compose v4.1 + cause du 512 élucidée + correctifs NER
+
+> Suite du journal. Objectif pilote : créer à la main, de bout en bout, un
+> tenant MANIA qui utilise CLOISON convenablement. C'était le **premier
+> provisionnement réel du compose v4.1** (aucun tenant PII=1 n'existait).
+
+### Provisionnement manuel (VPS Mania, fichiers script, jamais d'inline)
+
+- Pré-vol vert (image edge v0.3.2 du 04/09, gabarit v4.1 = sha256 du dépôt,
+  secrets 0600, 5 packs PII=1) — **1 faux négatif de ma sonde** : grep
+  `NOUVEAUTE` sans accent ; l'empreinte, elle, ne mentait pas.
+- **🔵 Découverte 1 — `bridge` intégré refusé par compose** : `networks:
+  [$SLUG-net, bridge]` → `network-scoped aliases are only supported for
+  user-defined networks`. Les sondes d'avant passaient par `docker run` +
+  `docker network connect` : **le chemin compose n'avait jamais été exécuté**.
+  Correctif : réseau `egress` user-defined déclaré dans le compose (aucun
+  prérequis hôte). Vivant (backup horodaté) + dépôt ManIA (`nouveau-tenant.sh`).
+- **🔵 Découverte 2 — garde `sh -lc 'command -v hermes'`** : le login shell
+  réinitialise le PATH du conteneur → `profil NON cable` à tort. Correctif :
+  test du binaire par chemin (`/opt/hermes/.venv/bin/hermes`). Vivant + dépôt.
+- Câblage manuel du profil `custom:cloison` (forme sonde-real.sh) → `count=1`.
+- **Activation RÉELLE prouvée** : amont DeepSeek direct
+  (`CLOISON_UPSTREAM_BASE_URL=https://api.deepseek.com/v1`, modèle
+  `deepseek-chat`), clé composite saisie en WebUI → `hermes -z Bonjour`
+  répond. Egress fermé = tout appel passe par l'edge.
+
+### Sonde PII réelle — deux faits mesurés
+
+1. **« Jeton Diop »** : le modèle a reçu `⟦…·GZA⟧ Diop` et a **paraphrasé** la
+   sentinelle opaque en « Jeton » (comportement modèle sur jeton opaque,
+   même famille que le dépouillement deepseek-v4-flash) ; « Diop » était en
+   clair → recopié tel quel. Restaurations email/tél/ville correctes.
+2. **`512 by 6737` dans les logs edge** : le NER échouait sur le prompt
+   système Hermes (6737 tokens). La **cause du 512×5755 (04/09, non élucidée,
+   « contournée ») est enfin élucidée** : les embeddings de position du
+   graphe ONNX sont figés à **512** ; `light_ner` inférait le texte entier
+   sans fenêtrage. Le « contournement » du 04/09 (reconstruire le volume)
+   était une coïncidence : la sonde E2E utilisait des messages courts.
+
+### Reproduction locale contrôlée (hors prod)
+
+- Kit local : binaire **Windows v0.3.2** (`SERVEUR/v032-win/`) = même version
+  que l'edge déployé, modèle NER + dll (`_open_design/n0-e2e/ner/`), mock
+  fournisseur (`mock-llm-local.py`), sonde `SERVEUR/probe-ner-local.ps1`
+  (courte vs longue ~720 tokens, capture MOCK_RECU).
+- **Confirmé** : courte = NER OK mais « Aminata » masqué (gazetteer) et
+  **« Diop » en clair** ; longue = `inférence échouée 512 by 720` + prénom/patronyme
+  non couverts par le NER. Restauration exacte des deux côtés.
+
+### Correctifs (cette session, validés localement)
+
+- `cloison-proxy/src/light_ner.rs` : **fenêtrage** (`windows()` : ≤511 tokens,
+  chevauchement 64, couverture totale — jamais de perte de queue, contrairement
+  à la troncature HF du sidecar référence) + **`[CLS]` préfixé à chaque fenêtre**
+  (le sidecar encode avec les tokens spéciaux par défaut ; le portage les avait
+  perdus). Déduplication des spans de chevauchement. Tests unitaires
+  (`windows_*`, `dedup_*`).
+- `cloison-core/src/detection.rs` : gazetteer `nom_sn` = prénoms + **66
+  patronymes** (liste du bench) ; **frontière de mot** dans `Gazetteer::find`
+  (les patronymes courts « Sy », « Ba », « Fall » ne matchent plus
+  l'intérieur de « système », « banane », « falling »). Tests dédiés.
+- `engine.rs` : test `test_restore_canonicalized_value` mis à jour (2 → 3
+  restaurations : le patronyme est désormais masqué puis restauré).
+- **Validation locale** (toolchain GNU android-tools, `--offline`) :
+  `cargo test -p cloison-core` **98/98** · `cargo test -p cloison-proxy --lib`
+  **24/24** · `cargo build --release` OK (6m44). **Sonde v2 sur le binaire
+  corrigé** : `inférence échouée = 0` sur le message long ; « Aminata » et
+  « Diop » masqués (2× ·GZA) ; **zéro valeur réelle reçue par le mock** ;
+  restaurations exactes.
+
+### Reste ouvert (suite serveur — avec le pilote)
+
+- **Release v0.3.3** (builds manuels wonkom, runners en panne ; portes
+  `cargo test`, leçon v0.3.2 : la porte locale `cargo check` ne couvre pas) →
+  **reconstruire `mania-cloison-edge` pin v0.3.3** → re-sonde `demo-cloison`
+  (la sonde PII réelle doit montrer zéro sentinelle brute ET zéro valeur en
+  clair, avec le vrai modèle).
+- **Commits ManIA à pousser** (egress user-defined, garde `sh -lc`, + dettes
+  cosmétiques v2/v3 du README) — le gabarit vivant est déjà corrigé.
+- 🔴 **`response_format` refusé par DeepSeek direct** (`400 : This
+  response_format type is unavailable now` — Hermes envoie un format que
+  l'API DeepSeek n'accepte pas ; l'appel aboutit quand même par retry/mode
+  dégradé) : à corriger (config Hermes du tenant ou strip côté edge — à
+  trancher).
+- Arbitrage sentinelles/faux pour `demo-cloison` selon le comportement du
+  modèle réel après re-sonde (matrice ARBITRAGE-05 §6).

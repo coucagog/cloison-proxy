@@ -125,9 +125,18 @@ impl Gazetteer {
     }
 
     /// Find all occurrences in `text`, returns matching `Span`s.
+    ///
+    /// Frontière de mot (05/09/2026) : les patronymes courts (« Sy », « Ba »,
+    /// « Fall ») ne doivent JAMAIS matcher à l'intérieur d'un mot
+    /// (« analyse », « banane », « falling »). Miroir exact de
+    /// `alias::word_boundary_ok` (caractère mot `\p{L}\p{N}_` ou trait
+    /// d'union de part et d'autre = refus).
     pub fn find(&self, text: &str) -> Vec<Span> {
         let mut results = Vec::new();
         for mat in self.ac.find_iter(text) {
+            if !word_boundary_ok(text, mat.start(), mat.end()) {
+                continue;
+            }
             let pattern = &self.patterns[mat.pattern().as_usize()];
             results.push(Span {
                 entity_type: DetectorKind::Gazetteer(self.name.clone()),
@@ -139,6 +148,30 @@ impl Gazetteer {
         }
         results
     }
+}
+
+/// Frontière de mot (miroir d'`alias::word_boundary_ok`) : la correspondance
+/// `[start, end)` ne doit être précédée/suivie d'aucun caractère mot
+/// (`\p{L}\p{N}_`) ni d'un trait d'union.
+fn word_boundary_ok(text: &str, start: usize, end: usize) -> bool {
+    if start > 0 {
+        let prev = text[..start].chars().next_back().expect("start > 0");
+        if is_word_char_or_hyphen(prev) {
+            return false;
+        }
+    }
+    if end < text.len() {
+        let next = text[end..].chars().next().expect("end < len");
+        if is_word_char_or_hyphen(next) {
+            return false;
+        }
+    }
+    true
+}
+
+/// Caractère mot (`\p{L}\p{N}_`) ou trait d'union — bloque la frontière.
+fn is_word_char_or_hyphen(c: char) -> bool {
+    c == '-' || c == '_' || c.is_alphanumeric()
 }
 
 /// Default Senegalese first names for the built-in gazetteer.
@@ -163,6 +196,25 @@ const DEFAULT_NAMES_SN: &[&str] = &[
     "Sokhna",
     "Boubacar",
     "Yacine",
+];
+
+/// Patronymes sénégalais courants (registres publics — liste de référence du
+/// bench, `bench/cloison-bench/generator.py`). Ajoutés au gazetteer `nom_sn`
+/// le 05/09/2026 : mesuré sur le premier tenant MANIA réel, un patronyme seul
+/// (« Diop ») partait EN CLAIR chez le fournisseur quand le NER ne produisait
+/// pas le span « prénom + nom » — la limite N0 v1 documentée (« nuance
+/// honnête », E2E-OPEN-DESIGN). Le filet de sécurité, c'est cette liste ; le
+/// masquage fin reste celui du NER (fusion englobante).
+const DEFAULT_PATRONYMES_SN: &[&str] = &[
+    "Ba", "Bâ", "Barro", "Cisse", "Cissé", "Dabo", "Diallo", "Diagne", "Dian",
+    "Diarra", "Diaw", "Dièye", "Diop", "Diouf", "Drame", "Drâme", "Fall",
+    "Faye", "Gadio", "Gaye", "Gueye", "Guèye", "Kâ", "Kane", "Kâne", "Ly",
+    "Mané", "Mbaye", "Ndao", "Ndiaye", "Ndiongue", "Ndour", "Niane", "Niang",
+    "Niass", "Niasse", "Ndieguene", "Ndong", "N'Dour", "Sall", "Samb",
+    "Sambou", "Sané", "Sarr", "Seck", "Sèye", "Sow", "Sy", "Sylla", "Tamba",
+    "Thiam", "Thiaw", "Traoré", "Wade", "Diémé", "Fofana", "Gassama",
+    "Konaté", "Koné", "Sangaré", "Touré", "Diankha", "Dieng", "Khouma",
+    "Mendy", "Coly", "Bodian",
 ];
 
 /// Default Senegalese toponyms for the built-in gazetteer.
@@ -282,10 +334,12 @@ impl Detector {
         };
 
         // Add built-in gazetteers
-        let nom_gaz = Gazetteer::new(
-            GAZETTEER_NOM_SN.to_string(),
-            DEFAULT_NAMES_SN.iter().map(|s| s.to_string()).collect(),
-        )?;
+        // `nom_sn` = prénoms + patronymes (les deux, une seule entrée de
+        // politique) — le patronyme seul est le maillon faible historique
+        // (05/09/2026, voir DEFAULT_PATRONYMES_SN).
+        let mut noms: Vec<String> = DEFAULT_NAMES_SN.iter().map(|s| s.to_string()).collect();
+        noms.extend(DEFAULT_PATRONYMES_SN.iter().map(|s| s.to_string()));
+        let nom_gaz = Gazetteer::new(GAZETTEER_NOM_SN.to_string(), noms)?;
         detector.add_gazetteer(nom_gaz)?;
 
         let ville_gaz = Gazetteer::new(
@@ -611,6 +665,66 @@ mod tests {
     #[test]
     fn test_luhn_empty() {
         assert!(!validate_luhn(""));
+    }
+
+    #[test]
+    fn test_gazetteer_patronyme_masque() {
+        let det = Detector::new().unwrap();
+        let spans = det.detect_with_policy(
+            "Contact : Aminata Diop, M. Fall et Mme Sy.",
+            &DetectorPolicy::all_enabled(),
+        );
+        let words: Vec<&str> = spans
+            .iter()
+            .map(|s| &"Contact : Aminata Diop, M. Fall et Mme Sy."[s.start..s.end])
+            .collect();
+        assert!(words.contains(&"Aminata"), "prénom gazetteer: {words:?}");
+        assert!(words.contains(&"Diop"), "patronyme Diop: {words:?}");
+        assert!(words.contains(&"Fall"), "patronyme Fall: {words:?}");
+        assert!(words.contains(&"Sy"), "patronyme Sy: {words:?}");
+    }
+
+    #[test]
+    fn test_gazetteer_patronyme_court_pas_dans_un_mot() {
+        let det = Detector::new().unwrap();
+        let hay = "L'analyse du système : banane, falling, balade. Sy arrive.";
+        let spans = det.detect_with_policy(hay, &DetectorPolicy::all_enabled());
+        // « Sy » ne doit matcher QUE le mot autonome final — jamais
+        // l'intérieur de « système », « analyse » (« ly »), « falling »
+        // (« Fall ») ni « balade » (« Ba »).
+        let sy_positions: Vec<usize> = spans
+            .iter()
+            .filter(|s| &hay[s.start..s.end] == "Sy")
+            .map(|s| s.start)
+            .collect();
+        assert_eq!(
+            sy_positions,
+            vec![hay.find("Sy").expect("Sy présent")],
+            "un seul Sy, le mot autonome"
+        );
+        for s in &spans {
+            let w = &hay[s.start..s.end];
+            assert!(
+                !["analyse", "falling", "balade"].contains(&w),
+                "aucun match intra-mot : {w}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_gazetteer_frontiere_ponctuation() {
+        let det = Detector::new().unwrap();
+        let spans = det.detect_with_policy(
+            "Signé : Diop, (Fall) et « Ba » — merci.",
+            &DetectorPolicy::all_enabled(),
+        );
+        let words: Vec<&str> = spans
+            .iter()
+            .map(|s| &"Signé : Diop, (Fall) et « Ba » — merci."[s.start..s.end])
+            .collect();
+        assert!(words.contains(&"Diop"));
+        assert!(words.contains(&"Fall"));
+        assert!(words.contains(&"Ba"));
     }
 
     #[test]
