@@ -6,6 +6,10 @@
 > re-testons. Source : dossiers `journal/REAL/` (rapports client, preuves
 > brutes, scripts) + notre cycle serveur du 06/09/2026.
 > **Date de consolidation :** 09/09/2026.
+>
+> **→ Suite exécutée le 09/09 soir-10/09 :** `session-2026-09-10-f1-v0332.md`
+> — arbitrages actés, F1 livré (release **v0.3.3.2 publiée**), F2/F3 faits,
+> edge Mania re-déployé, **re-sonde VERTE**.
 
 ---
 
