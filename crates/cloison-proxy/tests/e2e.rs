@@ -56,6 +56,17 @@ enum MockMode {
     /// Stream : le dernier chunk se termine au milieu de la sentinelle finale.
     ChatStreamTruncated,
     ChatStreamToolCall,
+    /// Non-stream : écho du `reasoning_content` tokenisé dans
+    /// `choices[0].message.reasoning_content` (modèles « thinking », F1).
+    ChatReasoning,
+    /// Stream : écho du `reasoning_content` tokenisé en chunks de tailles
+    /// données (découpe les sentinelles dans les deltas de raisonnement).
+    ChatStreamReasoning {
+        chunk_lens: Vec<usize>,
+    },
+    /// Stream : le dernier delta de raisonnement se termine au milieu de la
+    /// sentinelle finale → marqueur neutre attendu sur le canal reasoning.
+    ChatStreamReasoningTruncated,
     /// Non-stream : contenu contenant une sentinelle forgée (hors registre).
     ChatForgedSentinel,
     /// Toujours 500 (test fail-loud amont).
@@ -158,6 +169,13 @@ async fn mock_chat(
         MockMode::ChatStreamTruncated => chat_stream(&body, &[], true).into_response(),
         MockMode::ChatForgedSentinel => chat_echo_with(&body, Some(&forged_content())).into_response(),
         MockMode::ChatStreamToolCall => chat_stream_toolcall(&body).into_response(),
+        MockMode::ChatReasoning => chat_reasoning_echo(&body).into_response(),
+        MockMode::ChatStreamReasoning { chunk_lens } => {
+            chat_stream_reasoning(&body, &chunk_lens).into_response()
+        }
+        MockMode::ChatStreamReasoningTruncated => {
+            chat_stream_reasoning_truncated(&body).into_response()
+        }
         MockMode::AlwaysError => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({"error": {"message": "mock failure", "type": "server_error", "code": "mock_error"}})),
@@ -211,6 +229,20 @@ fn first_tool_calls(body: &Value) -> Option<Value> {
         })
 }
 
+/// Extrait le `reasoning_content` de la DERNIÈRE message qui en possède un
+/// (le raisonnement tokenisé rejoué par le client au tour suivant).
+fn first_reasoning(body: &Value) -> Option<String> {
+    body.get("messages")
+        .and_then(|m| m.as_array())
+        .and_then(|arr| {
+            arr.iter().rev().find_map(|m| {
+                m.get("reasoning_content")
+                    .and_then(|c| c.as_str())
+                    .map(str::to_string)
+            })
+        })
+}
+
 fn chat_echo_with(body: &Value, forced_content: Option<&str>) -> Json<Value> {
     let model = body.get("model").cloned().unwrap_or(json!("mock-echo"));
     let content = forced_content
@@ -228,6 +260,30 @@ fn chat_echo_with(body: &Value, forced_content: Option<&str>) -> Json<Value> {
                 "role": "assistant",
                 "content": content,
                 "tool_calls": tool_calls,
+            },
+            "finish_reason": "stop",
+        }],
+        "usage": {"prompt_tokens": 7, "completion_tokens": 5, "total_tokens": 12},
+    }))
+}
+
+/// Non-stream « thinking » : écho du `reasoning_content` tokenisé reçu par le
+/// mock dans `choices[0].message.reasoning_content` (+ contenu classique).
+fn chat_reasoning_echo(body: &Value) -> Json<Value> {
+    let model = body.get("model").cloned().unwrap_or(json!("mock-echo"));
+    let content = first_content(body);
+    let reasoning = first_reasoning(body);
+    Json(json!({
+        "id": "chatcmpl-mock-reasoning",
+        "object": "chat.completion",
+        "created": 1700000000,
+        "model": model,
+        "choices": [{
+            "index": 0,
+            "message": {
+                "role": "assistant",
+                "content": content,
+                "reasoning_content": reasoning,
             },
             "finish_reason": "stop",
         }],
@@ -302,6 +358,75 @@ fn chat_stream(
             "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
         });
         yield Ok::<Event, Infallible>(Event::default().data(final_payload.to_string()));
+        yield Ok::<Event, Infallible>(Event::default().data("[DONE]"));
+    };
+    Sse::new(stream)
+}
+
+/// Stream « thinking » (F1) : écho du `reasoning_content` tokenisé reçu par le
+/// mock, en chunks de tailles données — les sentinelles y sont volontairement
+/// découpées au milieu pour prouver le réassemblage côté proxy.
+fn chat_stream_reasoning(
+    body: &Value,
+    chunk_lens: &[usize],
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let model = body.get("model").cloned().unwrap_or(json!("mock-echo"));
+    let reasoning = first_reasoning(body).unwrap_or_default();
+    let chunks: Vec<String> = if chunk_lens.is_empty() {
+        vec![reasoning.clone()]
+    } else {
+        split_chunks(&reasoning, chunk_lens)
+    };
+
+    let created = 1700000000u64;
+    let stream = async_stream::stream! {
+        for chunk in chunks {
+            let payload = json!({
+                "id": "chatcmpl-mock-reasoning",
+                "object": "chat.completion.chunk",
+                "created": created,
+                "model": model,
+                "choices": [{"index": 0, "delta": {"reasoning_content": chunk}, "finish_reason": null}],
+            });
+            yield Ok::<Event, Infallible>(Event::default().data(payload.to_string()));
+        }
+        let final_payload = json!({
+            "id": "chatcmpl-mock-reasoning",
+            "object": "chat.completion.chunk",
+            "created": created,
+            "model": model,
+            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+        });
+        yield Ok::<Event, Infallible>(Event::default().data(final_payload.to_string()));
+        yield Ok::<Event, Infallible>(Event::default().data("[DONE]"));
+    };
+    Sse::new(stream)
+}
+
+/// Stream « thinking » tronqué : le dernier delta de raisonnement se termine
+/// au milieu de la sentinelle finale → fail-loud à la clôture (F1).
+fn chat_stream_reasoning_truncated(
+    body: &Value,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let model = body.get("model").cloned().unwrap_or(json!("mock-echo"));
+    let reasoning = first_reasoning(body).unwrap_or_default();
+    // Coupe les 3 derniers octets (la `⟧` de la sentinelle finale).
+    let mut cut = reasoning.len().saturating_sub(3);
+    while !reasoning.is_char_boundary(cut) {
+        cut -= 1;
+    }
+    let truncated = reasoning[..cut].to_string();
+
+    let created = 1700000000u64;
+    let stream = async_stream::stream! {
+        let payload = json!({
+            "id": "chatcmpl-mock-reasoning",
+            "object": "chat.completion.chunk",
+            "created": created,
+            "model": model,
+            "choices": [{"index": 0, "delta": {"reasoning_content": truncated}, "finish_reason": null}],
+        });
+        yield Ok::<Event, Infallible>(Event::default().data(payload.to_string()));
         yield Ok::<Event, Infallible>(Event::default().data("[DONE]"));
     };
     Sse::new(stream)
@@ -498,6 +623,27 @@ fn sse_content_deltas(resp_body: &str) -> (String, bool) {
 // Tests
 // ---------------------------------------------------------------------------
 
+/// Concatène les `delta.reasoning_content` d'un corps SSE et vérifie la
+/// terminaison (F1).
+fn sse_reasoning_deltas(resp_body: &str) -> (String, bool) {
+    let mut reasoning = String::new();
+    let mut done = false;
+    for event in resp_body.split("\n\n") {
+        for line in event.lines() {
+            if let Some(data) = line.strip_prefix("data: ") {
+                if data == "[DONE]" {
+                    done = true;
+                } else if let Ok(v) = serde_json::from_str::<Value>(data) {
+                    if let Some(d) = v["choices"][0]["delta"]["reasoning_content"].as_str() {
+                        reasoning.push_str(d);
+                    }
+                }
+            }
+        }
+    }
+    (reasoning, done)
+}
+
 /// Non-stream : le mock reçoit un corps TOKENISÉ (aucune valeur claire), la
 /// réponse client est restaurée ; la clé amont (avec points) est transmise
 /// intacte.
@@ -621,6 +767,176 @@ async fn tool_calls_arguments_restored() {
     // Le JSON des arguments reste syntaxiquement valide après restauration.
     let parsed: Value = serde_json::from_str(args).unwrap();
     assert_eq!(parsed["email"], "user@example.com");
+}
+
+/// F1 — non-stream « thinking » : `reasoning_content` tokenisé à l'aller (le
+/// fournisseur ne reçoit AUCUNE valeur claire, raisonnement inclus) et restauré
+/// au retour (`choices[0].message.reasoning_content`), zéro sentinelle brute.
+#[tokio::test]
+async fn reasoning_non_stream_roundtrip() {
+    let mock = MockUpstream::start(MockMode::ChatReasoning).await;
+    let (state, app) = proxy_app(&mock.url()).await;
+
+    let reasoning_original = "Je dois vérifier l'identité de Mariama Sow (mariama@exemple.sn, +221 76 222 33 44) avant de répondre.";
+    let content_original = "Contactez Mariama Sow à mariama@exemple.sn.";
+    let body = json!({
+        "model": "mock-echo",
+        "messages": [
+            {"role": "assistant", "content": content_original, "reasoning_content": reasoning_original},
+            {"role": "user", "content": "Merci."}
+        ]
+    });
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let resp: Value = serde_json::from_str(&resp_body).unwrap();
+    let reasoning = resp["choices"][0]["message"]["reasoning_content"]
+        .as_str()
+        .expect("reasoning_content present in response");
+    assert_eq!(
+        reasoning, reasoning_original,
+        "reasoning restored exactly"
+    );
+    assert!(
+        !reasoning.contains('\u{27E6}'),
+        "no sentinel leaked in reasoning: {reasoning}"
+    );
+
+    // Le mock a reçu un corps transformé : aucune PII claire nulle part,
+    // y compris dans le champ `reasoning_content` (F1 aller).
+    let upstream_text = mock.last_body().to_string();
+    assert!(
+        !upstream_text.contains("mariama@exemple.sn"),
+        "clear email reached upstream (reasoning tokenisé attendu)"
+    );
+    assert!(
+        !upstream_text.contains("+221 76 222 33 44"),
+        "clear phone reached upstream"
+    );
+    assert!(
+        upstream_text.contains("reasoning_content"),
+        "reasoning_content transmitted upstream"
+    );
+    assert_eq!(state.metrics.unresolved_tokens.load(Ordering::Relaxed), 0);
+}
+
+/// F1 — stream « thinking » : le mock découpe volontairement les sentinelles au
+/// MILIEU des deltas de `reasoning_content` ; la sortie SSE = raisonnement
+/// clair complet, aucune sentinelle (même partielle) émise, `[DONE]` final.
+#[tokio::test]
+async fn reasoning_stream_roundtrip_reassembles_split_sentinels() {
+    let lens = vec![
+        5, 4, 6, 5, 4, 6, 5, 4, 6, 5, 4, 6, 5, 4, 6, 5, 4, 6, 5, 4, 6, 5, 4,
+    ];
+    let mock =
+        MockUpstream::start(MockMode::ChatStreamReasoning { chunk_lens: lens }).await;
+    let (state, app) = proxy_app(&mock.url()).await;
+
+    let reasoning_original = "Le demandeur est joignable sur user@example.com et au +221 77 123 45 67. Je réponds en français.";
+    let body = json!({
+        "model": "mock-echo",
+        "stream": true,
+        "messages": [
+            {"role": "assistant", "content": "Réponse.", "reasoning_content": reasoning_original},
+            {"role": "user", "content": "Merci."}
+        ]
+    });
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(resp_body.contains("data: "), "SSE body expected");
+
+    let (reasoning, done) = sse_reasoning_deltas(&resp_body);
+    assert!(done, "stream must end with data: [DONE]");
+    assert!(
+        !reasoning.contains('\u{27E6}'),
+        "no sentinel leaked to client: {reasoning}"
+    );
+    assert!(
+        !reasoning.contains('\u{27E7}'),
+        "no sentinel close leaked: {reasoning}"
+    );
+    assert_eq!(
+        reasoning, reasoning_original,
+        "reassembled reasoning must equal the original text"
+    );
+
+    // Le fournisseur n'a reçu aucune valeur claire (raisonnement inclus).
+    let upstream_text = mock.last_body().to_string();
+    assert!(
+        !upstream_text.contains("user@example.com"),
+        "clear email reached upstream"
+    );
+    assert!(
+        !upstream_text.contains("+221 77 123 45 67"),
+        "clear phone reached upstream"
+    );
+    assert_eq!(state.metrics.unresolved_tokens.load(Ordering::Relaxed), 0);
+}
+
+/// F1 — stream « thinking » : sentinelle de raisonnement tronquée à la clôture
+/// → marqueur neutre `[REDACTED]` sur le canal reasoning ; fail-loud
+/// conservateur : tout le résidu non émis est rougeoyé d'un bloc, aucune
+/// valeur claire ne fuit (parité exacte avec le canal content).
+#[tokio::test]
+async fn reasoning_stream_truncated_sentinel_redacts_at_closure() {
+    let mock = MockUpstream::start(MockMode::ChatStreamReasoningTruncated).await;
+    let (state, app) = proxy_app(&mock.url()).await;
+
+    let reasoning_original =
+        "Le demandeur est joignable sur user@example.com et au +221 77 123 45 67.";
+    let body = json!({
+        "model": "mock-echo",
+        "stream": true,
+        "messages": [
+            {"role": "assistant", "content": "Réponse.", "reasoning_content": reasoning_original},
+            {"role": "user", "content": "Merci."}
+        ]
+    });
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (reasoning, _done) = sse_reasoning_deltas(&resp_body);
+    assert!(
+        reasoning.contains("[REDACTED]"),
+        "neutral marker expected: {reasoning}"
+    );
+    assert!(
+        !reasoning.contains('\u{27E6}'),
+        "no partial sentinel leaked: {reasoning}"
+    );
+    // Fail-loud conservateur : le résidu non émis est rougeoyé d'un bloc —
+    // aucune valeur claire (ni l'email résolu du résidu, ni le téléphone
+    // tronqué) ne sort sur le canal reasoning.
+    assert!(
+        !reasoning.contains("user@example.com"),
+        "no clear value emitted from redacted residual: {reasoning}"
+    );
+    assert!(
+        !reasoning.contains("+221 77 123 45 67"),
+        "no clear phone leaked: {reasoning}"
+    );
+    assert!(state.metrics.unresolved_tokens.load(Ordering::Relaxed) > 0);
 }
 
 /// Stream : le mock découpe volontairement les sentinelles en petits chunks ;

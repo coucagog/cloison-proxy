@@ -5,6 +5,11 @@
 //! qui pourrait être le début d'une sentinelle reste en tampon (borné), la
 //! résolution se fait au fil de l'eau (`restore` sur le registre vivant) et à
 //! la clôture. Fail-loud : jeton non résoluble → marqueur neutre + compteur.
+//!
+//! v0.3.3.2 : le canal `delta.reasoning_content` (modèles « thinking ») est
+//! traité par le même buffer-and-scan que `delta.content` — une sentinelle
+//! coupée au milieu d'un delta de raisonnement est réassemblée et restaurée,
+//! jamais émise brute (incident I1 Omarchy).
 
 use std::convert::Infallible;
 use std::pin::Pin;
@@ -299,6 +304,7 @@ pub fn sse_response(
     let stream: Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>> = Box::pin(
         async_stream::stream! {
             let mut content_buf = BufferAndScan::new(engine.clone(), request_id.clone(), max_token_len, neutral_marker.clone());
+            let mut reasoning_buf = BufferAndScan::new(engine.clone(), request_id.clone(), max_token_len, neutral_marker.clone());
             let mut tool_bufs: Vec<BufferAndScan> = Vec::new();
             let mut meta: Meta = default_meta();
 
@@ -324,7 +330,7 @@ pub fn sse_response(
                     let overflow: Vec<u8> = std::mem::take(&mut frame);
                     if let Some(payload) = event_data_payload(&overflow) {
                         if payload != "[DONE]" {
-                            let events = process_payload(&payload, &mut meta, &mut content_buf, &mut tool_bufs, &engine, &request_id, max_token_len, &neutral_marker);
+                            let events = process_payload(&payload, &mut meta, &mut content_buf, &mut reasoning_buf, &mut tool_bufs, &engine, &request_id, max_token_len, &neutral_marker);
                             for ev in events {
                                 yield Ok::<Event, Infallible>(ev);
                             }
@@ -343,7 +349,7 @@ pub fn sse_response(
                             done = true;
                             break 'outer;
                         }
-                        let events = process_payload(&payload, &mut meta, &mut content_buf, &mut tool_bufs, &engine, &request_id, max_token_len, &neutral_marker);
+                        let events = process_payload(&payload, &mut meta, &mut content_buf, &mut reasoning_buf, &mut tool_bufs, &engine, &request_id, max_token_len, &neutral_marker);
                         for ev in events {
                             yield Ok::<Event, Infallible>(ev);
                         }
@@ -355,7 +361,7 @@ pub fn sse_response(
             if !done {
                 if let Some(payload) = event_data_payload(&frame) {
                     if payload != "[DONE]" {
-                        let events = process_payload(&payload, &mut meta, &mut content_buf, &mut tool_bufs, &engine, &request_id, max_token_len, &neutral_marker);
+                        let events = process_payload(&payload, &mut meta, &mut content_buf, &mut reasoning_buf, &mut tool_bufs, &engine, &request_id, max_token_len, &neutral_marker);
                         for ev in events {
                             yield Ok::<Event, Infallible>(ev);
                         }
@@ -367,6 +373,9 @@ pub fn sse_response(
             let mut pending: Vec<Event> = Vec::new();
             let mut total = content_buf.finish(&mut |frag| {
                 pending.push(content_event(&meta, frag));
+            });
+            total += reasoning_buf.finish(&mut |frag| {
+                pending.push(reasoning_event(&meta, frag));
             });
             for (idx, tb) in tool_bufs.iter_mut().enumerate() {
                 total += tb.finish(&mut |frag| {
@@ -396,15 +405,17 @@ pub fn sse_response(
     Sse::new(stream).keep_alive(KeepAlive::new().interval(keep_alive))
 }
 
-/// Traite un événement `data:` : route `delta.content` / `delta.tool_calls[].function.arguments`
+/// Traite un événement `data:` : route `delta.content` /
+/// `delta.reasoning_content` / `delta.tool_calls[].function.arguments`
 /// vers les tampons, reconstruit les événements restaurés. Un événement sans
-/// contenu ni arguments (role, finish_reason, delta vide, champs spécifiques)
-/// est passé tel quel.
+/// contenu ni raisonnement ni arguments (role, finish_reason, delta vide,
+/// champs spécifiques) est passé tel quel.
 #[allow(clippy::too_many_arguments)]
 fn process_payload(
     payload: &str,
     meta: &mut Meta,
     content_buf: &mut BufferAndScan,
+    reasoning_buf: &mut BufferAndScan,
     tool_bufs: &mut Vec<BufferAndScan>,
     engine: &Arc<Mutex<RequestEngine>>,
     request_id: &str,
@@ -450,6 +461,19 @@ fn process_payload(
             content_buf.push(content, &mut |f| frags.push(f.to_string()));
             for f in frags {
                 pending.push(content_event(meta, &f));
+            }
+        }
+    }
+
+    // Canal reasoning_content (modèles « thinking », v0.3.3.2) — mêmes règles
+    // de confirmation/restauration que le canal content.
+    if let Some(reasoning) = delta.get("reasoning_content").and_then(|v| v.as_str()) {
+        routed = true;
+        if !reasoning.is_empty() {
+            let mut frags: Vec<String> = Vec::new();
+            reasoning_buf.push(reasoning, &mut |f| frags.push(f.to_string()));
+            for f in frags {
+                pending.push(reasoning_event(meta, &f));
             }
         }
     }
@@ -512,6 +536,19 @@ fn content_event(meta: &Meta, content: &str) -> Event {
         "created": created,
         "model": model,
         "choices": [{"index": 0, "delta": {"content": content}, "finish_reason": null}],
+    });
+    Event::default().data(payload.to_string())
+}
+
+/// Événement `delta.reasoning_content` restauré (v0.3.3.2).
+fn reasoning_event(meta: &Meta, reasoning: &str) -> Event {
+    let (id, object, created, model) = meta;
+    let payload = serde_json::json!({
+        "id": id,
+        "object": object,
+        "created": created,
+        "model": model,
+        "choices": [{"index": 0, "delta": {"reasoning_content": reasoning}, "finish_reason": null}],
     });
     Event::default().data(payload.to_string())
 }

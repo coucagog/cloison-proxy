@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Open-core — CLOISON docs</title>
-  <meta name="description" content="Le cœur de CLOISON est open-core : moteur, passerelle AGPL-3.0, journal et vérificateur publiés sous github.com/coucagog/cloison-*." />
+  <title>Manuel N0 — CLOISON</title>
+  <meta name="description" content="Manuel du daemon N0 : configuration par variables d'environnement, modes (masquage actif, observe-only, faux réaliste), limites honnêtes, sonde de vérification et sauvegarde du coffre." />
   <script>
     (function () {
       var t = null;
@@ -25,31 +25,30 @@
       --line: #CFD3DC;
       --line-2: #E3E6EC;
 
-      --jeton: #0B7A85;
+      --jeton: #0B7A85;        /* identité — CTA, liens actifs, état pseudonymisation */
       --jeton-soft: #E1F0F1;
       --jeton-soft-2: #bfe0e3;
 
-      --edge: #1E7A4D;
+      --edge: #1E7A4D;         /* confiance / succès — vérifié */
       --edge-soft: #E3F1E9;
       --edge-line: #c4e2d2;
 
-      --clair: #A9640C;
+      --clair: #A9640C;        /* attention honnête — limites, warn */
       --clair-soft: #F6ECDD;
-      --clair-line: #e4cfae;
+      --clair-line: #E4CFAE;
 
       --danger: #AD3B3B;
       --danger-soft: #F6E4E2;
 
       --jeton-text: #09646D;
       --clair-text: #8C5004;
-      --edge-text: #17643C;
 
-      --header-bg: rgba(231, 233, 238, 0.85);
+      --header-bg: rgba(231, 233, 238, 0.82);
 
       --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
 
-      --wrap: 1180px;
+      --wrap: 1280px;
       --radius: 14px;
       --radius-sm: 9px;
     }
@@ -81,9 +80,8 @@
 
       --jeton-text: #37B5C0;
       --clair-text: #E2A24C;
-      --edge-text: #3FB878;
 
-      --header-bg: rgba(14, 17, 25, 0.85);
+      --header-bg: rgba(14, 17, 25, 0.82);
     }
 
     * { box-sizing: border-box; }
@@ -101,12 +99,17 @@
     }
 
     a { color: var(--fg); text-decoration: none; }
-    h1, h2, h3, h4 { margin: 0; font-weight: 750; letter-spacing: -0.02em; }
+    h1, h2, h3, h4 { margin: 0; }
     p { margin: 0; }
     button { font: inherit; cursor: pointer; }
+    ul { margin: 0; padding: 0; list-style: none; }
 
-    .wrap { max-width: var(--wrap); margin: 0 auto; padding-left: 32px; padding-right: 32px; }
-    @media (max-width: 640px) { .wrap { padding-left: 20px; padding-right: 20px; }}
+    .wrap { max-width: var(--wrap); margin: 0 auto; padding-left: 40px; padding-right: 40px; }
+    @media (max-width: 900px) { .wrap { padding-left: 22px; padding-right: 22px; }}
+
+    .mono { font-family: var(--font-mono); }
+    .token { font-family: var(--font-mono); color: var(--jeton); font-size: 0.94em; white-space: nowrap; }
+    .code { font-family: var(--font-mono); font-size: 0.9em; overflow-wrap: anywhere; }
     .brand {
       display: inline-flex;
       align-items: center;
@@ -124,25 +127,22 @@
       background: var(--fg);
       flex: 0 0 auto;
     }
-
     .nav {
       display: flex;
       align-items: center;
       gap: 2px;
-      margin-left: auto;
+      margin-inline-start: auto;
     }
     .nav a {
       color: var(--muted);
       font-size: 14px;
-      padding: 8px 11px;
+      padding: 8px 12px;
       border-radius: 8px;
       transition: color 160ms ease, background 160ms ease;
-      white-space: nowrap;
     }
     .nav a:hover { color: var(--fg); background: var(--bg-2); }
     .nav a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
-    .nav a[aria-current="page"] { color: var(--fg); background: var(--bg-2); font-weight: 560; }
-    @media (max-width: 1020px) { .nav { display: none; }}
+    @media (max-width: 1080px) { .nav a { display: none; }}
 
     .theme-toggle {
       display: inline-flex;
@@ -151,7 +151,7 @@
       width: 40px;
       height: 40px;
       flex: 0 0 auto;
-      margin-inline-start: 4px;
+      margin-inline-start: 8px;
       border-radius: 9px;
       border: 1px solid var(--line);
       background: var(--surface);
@@ -164,143 +164,181 @@
     .theme-toggle .icon-sun { display: none; }
     :root[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
     :root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
-    .s-group { margin-bottom: 30px; }
-    .s-label {
-      font-family: var(--font-mono);
-      font-size: 11.5px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--muted);
-      padding-inline-start: 12px;
-      margin-bottom: 12px;
+
+    /* Mobile nav drawer */
+    .docs-drawer { display: none; margin-bottom: 32px; }
+    .docs-drawer summary {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--fg);
+      font-weight: 650;
+      cursor: pointer;
     }
+    .docs-drawer summary::-webkit-details-marker { display: none; }
+    .docs-drawer summary:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .docs-drawer summary .chev { color: var(--muted); transition: transform 180ms ease; }
+    .docs-drawer[open] summary .chev { transform: rotate(180deg); }
+    .docs-drawer .drawer-inner {
+      margin-top: 14px;
+      padding: 20px 18px 6px;
+      border: 1px solid var(--line-2);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .docs-drawer a {
+      display: block;
+      position: relative;
+      padding: 8px 12px;
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.4;
+      transition: color 160ms ease, background 160ms ease;
+    }
+    .docs-drawer a:hover { color: var(--fg); background: var(--bg-2); }
+    .docs-drawer a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .docs-drawer a[aria-current="page"] {
+      color: var(--fg);
+      font-weight: 640;
+      background: var(--bg-2);
+    }
+    @media (max-width: 800px) {
+      .docs-drawer { display: block; }}
 
     /* ---------- Article ---------- */
-    .article { max-width: 664px; width: 100%; justify-self: start; }
-    .crumbs {
-      font-family: var(--font-mono);
-      font-size: 13px;
-      color: var(--muted);
-      letter-spacing: 0.03em;
-      margin-bottom: 16px;
-    }
-    .crumbs a { color: var(--muted); }
-    .crumbs a:hover { color: var(--jeton-text); }
-    .article h1 {
-      font-size: clamp(34px, 3.6vw, 46px);
-      line-height: 1.08;
-      letter-spacing: -0.03em;
+    .doc { min-width: 0; max-width: 720px; }
+    .doc h1 {
+      font-size: clamp(30px, 3.2vw, 40px);
+      line-height: 1.12;
+      letter-spacing: -0.02em;
       font-weight: 780;
-      margin: 0 0 6px;
+      margin-bottom: 18px;
     }
-    .article .lede {
+    .doc .lede {
       color: var(--muted);
       font-size: 18px;
       line-height: 1.6;
-      max-width: 62ch;
-      margin: 18px 0 0;
+      max-width: 58ch;
+      margin-bottom: 36px;
     }
-    .article h2 {
-      font-size: clamp(24px, 2.4vw, 29px);
+    .doc h2 {
+      font-size: clamp(22px, 2.6vw, 27px);
       line-height: 1.2;
-      letter-spacing: -0.02em;
-      font-weight: 760;
-      margin: 52px 0 6px;
-      scroll-margin-top: 92px;
-      display: flex;
-      align-items: baseline;
-      gap: 12px;
-    }
-    .article h2 .h2-num {
-      font-family: var(--font-mono);
-      font-size: 15px;
-      letter-spacing: 0.06em;
-      color: var(--jeton-text);
-      font-weight: 600;
-      flex: 0 0 auto;
-    }
-    .article h2 .h2-title { color: var(--fg); }
-    .article h3 {
-      font-size: 20px;
-      line-height: 1.3;
       letter-spacing: -0.015em;
+      font-weight: 760;
+      margin: 0 0 18px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line-2);
+      scroll-margin-top: 96px;
+    }
+    .doc h2:first-of-type { border-top: none; padding-top: 0; }
+    .doc h3 {
+      font-size: 19px;
+      line-height: 1.3;
+      letter-spacing: -0.01em;
       font-weight: 680;
-      margin: 34px 0 10px;
-      scroll-margin-top: 92px;
+      margin: 40px 0 12px;
+      scroll-margin-top: 96px;
     }
-    .article p { margin: 16px 0; color: var(--fg); }
-    .article p, .article li { max-width: 66ch; }
-    .article p a, .article li a {
-      color: var(--jeton-text);
-      border-bottom: 1px solid var(--jeton-soft-2);
-      transition: border-color 160ms ease;
-    }
-    .article p a:hover, .article li a:hover { border-color: var(--jeton-text); }
-    .article p a:focus-visible, .article li a:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; border-radius: 3px; }
-
-    ul.clean { list-style: none; margin: 18px 0; padding: 0; max-width: 66ch; }
-    ul.clean li {
-      position: relative;
-      padding-inline-start: 30px;
-      margin-bottom: 13px;
-      color: var(--fg);
-    }
-    ul.clean li::before {
-      content: "";
-      position: absolute;
-      inset-inline-start: 4px;
-      top: 0.55em;
-      width: 8px;
-      height: 8px;
-      border-radius: 2px;
-      background: var(--edge);
-    }
-
-    ol.steps { list-style: none; margin: 20px 0; padding: 0; counter-reset: step; }
-    ol.steps > li {
-      counter-increment: step;
-      position: relative;
-      padding-inline-start: 44px;
-      margin-bottom: 26px;
-    }
-    ol.steps > li::before {
-      content: counter(step);
-      position: absolute;
-      inset-inline-start: 0;
-      top: 2px;
-      width: 30px;
-      height: 30px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 8px;
-      background: var(--jeton-soft);
-      border: 1px solid var(--jeton-soft-2);
-      color: var(--jeton-text);
+    .doc h3 .qnum {
       font-family: var(--font-mono);
-      font-size: 13.5px;
+      font-size: 12.5px;
+      letter-spacing: 0.08em;
+      color: var(--jeton-text);
       font-weight: 600;
+      margin-inline-end: 10px;
+      vertical-align: 3px;
     }
-    ol.steps h3 { margin: 0 0 8px; padding-top: 2px; }
-    ol.steps p { margin: 0 0 12px; }
+    .doc p { color: var(--muted); font-size: 16.5px; line-height: 1.66; max-width: 66ch; margin-bottom: 16px; }
+    .doc p strong, .doc li strong, .doc td strong { color: var(--fg); font-weight: 640; }
+    .doc a:not(.copy-btn) { color: var(--jeton-text); font-weight: 520; border-bottom: 1px solid var(--jeton-soft-2); transition: border-color 160ms ease, color 160ms ease; }
+    .doc a:not(.copy-btn):hover { border-color: var(--jeton-text); }
+    .doc a:not(.copy-btn):focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .doc ul, .doc ol { color: var(--muted); font-size: 16.5px; line-height: 1.66; margin: 0 0 16px; }
+    .doc ul { padding-inline-start: 20px; list-style: disc; }
+    .doc ol { padding-inline-start: 22px; list-style: decimal; }
+    .doc li { margin-bottom: 8px; max-width: 66ch; }
 
-    /* ---------- Code ---------- */
-    .token {
-      font-family: var(--font-mono);
-      color: var(--jeton);
-      font-size: 0.94em;
-      white-space: nowrap;
-    }
-    .code { font-family: var(--font-mono); font-size: 0.9em; overflow-wrap: anywhere; }
-    code { font-family: var(--font-mono); font-size: 0.87em; background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 5px; padding: 1px 6px; color: var(--fg); }
-    .code-block {
-      position: relative;
-      background: var(--bg-2);
+    /* Definition block */
+    .defs {
       border: 1px solid var(--line-2);
-      border-radius: var(--radius-sm);
-      margin: 20px 0;
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: 26px 30px;
+      margin: 0 0 44px;
+    }
+    .defs-grid {
+      display: grid;
+      grid-template-columns: 128px minmax(0, 1fr);
+      gap: 16px 22px;
+      align-items: baseline;
+    }
+    .defs-term { font-family: var(--font-mono); font-size: 13.5px; color: var(--jeton-text); font-weight: 600; letter-spacing: 0.02em; }
+    .defs-def { color: var(--muted); font-size: 15.5px; line-height: 1.6; }
+    .defs-def strong { color: var(--fg); font-weight: 600; }
+    @media (max-width: 620px) {
+      .defs-grid { grid-template-columns: 1fr; gap: 3px 0; }
+      .defs-def { margin-bottom: 14px; }}
+
+    /* Callouts */
+    .callout {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin: 28px 0;
+    }
+    .callout .cicon { flex: 0 0 auto; margin-top: 3px; }
+    .callout .cicon svg { width: 20px; height: 20px; display: block; }
+    .callout p { color: var(--muted); font-size: 15.5px; line-height: 1.62; margin: 0; max-width: none; }
+    .callout strong { color: var(--fg); }
+    .callout-note { background: var(--surface); border: 1px solid var(--jeton-soft-2); }
+    .callout-note .cicon { color: var(--jeton-text); }
+    .callout-warn { background: var(--clair-soft); border: 1px solid var(--clair-line); }
+    .callout-warn .cicon { color: var(--clair-text); }
+
+    /* Code blocks */
+    .code-block {
+      border: 1px solid var(--line-2);
+      border-radius: 12px;
+      background: var(--bg-2);
+      margin: 22px 0;
       overflow: hidden;
     }
+    .code-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 12px 8px 18px;
+      border-bottom: 1px solid var(--line-2);
+      background: var(--bg-2);
+    }
+    .code-lang { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+    .copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 7px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 12.5px;
+      font-family: var(--font-mono);
+      transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+    }
+    .copy-btn:hover { color: var(--fg); border-color: var(--faint); }
+    .copy-btn:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .copy-btn svg { width: 15px; height: 15px; }
     .code-block pre {
       margin: 0;
       padding: 18px 20px;
@@ -309,91 +347,83 @@
       font-size: 13.5px;
       line-height: 1.62;
       color: var(--fg);
-      white-space: pre;
     }
-    .code-block pre .cm { opacity: 0.55; }
-    .code-block pre .ok { color: var(--edge-text); }
-    .code-block pre .pm { color: var(--clair-text); }
-    .code-copy {
-      position: absolute;
-      top: 8px;
-      inset-inline-end: 8px;
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--muted);
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 4px 9px;
-      transition: color 160ms ease, border-color 160ms ease;
-    }
-    .code-copy:hover { color: var(--fg); border-color: var(--faint); }
-    .code-copy:focus-visible { outline: 2px solid var(--jeton); outline-offset: 2px; }
+    .code-block pre code { font-family: inherit; }
 
-    /* ---------- Table ---------- */
-    .table-wrap { overflow-x: auto; margin: 22px 0; }
-    .docs-table { width: 100%; border-collapse: collapse; font-size: 15px; }
-    .docs-table th {
+    /* Table */
+    .doc-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 22px 0 26px;
+      font-size: 14.5px;
+      border: 1px solid var(--line-2);
+      overflow: hidden;
+    }
+    .doc-table, .doc-table th, .doc-table td { border-radius: 0; }
+    .doc-table th, .doc-table td {
       text-align: start;
+      vertical-align: top;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--line-2);
+      border-right: 1px solid var(--line-2);
+      background: var(--surface);
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .doc-table th {
       font-family: var(--font-mono);
       font-size: 12px;
       letter-spacing: 0.06em;
       text-transform: uppercase;
       color: var(--muted);
+      background: var(--bg-2);
       font-weight: 600;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--line);
-      white-space: nowrap;
     }
-    .docs-table td { padding: 14px 12px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
-    .docs-table tr:last-child td { border-bottom: none; }
-    .docs-table td.m { font-family: var(--font-mono); color: var(--jeton-text); font-size: 14px; white-space: nowrap; }
-    .docs-table td.r { color: var(--fg); }
-    .docs-table td.l { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: 0.02em; white-space: nowrap; }
-    .docs-table td.l.perm { color: var(--edge-text); }
-    .docs-table td.l.agpl { color: var(--clair-text); }
+    .doc-table th:last-child, .doc-table td:last-child { border-right: none; }
+    .doc-table tr:last-child td { border-bottom: none; }
 
-    /* ---------- Callout ---------- */
-    .callout {
+    /* Limits */
+    .limits-panel {
+      border: 1px solid var(--clair-line);
+      border-radius: var(--radius);
+      background: var(--clair-soft);
+      padding: 26px 30px 10px;
+      margin: 24px 0 44px;
+    }
+    .limits-head {
       display: flex;
-      gap: 14px;
-      align-items: flex-start;
-      padding: 17px 18px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--line);
-      border-inline-start: 3px solid var(--line);
-      background: var(--surface);
-      margin: 26px 0;
-    }
-    .callout .c-ico { width: 20px; height: 20px; flex: 0 0 auto; margin-top: 2px; }
-    .callout .c-label {
+      align-items: center;
+      gap: 9px;
       font-family: var(--font-mono);
-      font-size: 11.5px;
-      letter-spacing: 0.08em;
+      font-size: 12px;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
-      margin-bottom: 7px;
-      display: block;
+      color: var(--clair-text);
+      margin-bottom: 18px;
     }
-    .callout p { margin: 0; font-size: 15.5px; color: var(--fg); max-width: 62ch; }
-    .callout p + p { margin-top: 9px; }
-    .callout .c-ico svg { width: 20px; height: 20px; }
-    .callout.note { border-inline-start-color: var(--jeton); }
-    .callout.note .c-label { color: var(--jeton-text); }
-    .callout.note .c-ico { color: var(--jeton); }
-    .callout.warn { border-inline-start-color: var(--clair); }
-    .callout.warn .c-label { color: var(--clair-text); }
-    .callout.warn .c-ico { color: var(--clair); }
-
-    /* ---------- Responsive ---------- */
-    @media (max-width: 900px) {
-      .article { max-width: 100%; justify-self: stretch; }}
-    @media (max-width: 640px) {
-      .article h1 { font-size: clamp(30px, 8.5vw, 37px); }}
+    .limits-head .mark { width: 8px; height: 8px; border-radius: 2px; background: var(--clair); }
+    .limit-item {
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 14px;
+      align-items: start;
+      padding: 16px 0;
+      border-top: 1px solid var(--clair-line);
+    }
+    .limit-item:first-of-type { border-top: none; padding-top: 0; }
+    .limit-item:last-child { padding-bottom: 0; }
+    .limit-item .icon { color: var(--clair-text); margin-top: 3px; }
+    .limit-item .icon svg { width: 20px; height: 20px; display: block; }
+    .limit-item span { color: var(--muted); font-size: 15.5px; line-height: 1.6; }
+    .limit-item strong { color: var(--fg); font-weight: 640; }
+    @media (max-width: 620px) {
+      .doc h3 { margin-top: 34px; }
+      .doc-table { font-size: 13px; }
+      .doc-table th, .doc-table td { padding: 10px 11px; }}
 
     @media (prefers-reduced-motion: reduce) {
-      * { transition: none !important; animation: none !important; }}
+      * { transition: none !important; animation: none !important; }
+      html { scroll-behavior: auto; }}
 
 /* ================= Header ================= */
     .site-header {
@@ -817,14 +847,14 @@
           <div class="nav-group">
             <div class="nav-group-label">Déployer</div>
             <a class="nav-link" href="install-n0.html">Installer N0</a>
-            <a class="nav-link" href="manuel-n0.html">Manuel N0</a>
+            <a class="nav-link" href="manuel-n0.html" aria-current="page">Manuel N0</a>
             <a class="nav-link" href="manuel.html">Manuel d'utilisation</a>
             <a class="nav-link" href="api.html">API</a>
           </div>
           <div class="nav-group">
             <div class="nav-group-label">Vérifier</div>
             <a class="nav-link" href="journal.html">Journal de transparence</a>
-            <a class="nav-link" href="open-core.html" aria-current="page">Open-core</a>
+            <a class="nav-link" href="open-core.html">Open-core</a>
           </div>
           <div class="nav-group">
             <div class="nav-group-label">Référence</div>
@@ -835,129 +865,184 @@
       </nav>
 
     <!-- ============ ARTICLE ============ -->
-    <main class="article" id="top" data-od-id="article">
-<div class="crumbs"><a href="faq.html">Docs</a> › <a href="open-core.html">Vérifier</a> › <span>Open-core</span></div>
-      <h1 data-od-id="article-title">« Nous ne lisons pas » — vérifiez le code.</h1>
-      <p class="lede" data-od-id="article-lede">Le cœur de CLOISON est open-core : le moteur, la passerelle, le journal et le vérificateur sont publiés sous <span class="code">github.com/coucagog/cloison-*</span>. Vous les décomposez, vous les compilez, vous les comparez. La vérification n'est pas une promesse — c'est une procédure.</p>
+<h1 data-od-id="doc-title">Manuel N0</h1>
+        <p class="lede" data-od-id="doc-lede">Le daemon N0&nbsp;: le moteur de pseudonymisation <strong>sur votre poste</strong>. L'opérateur ne lit rien — le clair ne quitte jamais votre machine, le fournisseur ne reçoit que des jetons ⟦…⟧, et la réponse vous revient restaurée. Ce manuel documente la configuration, les modes et les limites <strong>honnêtes</strong> du daemon.</p>
 
-      <h2 id="composition" data-od-id="section-composition"><span class="h2-num">01</span><span class="h2-title">Composition</span></h2>
-      <p>La suite est découpée en dépôts indépendants, chacun versionné et auditable seul. Le cœur est le <strong>moteur</strong> ; tout le reste s'articule autour de lui — la passerelle à la frontière réseau, et les briques de <em>confiance</em> qui rendent la protection contrôlable.</p>
-      <div class="table-wrap">
-        <table class="docs-table" data-od-id="composition-table">
+        <!-- 01 CE QUE N0 EST -->
+        <h2 id="sec-quest" data-od-id="sec-quest">01 · Ce que N0 est</h2>
+        <p>N0 est un <strong>daemon local</strong> (binaire <span class="code">cloison-proxy</span> en mode N0) qui expose un endpoint <strong>compatible OpenAI</strong> sur <span class="code">http://localhost:8787</span>. Votre interface IA (Open WebUI, LibreChat, opencode, agents…) s'y branche avec <strong>deux champs</strong>&nbsp;:</p>
+        <div class="code-block" data-od-id="code-branchement">
+          <div class="code-head">
+            <span class="code-lang">Configuration client</span>
+            <button class="copy-btn" type="button" data-copy-target="snip-branchement">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+              <span>Copier</span>
+            </button>
+          </div>
+          <pre><code id="snip-branchement">Base URL : http://localhost:8787/v1
+Clé      : mn_&lt;jeton_local&gt;.&lt;clé_amont&gt;</code></pre>
+        </div>
+        <p>Toute PII détectée est remplacée par une <strong>sentinelle</strong> <span class="code">⟦…⟧</span> <strong>avant</strong> d'atteindre le fournisseur LLM, puis <strong>restaurée</strong> dans la réponse. La table jeton ↔ valeur (le <strong>coffre</strong>) vit chez vous, chiffrée sur disque&nbsp;: le fournisseur et l'opérateur ne voient jamais le clair.</p>
+        <div class="callout callout-note" data-od-id="callout-auth">
+          <span class="cicon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg></span>
+          <p>L'authentification est <strong>100&nbsp;% locale</strong>&nbsp;: le jeton <span class="code">mn_</span> est comparé à temps constant, aucun appel au plan de contrôle n'est nécessaire pour masquer. Sans le jeton exact, le daemon répond <span class="code">401</span> (fail-closed) et rien n'appelle le fournisseur.</p>
+        </div>
+
+        <!-- 02 INSTALLATION -->
+        <h2 id="sec-install" data-od-id="sec-install">02 · Installation</h2>
+        <p>Le daemon est distribué en <strong>release GitHub</strong> (binaire par OS + NER léger embarqué + lib onnxruntime, checksums SHA-256 vérifiés). Aucune toolchain, aucun téléchargement de modèle à la demande.</p>
+        <div class="code-block" data-od-id="code-install">
+          <div class="code-head">
+            <span class="code-lang">Linux / macOS</span>
+            <button class="copy-btn" type="button" data-copy-target="snip-install">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+              <span>Copier</span>
+            </button>
+          </div>
+          <pre><code id="snip-install">bash &lt;(curl -fsSL https://raw.githubusercontent.com/coucagog/cloison-proxy/main/install-n0.sh) \
+  --version v0.3.3.2</code></pre>
+        </div>
+        <p><strong>Épingler la version</strong> est la règle (<span class="code">--version</span>)&nbsp;: le tag <span class="code">latest</span> a connu des incohérences de bundle NER sur Linux. Le script crée <span class="code">~/.cloison</span>, génère la clé locataire (affichée <strong>une seule fois</strong>) et affiche la configuration à placer dans votre profil. Le détail complet (Windows, options, mise à jour, rollback) est sur la page <a href="install-n0.html">Installer N0</a>.</p>
+
+        <!-- 03 CONFIGURATION -->
+        <h2 id="sec-config" data-od-id="sec-config">03 · Configuration</h2>
+        <p>Le mode N0 s'active en posant <span class="code">CLOISON_VAULT_PATH</span> — toute la configuration passe par des <strong>variables d'environnement</strong> (il n'y a <strong>pas de fichier de politique</strong> en N0)&nbsp;:</p>
+        <div class="code-block" data-od-id="code-config">
+          <div class="code-head">
+            <span class="code-lang">Shell</span>
+            <button class="copy-btn" type="button" data-copy-target="snip-config">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+              <span>Copier</span>
+            </button>
+          </div>
+          <pre><code id="snip-config">export CLOISON_LISTEN_ADDR=127.0.0.1:8787           # local uniquement
+export CLOISON_UPSTREAM_BASE_URL=https://api.deepseek.com/v1   # votre fournisseur
+export CLOISON_VAULT_PATH=~/.cloison/vault.redb     # coffre persistant (active N0)
+export CLOISON_VAULT_PASSPHRASE='votre-passphrase'  # clé du coffre, jamais persistée
+export CLOISON_EXPECTED_ACCESS_TOKEN=mon_jeton_local   # jeton mn_ (sans le préfixe)
+export CLOISON_TENANT_KEY_HEX=$(openssl rand -hex 32)   # clé locataire
+cloison-proxy</code></pre>
+        </div>
+        <table class="doc-table" data-od-id="table-env">
           <thead>
-            <tr><th>Dépôt</th><th>Rôle</th><th>Licence</th></tr>
+            <tr><th scope="col">Variable</th><th scope="col">Rôle</th><th scope="col">Défaut / note</th></tr>
           </thead>
           <tbody>
-            <tr><td class="m">cloison-moteur</td><td class="r">Moteur de pseudonymisation : remplace chaque champ identifiable par un jeton <span class="token">⟦…⟧</span>.</td><td class="l perm">Permissive</td></tr>
-            <tr><td class="m">cloison-gateway</td><td class="r">Passerelle à la frontière : réécrit la requête en amont, restaure la réponse.</td><td class="l agpl">AGPL-3.0</td></tr>
-            <tr><td class="m">cloison-journal</td><td class="r">Journal de transparence append-only, signé Ed25519.</td><td class="l perm">Permissive</td></tr>
-            <tr><td class="m">cloison-verify</td><td class="r">Vérificateur WASM : rejoue le journal, contrôle les signatures.</td><td class="l perm">Permissive</td></tr>
-            <tr><td class="m">cloison-audit</td><td class="r">Audit du k-anonymat des compteurs agrégés.</td><td class="l perm">Permissive</td></tr>
-            <tr><td class="m">cloison-controle</td><td class="r">Contrôle de cohérence du plan de contrôle (schémas, décomptes, bornes).</td><td class="l perm">Permissive</td></tr>
-            <tr><td class="m">cloison-cli</td><td class="r">Interface en ligne de commande : build, vérification, audit.</td><td class="l perm">Permissive</td></tr>
-            <tr><td class="m">cloison-wasm</td><td class="r">Cible portable du moteur, exécutable hors ligne, sans clé ni infra.</td><td class="l perm">Permissive</td></tr>
-            <tr><td class="m">cloison-ner</td><td class="r">Reconnaissance d'entités nommées (personnes, courriels, adresses, numéros).</td><td class="l perm">Permissive</td></tr>
-            <tr><td class="m">cloison-bench</td><td class="r">Harnais de benchmark : mesure la couverture et la fuite résiduelle.</td><td class="l perm">Permissive</td></tr>
+            <tr><td><span class="code">CLOISON_VAULT_PATH</span></td><td><strong>Active le mode N0</strong> — coffre redb chiffré AES-256-GCM</td><td>absent → mode edge (hébergé)</td></tr>
+            <tr><td><span class="code">CLOISON_VAULT_PASSPHRASE</span></td><td>Clé du coffre (HKDF)</td><td><strong>requise</strong>, jamais persistée en clair ; keychain OS possible (<span class="code">CLOISON_VAULT_KEYCHAIN_SERVICE</span>)</td></tr>
+            <tr><td><span class="code">CLOISON_EXPECTED_ACCESS_TOKEN</span></td><td>Jeton <span class="code">mn_</span> local</td><td>comparé à temps constant ; 401 fail-closed sinon</td></tr>
+            <tr><td><span class="code">CLOISON_SESSION_SALT_FILE</span></td><td>Sel de session persistant (0600)</td><td>défaut <span class="code">&lt;vault_path&gt;.salt</span> — les conversations survivent aux redémarrages</td></tr>
+            <tr><td><span class="code">CLOISON_NER_MODEL_ONNX</span> + <span class="code">CLOISON_NER_TOKENIZER</span></td><td>NER léger embarqué (PERSON/LOC in-core, jamais de sidecar Python)</td><td>posés ensemble → détection en texte libre ; absents → gazetteers + alias seuls</td></tr>
+            <tr><td><span class="code">CLOISON_NER_THRESHOLD</span></td><td>Seuil de score du NER</td><td>défaut <strong>0.70</strong> (meilleur F1 mesuré ; plus haut = moins de faux positifs, plus bas = plus de rappel)</td></tr>
+            <tr><td><span class="code">CLOISON_AUDIT_MODE</span></td><td>Mode <strong>observe-only</strong> (détecte et compte, ne masque rien)</td><td><span class="code">1</span>/<span class="code">true</span>/<span class="code">yes</span>/<span class="code">on</span> → observe-only&nbsp;; <span class="code">0</span>/<span class="code">false</span>/absent → <strong>masquage actif</strong> (défaut)</td></tr>
+            <tr><td><span class="code">CLOISON_REALISTIC_FAKE</span></td><td>Faux réaliste déterministe et <strong>irréversible</strong> (au lieu des sentinelles)</td><td>opt-in par tenant, 4 conditions mesurées — voir <a href="manuel.html#05-fake">manuel d'utilisation</a></td></tr>
+            <tr><td><span class="code">CLOISON_ALIAS_EXPANSION</span></td><td>Alias intra-session (formes dérivées des mentions canoniques)</td><td><strong>1 par défaut</strong> — jamais les pronoms</td></tr>
+            <tr><td><span class="code">CLOISON_QUASI_ID_GAUGE</span></td><td>Jauge quasi-id (densité âge+acte+date+lieu)</td><td><strong>0 par défaut</strong> (opt-in) — signal, jamais de résolution</td></tr>
           </tbody>
         </table>
-      </div>
-      <p>Chaque dépôt embarque ses propres tests ; le harnais de benchmark rejoue des flux réels pour chiffrer la couverture de la pseudonymisation et la fuite résiduelle. Vous n'êtes pas obligé de nous croire sur la couverture — vous pouvez la reproduire.</p>
-
-      <h2 id="licences" data-od-id="section-licences"><span class="h2-num">02</span><span class="h2-title">Licences</span></h2>
-      <p>Le choix de licence n'est pas anodin : il détermine ce que vous devez publier en retour. La <strong>passerelle</strong> est sous <strong>AGPL-3.0</strong>, la seule brique qui se tient à la frontière réseau. L'AGPL est un copyleft <em>réseau</em> : si vous la modifiez et la servez à des tiers, vous devez publier vos modifications. Concrètement, un fork hébergé reste ouvert — la protection ne peut pas être refermée en silence.</p>
-      <p>Les composants — moteur, <a href="journal.html">journal</a>, vérificateur, audit, CLI, outillage — sont sous une licence <strong>permissive</strong>. Ce sont des bibliothèques et des runtimes : leur réutilisation large est le but, sans imposer de copyleft sur votre propre code. C'est ce qui rend l'ensemble à la fois ouvert et intégrable.</p>
-      <div class="callout warn" data-od-id="callout-agpl">
-        <span class="c-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg></span>
-        <div>
-          <span class="c-label">Avertissement</span>
-          <p>L'AGPL de la passerelle ne se propage pas au code qui l'appelle : seule la passerelle <em>modifiée et servie</em> est concernée.</p>
+        <div class="callout callout-note" data-od-id="callout-failloud">
+          <span class="cicon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg></span>
+          <p><strong>Fail-loud au boot</strong>&nbsp;: passphrase absente, mauvaise passphrase ou coffre corrompu → le daemon <strong>refuse de démarrer</strong>. Jamais de recréation silencieuse du coffre, jamais de masquage dégradé sans le dire.</p>
         </div>
-      </div>
 
-      <h2 id="ouvert" data-od-id="section-ouvert"><span class="h2-num">03</span><span class="h2-title">Ce qui est open</span></h2>
-      <p>Libérez-vous de la confiance aveugle : ce que vous ne pouvez pas lire, vous ne pouvez pas le vérifier. Tout ce qui permet de contrôler la protection est publié.</p>
-      <ul class="clean">
-        <li>Le code source complet — moteur, passerelle, journal, vérificateur, CLI.</li>
-        <li>Le journal de transparence et ses signatures Ed25519, rejouables à l'identique.</li>
-        <li>Le binaire WASM de vérification et son empreinte publiée.</li>
-        <li>Les règles d'audit et les heuristiques de contrôle du plan de contrôle.</li>
-        <li>Les schémas et formats des compteurs agrégés signés.</li>
-      </ul>
-      <p>Résultat : vous savez exactement ce que l'<a href="produit.html">opérateur</a> voit — et ce qu'il ne verra jamais. La distinction entre les deux est lisible dans le code, pas affirmée dans une brochure.</p>
+        <!-- 04 MODES -->
+        <h2 id="sec-modes" data-od-id="sec-modes">04 · Les modes</h2>
+        <table class="doc-table" data-od-id="table-modes">
+          <thead>
+            <tr><th scope="col">Mode</th><th scope="col">Ce que reçoit le fournisseur</th><th scope="col">Quand l'utiliser</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Masquage actif</strong> (défaut)</td><td>des jetons ⟦…⟧ uniquement — le clair ne part jamais</td><td>toute utilisation réelle</td></tr>
+            <tr><td><strong>Observe-only</strong> (<span class="code">CLOISON_AUDIT_MODE=1</span>)</td><td>le texte <strong>en clair</strong> (rien n'est transformé) + reçus signés locaux</td><td>mesurer/auditer un flux réel, inventorier les faux positifs — <strong>jamais</strong> sur un flux à protéger</td></tr>
+            <tr><td><strong>Faux réaliste</strong> (<span class="code">CLOISON_REALISTIC_FAKE=1</span>)</td><td>des valeurs plausibles <strong>irréversibles</strong> (jamais restaurées)</td><td>opt-in par tenant, quand le modèle « dépouille » les sentinelles — après mesure, jamais par défaut</td></tr>
+          </tbody>
+        </table>
+        <p>Dans tous les modes, les <strong>faibles cardinalités</strong> sont généralisées, jamais tokenisées (la fréquence trahirait le jeton)&nbsp;: date → <span class="code">YYYY-MM</span>, IP → <span class="code">[IP]</span>, carte bancaire → <span class="code">•••••••••1234</span>, ville → <span class="code">[VILLE_SN]</span>.</p>
 
-      <h2 id="ferme" data-od-id="section-ferme"><span class="h2-num">04</span><span class="h2-title">Ce qui n'est pas open</span></h2>
-      <p>Deux briques restent opérées par CLOISON. Elles ne sont pas publiées, et c'est volontaire. Il s'agit de la <strong>plateforme managée N3</strong> (le proxy hébergé en edge sur <span class="code">api.wonkom.ai</span>) et du <strong>plan de contrôle</strong> (l'arithmétique d'agrégation et le cycle de vie des compteurs signés).</p>
-      <p>Pourquoi. Publier le code exposerait la gestion des clés, l'orchestration et l'état interne de l'opérateur — une surface d'attaque, pas une forme de transparence. Mais le périmètre reste borné : le plan de contrôle ne recueille que des <strong>compteurs k-anonymes signés</strong>, jamais de texte ni de clair. Cette borne-là est précisément ce que le code ouvert vous permet de vérifier.</p>
-      <div class="callout note" data-od-id="callout-cadre">
-        <span class="c-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6Z"/><path d="M9 12l2 2 4-4"/></svg></span>
-        <div>
-          <span class="c-label">Cadre de référence · conformité</span>
-          <p>Le traitement des données s'inscrit d'abord dans <strong>notre cadre de référence</strong> : la loi n°2008-12 du Sénégal, l'Acte additionnel CEDEAO A/SA.1/01/10 (applicable aussi dans l'espace UEMOA), la Convention de Malabo (2014) et le régime deux étages de la CDP — <span class="code">déclaration</span> ou <span class="code">autorisation préalable</span> — avec la distinction <span class="code">responsable de traitement ≠ sous-traitant</span>. Le RGPD n'y figure qu'à titre complémentaire, en <em>fast-follow</em> européen, et non comme cadre principal.</p>
+        <!-- 05 LIMITES -->
+        <h2 id="sec-limites" data-od-id="sec-limites">05 · Limites honnêtes</h2>
+        <div class="limits-panel" data-od-id="limites-panel-n0">
+          <div class="limits-head"><span class="mark" aria-hidden="true"></span>Limites honnêtes</div>
+          <div class="limit-item" data-od-id="limite-n0-postes">
+            <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg></span>
+            <span><strong>Poste compromis.</strong> N0 ne protège pas contre un malware ou un vol de la machine&nbsp;: le coffre <strong>et</strong> la clé y vivent. La sécurité de N0 est celle de votre poste.</span>
+          </div>
+          <div class="limit-item" data-od-id="limite-n0-ner">
+            <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg></span>
+            <span><strong>Texte libre sans NER léger.</strong> Sans <span class="code">CLOISON_NER_MODEL_ONNX</span>, les noms hors gazetteers <span class="code">nom_sn</span>/<span class="code">ville_sn</span> en texte libre restent un risque de clair. Le NER embarqué (PERSON/LOC, seuil 0.70) comble ce fossé — installez-le.</span>
+          </div>
+          <div class="limit-item" data-od-id="limite-n0-hallu">
+            <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg></span>
+            <span><strong>PII hallucinée.</strong> Le modèle peut inventer une PII sans jeton correspondant — non résoluble par le proxy. Les sentinelles <strong>forgées</strong> ne sont en revanche <strong>jamais</strong> restaurées (registre d'émission + MAC)&nbsp;: elles ressortent en marqueur neutre <span class="code">[REDACTED]</span>, jamais en clair.</span>
+          </div>
+          <div class="limit-item" data-od-id="limite-n0-embeddings">
+            <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg></span>
+            <span><strong><span class="code">/v1/embeddings</span> bloqué.</strong> Un embedding de PII reste dérivé de PII&nbsp;: la route est absente (404). Piste documentée, non livrée.</span>
+          </div>
+          <div class="limit-item" data-od-id="limite-n0-bornes">
+            <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg></span>
+            <span><strong>Restauration bornée à la requête.</strong> Seuls les jetons émis pour la requête en cours sont restaurés (registre + MAC)&nbsp;: un jeton d'une requête antérieure n'est jamais restauré. Après rotation du sel (<span class="code">.salt</span> supprimé), les anciens jetons deviennent <span class="code">[REDACTED]</span>.</span>
+          </div>
         </div>
-      </div>
 
-      <h2 id="auditer" data-od-id="section-auditer"><span class="h2-num">05</span><span class="h2-title">Comment auditer</span></h2>
-      <p>Aucune confiance requise : du fork au rapport, le chemin est reproductible. Épinglez un <strong>tag</strong>, jamais une branche — les tags sont immuables, c'est ce que vous devez comparer.</p>
-      <ol class="steps">
-        <li>
-          <h3>Fork</h3>
-          <p>Clonez les dépôts et épinglez un tag précis pour figer l'état audité.</p>
-          <div class="code-block">
-            <button class="code-copy" type="button" aria-label="Copier">Copier</button>
-            <pre><code>git clone https://github.com/coucagog/cloison-moteur
-git clone https://github.com/coucagog/cloison-gateway
-cd cloison-moteur &amp;&amp; git checkout v0.9.0</code></pre>
+        <!-- 06 VERIFIER -->
+        <h2 id="sec-verifier" data-od-id="sec-verifier">06 · Vérifier que ça marche</h2>
+        <div class="code-block" data-od-id="code-sonde">
+          <div class="code-head">
+            <span class="code-lang">Shell</span>
+            <button class="copy-btn" type="button" data-copy-target="snip-sonde">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+              <span>Copier</span>
+            </button>
           </div>
-        </li>
-        <li>
-          <h3>Build</h3>
-          <p>Compilez depuis la source, sans binaire précompilé. Le build doit être reproductible.</p>
-          <div class="code-block">
-            <button class="code-copy" type="button" aria-label="Copier">Copier</button>
-            <pre><code>cargo build --release --target wasm32-unknown-unknown
-<span class="cm"># → target/wasm32-unknown-unknown/release/verify.wasm</span></code></pre>
-          </div>
-        </li>
-        <li>
-          <h3>Comparer</h3>
-          <p>Comparez l'artefact construit à l'empreinte publiée dans le journal. Toute divergence — même infime — est un signal.</p>
-          <div class="code-block">
-            <button class="code-copy" type="button" aria-label="Copier">Copier</button>
-            <pre><code>cloison-verify --journal journal.jsonl --key ed25519.pub</code></pre>
-          </div>
-        </li>
-        <li>
-          <h3>Faire auditer</h3>
-          <p>Confiez le code et le journal à un cabinet indépendant, puis publiez le rapport. La vérification devient publique.</p>
-        </li>
-      </ol>
-      <p>Sortie attendue du vérificateur — aucun chiffre n'est inventé ici, les bornes sont celles que vous fixez :</p>
-      <div class="code-block">
-        <button class="code-copy" type="button" aria-label="Copier">Copier</button>
-        <pre><code><span class="ok">✓</span> journal replayed in order
-<span class="ok">✓</span> signatures valid (Ed25519)
-<span class="ok">✓</span> per-aggregate k-anonymity: <span class="pm">≥ k</span>
-<span class="ok">✓</span> no clear-text fields in signed payloads
-<span class="pm">result: VERIFIED</span></code></pre>
-      </div>
+          <pre><code id="snip-sonde">curl -s http://localhost:8787/v1/chat/completions \
+  -H "Authorization: Bearer mn_&lt;jeton&gt;.&lt;clé_amont&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"x","messages":[{"role":"user","content":
+       "Contact: Aminata Diop, user@example.com, tel +221 77 123 45 67"}]}'
+# → la réponse contient « Aminata Diop, user@example.com, +221 77 123 45 67 »
+#   (restaurés) et aucune sentinelle ⟦…⟧ résiduelle.</code></pre>
+        </div>
+        <p>Le coffre ne contient <strong>aucune valeur en clair</strong> (chiffré AES-256-GCM)&nbsp;: <span class="code">grep Aminata ~/.cloison/vault.redb</span> ne trouve rien.</p>
 
-      <nav class="doc-pager" aria-label="Navigation des pages">
-          <a class="prev" href="journal.html"><small>← Précédent</small><span>Journal de transparence</span></a>
-          <a class="next" href="faq.html"><small>Suivant →</small><span>FAQ & limites honnêtes</span></a>
-        </nav>
-    </main>
+        <!-- 07 VAULT -->
+        <h2 id="sec-vault" data-od-id="sec-vault">07 · Coffre&nbsp;: sauvegarde &amp; restauration</h2>
+        <p>Trois éléments font la restaur-abilité de vos conversations&nbsp;: le coffre <span class="code">vault.redb</span>, le sel <span class="code">.salt</span> (0600, à côté du coffre) et la <strong>passphrase</strong> (dans votre tête ou le keychain OS). <strong>Sauvegardez les trois ensemble</strong>&nbsp;— l'un sans les autres ne restaure rien.</p>
+        <div class="code-block" data-od-id="code-vault">
+          <div class="code-head">
+            <span class="code-lang">Shell</span>
+            <button class="copy-btn" type="button" data-copy-target="snip-vault">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+              <span>Copier</span>
+            </button>
+          </div>
+          <pre><code id="snip-vault"># Sauvegarde (daemon arrêté) — jamais dans un cloud sans chiffrement :
+cp ~/.cloison/vault.redb   ~/backups/  # coffre chiffré
+cp ~/.cloison/.salt        ~/backups/  # sel de session (0600)
+# la passphrase : keychain OS ou gestionnaire de mots de passe
+
+# Restauration (nouvelle machine / après incident) :
+# 1. reposer vault.redb + .salt dans ~/.cloison
+# 2. redémarrer avec la même passphrase (CLOISON_VAULT_PASSPHRASE)
+# 3. rejouer la sonde du §06 — les anciens jetons redeviennent restaur-ables.</code></pre>
+        </div>
+        <p><strong>Exercice recommandé</strong> (une fois)&nbsp;: sauvegardez, supprimez le coffre, restaurez, re-sondez. Si la restauration échoue à froid, mieux vaut le découvrir en exercice qu'en incident.</p>
+      </main>
 
     <!-- ============ TOC ============ -->
-    <aside class="toc" data-od-id="toc">
+        <aside class="toc" data-od-id="toc">
       <div class="toc-label">Sur cette page</div>
       <nav class="toc-list" aria-label="Table des matières">
-        <a href="#section-composition">Composition</a>
-        <a href="#section-licences">Licences</a>
-        <a href="#section-ouvert">Ce qui est open</a>
-        <a href="#section-ferme">Ce qui n'est pas open</a>
-        <a href="#section-auditer">Comment auditer</a>
+        <a href="#sec-quest">Ce que N0 est</a>
+        <a href="#sec-install">Installation</a>
+        <a href="#sec-config">Configuration</a>
+        <a href="#sec-modes">Les modes</a>
+        <a href="#sec-limites">Limites honnêtes</a>
+        <a href="#sec-verifier">Vérifier que ça marche</a>
+        <a href="#sec-vault">Coffre : sauvegarde &amp; restauration</a>
       </nav>
     </aside>
+</aside>
   </div>
 
   <!-- ============ FOOTER ============ -->

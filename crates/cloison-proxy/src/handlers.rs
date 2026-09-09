@@ -594,6 +594,11 @@ fn audit_count_request(
                 audit.count_text(&call.function.arguments, policy, counters);
             }
         }
+        // F1 v0.3.3.2 : le raisonnement rejoué est compté comme les autres
+        // champs texte (observe-only ne transforme rien, mais il compte tout).
+        if let Some(reasoning) = &msg.reasoning_content {
+            audit.count_text(reasoning, policy, counters);
+        }
     }
 }
 

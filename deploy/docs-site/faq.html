@@ -847,6 +847,7 @@
           <div class="nav-group">
             <div class="nav-group-label">Déployer</div>
             <a class="nav-link" href="install-n0.html">Installer N0</a>
+            <a class="nav-link" href="manuel-n0.html">Manuel N0</a>
             <a class="nav-link" href="manuel.html">Manuel d'utilisation</a>
             <a class="nav-link" href="api.html">API</a>
           </div>
@@ -978,6 +979,22 @@ reply = client.chat.completions.create(
         <p>Ils ne sont pas masqués&nbsp;: ils traversent le proxy tels quels. CLOISON protège ce que vous lui déclarez, pas ce que vous oubliez. D'où l'importance de l'<strong>audit initial</strong>&nbsp;: déclarer explicitement chaque champ qui identifie une personne.</p>
         <p>Le reste du pipeline n'a aucun moyen de vous protéger d'une omission de déclaration — le proxy n'invente pas une politique que vous ne lui avez pas donnée.</p>
 
+        <h3 id="q-audit-mode" data-od-id="q-audit-mode"><span class="qnum">Q·9</span>Comment activer le mode «&nbsp;observe-only&nbsp;» (audit)&nbsp;?</h3>
+        <p>Le mode <strong>observe-only</strong> détecte et <strong>compte</strong> les PII <strong>sans rien transformer</strong>&nbsp;: le texte part <strong>en clair</strong> vers le fournisseur, et chaque requête produit un reçu signé Ed25519 (rapport k-anonyme sur <span class="code">GET /v1/audit/report</span>). Il sert à mesurer et auditer un flux réel — jamais à protéger les données.</p>
+        <div class="code-block" data-od-id="code-audit-mode">
+          <div class="code-head">
+            <span class="code-lang">Shell</span>
+            <button class="copy-btn" type="button" data-copy-target="snip-audit-mode">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+              <span>Copier</span>
+            </button>
+          </div>
+          <pre><code id="snip-audit-mode">export CLOISON_AUDIT_MODE=1       # observe-only : détecte et compte, ne masque RIEN
+# équivalents acceptés : 1 / true / yes / on  (insensibles à la casse)
+# défaut : 0 / false / no / off / variable absente = MASQUAGE ACTIF</code></pre>
+        </div>
+        <p><strong>Valeurs reconnues</strong>&nbsp;: <span class="code">1</span>, <span class="code">true</span>, <span class="code">yes</span> et <span class="code">on</span> activent tous l'observe-only&nbsp;; <span class="code">0</span>, <span class="code">false</span>, <span class="code">no</span>, <span class="code">off</span> — ou la variable absente — laissent le <strong>masquage actif</strong> (le mode produit). Ne laissez jamais l'observe-only actif sur un flux de production sans l'avoir voulu&nbsp;: dans ce mode, rien n'est pseudonymisé.</p>
+
         <!-- 02 LIMITES -->
         <h2 id="limites" data-od-id="sec-limites">02 · Limites honnêtes</h2>
         <p>Ce que CLOISON n'est pas. Trois choses que nous préférons dire clairement, plutôt que de vous laisser les découvrir au pire moment.</p>
@@ -1017,6 +1034,7 @@ reply = client.chat.completions.create(
         <a class="toc-h3" href="#q-rapport">Q·6D'où vient le rapport k-anonyme ?</a>
         <a class="toc-h3" href="#q-reversibles">Q·7Les jetons sont-ils réversibles ?</a>
         <a class="toc-h3" href="#q-champs">Q·8Que se passe-t-il pour les champs que je ne déclare pas ?</a>
+        <a class="toc-h3" href="#q-audit-mode">Q·9Comment activer le mode « observe-only » (audit) ?</a>
         <a href="#sec-limites">Limites honnêtes</a>
       </nav>
     </aside>
