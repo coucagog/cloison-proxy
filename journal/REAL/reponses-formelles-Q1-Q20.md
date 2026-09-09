@@ -86,7 +86,7 @@ Mécanismes existants :
 Règles intégrées au `Generalizer` par défaut (`generalize.rs`) :
 - **Date** → `YYYY-MM` (ISO `2024-03-15` et `15/03/2024` → `2024-03`) ;
 - **IP** → `[IP]` (plage, préfixe) ;
-- **Ville (`ville_sn`)** → **`[VILLE_SN]`**, portée par la **politique N0** (jamais de jeton : faible cardinalité, la fréquence trahirait — test `test_n0_policy_ville_sn_generalized_not_tokenized`). **Irrréversible par conception** ;
+- **Ville (`ville_sn`)** → **`[VILLE_SN]`**, portée par la **politique N0** (jamais de jeton : faible cardinalité, la fréquence trahirait — test `test_n0_policy_ville_sn_generalized_not_tokenized`). **Irréversible par conception** ;
 - **Suppression de repli** → `[REDACTED]` ;
 - Carte bancaire : règle intégrée (catégorie) — le libellé exact sera consigné dans le manuel N0 (action doc).
 
