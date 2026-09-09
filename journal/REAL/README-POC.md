@@ -153,3 +153,14 @@ local, contenu synthétique code + PII factice (aucune donnée réelle).
 - **Incident documenté** : multi-tours agents × DeepSeek « thinking » → 400 (opencode ne
   rejoue pas `reasoning_content`) — rapport-final §9. CLOISON non en cause (transmission
   prouvée). À suivre : opencode/Codex/CLOISON (roadmap reasoning_content, `/v1/responses`).
+
+## Rebuild v0.3.3.2 — test de bout en bout (09/09 soir, suite)
+- Désinstallé puis **réinstallé de zéro en v0.3.3.2** (`~/.cloison`, secrets/vault neufs,
+  service systemd `cloison-n0` réactivé).
+- **v0.3.3.2 = le fix `reasoning_content` attendu** : tokenisable à l'aller, restauré au
+  retour (non-stream + SSE). Vérifié : `reasoning_content` restauré, **0 jeton complet
+  résiduel**, seuil NER défaut 0.70, FAQ corrigée, manuel N0 public.
+- **Incident opencode résolu côté API** : plus de `400 reasoning_content must be passed
+  back` en multi-tours avec outils (Todos/bash) ✅. Reste un **quirk opencode headless**
+  (`run` non-TTY : boucle de répétition / non-terminaison) → à valider en session
+  interactive TTY.

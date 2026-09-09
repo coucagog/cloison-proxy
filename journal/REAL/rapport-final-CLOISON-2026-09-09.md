@@ -3,9 +3,10 @@
 **Émetteur :** équipe d'évaluation (poste Omarchy 4.0.2 / Arch Linux, session sandbox DSH)
 **Destinataire :** équipes CLOISON (docs.wonkom.ai / github.com/coucagog)
 **Date :** 9 septembre 2026
-**Statut :** PoC terminé — **réponses formelles Q1–Q20 reçues et intégrées** (§8) ; câblage
-réel exécuté et documenté, incident `reasoning_content` (opencode × DeepSeek) consigné (§9).
-Dossier clos côté évaluation — en attente d'arbitrage utilisateur et de la session conjointe.
+**Statut :** Rapport prêt à l'envoi — réponses formelles Q1–Q20 reçues et intégrées (§8) ;
+câblage réel exécuté puis **reconstruit de zéro en v0.3.3.2** avec test de bout en bout
+(§10) ; **remarques et suggestions d'amélioration consolidées en §11** à l'attention des
+équipes CLOISON. Dossier clos côté évaluation — session conjointe à caler.
 
 ---
 
@@ -214,3 +215,96 @@ CLOISON — votre Q2). opencode v1.18.30 installé + provider `cloison-deepseek`
 - Session conjointe : inclure le scénario « agent multi-tours sur modèle thinking » ;
 - Surveillance : versions opencode (fix replay reasoning), Codex (retour possible d'un mode
   chat-compat), CLOISON (`/v1/responses`, gestion reasoning_content).
+
+---
+
+## 10. Mise à jour finale (09/09, tard) — rebuild v0.3.3.2 & test de bout en bout
+
+Suite à votre release **v0.3.3.2** (correctif `reasoning_content` « modèles thinking »), nous
+avons **désinstallé puis réinstallé de zéro** et rejoué le parcours complet.
+
+### 10.1 Ce que nous avons validé sur v0.3.3.2
+| Test | Résultat |
+|---|---|
+| Réinstallation propre (`install-n0.sh --version v0.3.3.2`, secrets/vault neufs, service systemd) | ✅ |
+| `/v1/models` via le proxy → DeepSeek | ✅ |
+| Roundtrip PII — `content` | ✅ restauré, zéro sentinelle |
+| **`reasoning_content` restauré** (non-stream + SSE) | ✅ **0 jeton complet résiduel** (seuls des `⟦…⟧` tronqués écrits par le modèle lui-même, non des fuites) |
+| opencode multi-tours **avec outils** (Todos/bash) | ✅ **plus aucun `400 reasoning_content must be passed back`** |
+| Seuil NER défaut 0,70 aligné (code/install/docs) | ✅ conforme à notre passe faux positifs |
+| FAQ `AUDIT_MODE` + manuel N0 public | ✅ publiés |
+
+### 10.2 Constats résiduels
+1. **opencode headless** (`run`, non-TTY) : boucle de répétition / non-terminaison après
+   réponse — pas observé de 400 ; à confirmer en session TTY (suspecté côté opencode/SDK,
+   pas CLOISON). Nous le testons en interactif.
+2. **Codex** (v0.153.4) ne peut plus pointer CLOISON : OpenAI a retiré `wire_api="chat"`
+   (Providers → `/v1/responses` uniquement). Nous avons basculé sur **opencode**
+   (OpenAI-compatible chat/completions) — le chemin direct fonctionne.
+
+## 11. Remarques & suggestions d'amélioration (à l'attention des équipes CLOISON)
+
+> Notes consolidées de toute la session d'évaluation — classées par priorité perçue.
+
+### 11.1 Points validés (à préserver)
+- **V1–V7** du PoC initial, restauration stream/outils, coréférence intra-session : excellents.
+- **v0.3.3.2** règle le vrai problème bloquant `reasoning_content` — bravo pour la réactivité
+  (release dans la journée).
+- **Honnêteté des niveaux** et des limites (N0/poste compromis, N3 = clair visible) :
+  appréciée et intégrée à notre analyse de risque.
+
+### 11.2 Suggestions produit/technique (priorité haute)
+- **S1 — `/v1/responses` (Codex) à passer en priorité haute.** OpenAI a supprimé
+  `wire_api="chat"` ; tous les utilisateurs Codex sont aujourd'hui **bloqués** sans
+  `/v1/responses`. Notre bascule opencode est un contournement, pas une solution pour
+  l'écosystème Codex.
+- **S2 — Fenêtres d'inférence parallèles** (déjà roadmap #1) : confirmer la priorité —
+  nos mesures restent à ~2 s/1 000 tokens ; à 100–200k tokens c'est **le** critère
+  d'adoption pour des agents.
+- **S3 — Audit exploitable en observe-only.** Aujourd'hui le rapport masque les compteurs
+  `< k` et n'expose pas `masked_by_type` : impossible de faire un inventaire précis des faux
+  positifs (notre passe initiale a dû passer par des sondes). Suggérer : un **mode local de
+  comptage brut** (non publié) ou un endpoint debug, pour l'audit initial uniquement.
+- **S4 — Défaut d'écoute `0.0.0.0:8787`.** Pour N0, forcer/documenter `127.0.0.1` dès la
+  config par défaut ou l'installeur (nous l'avons posé manuellement) — risque réseau réel
+  sinon.
+
+### 11.3 Suggestions d'intégration agents
+- **S5 — Guide « agents × reasoning ».** Documenter les comportements observés (SDK qui ne
+  rejouent pas `reasoning_content`, ex. opencode) et les modèles « thinking » (DeepSeek v4,
+  GLM) : recommandations par agent, modèle de réponse à rejouer, et interaction avec
+  `CLOISON_REALISTIC_FAKE`.
+- **S6 — `CLOISON_MAX_BODY_BYTES`.** Défaut 1 MiB trop bas pour des agents multi-fichiers ;
+  suggérer un défaut plus haut (≥ 8 MiB) ou une détection/désignation explicite dans le
+  manuel (fait — garder la valeur par défaut en cohérence).
+- **S7 — Lexique/whitelist externe** (roadmap #4) : confirmer l'importance — notre passe sur
+  du code réel a montré des faux positifs structurels (ex. « Creuse » vs toponyme) que seul
+  un lexique projet résoudra durablement ; le seuil 0,70 aide mais ne suffit pas.
+
+### 11.4 Suggestions documentation & QA
+- **S8 — Référence env complète et stable.** Le manuel N0 est un progrès ; suggérer en plus
+  une **sortie machine** (`cloison-proxy --help-env` ou `print-config`) pour éviter la
+  dérive docs/code (nous avons dû extraire les variables du binaire).
+- **S9 — Encodages booléens.** `CLOISON_AUDIT_MODE` accepte `1/true/yes/on` : documenter
+  explicitement les deux encodages (fait dans la FAQ corrigée) — l'ambiguïté initiale a
+  coûté un cycle de tests.
+- **S10 — Comptabilité des compteurs d'audit.** Clarifier dans le manuel la sémantique
+  `total_requests`, `masked_by_type` (non exposé), `redacted` (projection k-anonyme) et la
+  condition `publishable` — essentiel pour produire des preuves CDP.
+- **S11 — CI/Reproductibilité des builds.** Les builds manuels (runners GitHub Actions en
+  panne) fonctionnent (checksums OK) ; suggérer de restaurer des builds reproductibles +
+  signatures (cosign/attestations) pour la chaîne de confiance.
+- **S12 — `install-n0.sh`** : afficher la version courante installée vs `latest` et
+  recommander l'épinglage (nous l'avons appris à nos dépens avec `latest`).
+
+### 11.5 Suggestion de service
+- **S13 — Session conjointe « agent réel »** : inclure le scénario multi-tours sur modèle
+  « thinking » (DeepSeek v4) avec streaming + outils — c'est le test qui clos le cycle
+  (Q4 + quirk opencode headless à trancher).
+- **S14 — Registre de clés amont / rotation chaude** (Q3, roadmap #7) : utile dès que le
+  proxy est partagé (N1) — confirmer la priorité.
+
+### 11.6 Rappel des demandes restées ouvertes
+- Réponses formelles Q1–Q20 reçues ✅ ; restent : **feuille de route datée** (S1, S2),
+  **gazetteers publiables** (Q17 — engagement confirmé), **éléments juridiques** (Q19 —
+  arbitrage pilote), **manuel N0** (fait), **session conjointe** (S13).
