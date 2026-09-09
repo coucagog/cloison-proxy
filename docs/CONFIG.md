@@ -12,8 +12,8 @@
 
 | Variable | Rôle | Secret | Défaut | Description |
 |---|---|---|---|---|
-| `CLOISON_LISTEN_ADDR` | edge | non | `0.0.0.0:8787` | adresse d'écoute complète |
-| `CLOISON_PROXY_PORT` | edge | non | — | port seul (alternative à `CLOISON_LISTEN_ADDR`) |
+| `CLOISON_LISTEN_ADDR` | edge | non | `0.0.0.0:8787` (edge) / **`127.0.0.1:8787` (N0)** | adresse d'écoute complète — en mode N0 (`CLOISON_VAULT_PATH` posé) le défaut est **local uniquement** (S4, rapport client 09/09) |
+| `CLOISON_PROXY_PORT` | edge | non | — | port seul (alternative à `CLOISON_LISTEN_ADDR` ; hôte par défaut identique : local en N0) |
 | `CLOISON_UPSTREAM_BASE_URL` | edge | non | **requis** (hors mock) | URL de base du fournisseur LLM |
 | `CLOISON_UPSTREAM_CHAT_PATH` | edge | non | `/v1/chat/completions` | chemin `chat/completions` |
 | `CLOISON_UPSTREAM_COMPLETIONS_PATH` | edge | non | `/v1/completions` | chemin legacy `completions` |

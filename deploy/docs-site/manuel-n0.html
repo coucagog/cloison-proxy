@@ -929,6 +929,7 @@ cloison-proxy</code></pre>
           </thead>
           <tbody>
             <tr><td><span class="code">CLOISON_VAULT_PATH</span></td><td><strong>Active le mode N0</strong> — coffre redb chiffré AES-256-GCM</td><td>absent → mode edge (hébergé)</td></tr>
+            <tr><td><span class="code">CLOISON_LISTEN_ADDR</span></td><td>Adresse d'écoute du daemon</td><td>défaut <strong>127.0.0.1:8787</strong> en N0 (local uniquement) ; <span class="code">0.0.0.0:8787</span> en edge conteneurisé — poser <span class="code">0.0.0.0</span> explicite si vous exposez volontairement le daemon</td></tr>
             <tr><td><span class="code">CLOISON_VAULT_PASSPHRASE</span></td><td>Clé du coffre (HKDF)</td><td><strong>requise</strong>, jamais persistée en clair ; keychain OS possible (<span class="code">CLOISON_VAULT_KEYCHAIN_SERVICE</span>)</td></tr>
             <tr><td><span class="code">CLOISON_EXPECTED_ACCESS_TOKEN</span></td><td>Jeton <span class="code">mn_</span> local</td><td>comparé à temps constant ; 401 fail-closed sinon</td></tr>
             <tr><td><span class="code">CLOISON_SESSION_SALT_FILE</span></td><td>Sel de session persistant (0600)</td><td>défaut <span class="code">&lt;vault_path&gt;.salt</span> — les conversations survivent aux redémarrages</td></tr>
