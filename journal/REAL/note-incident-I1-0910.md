@@ -5,6 +5,9 @@
 > Objet : synthèse factuelle de l'incident I1, correction engagée, plan de re-test.
 > Rédigé le 10/09/2026, à partir de `consolidation-omarchy-2026-09-09.md` §2-I1
 > et du code v0.3.3.1 vérifié dans le dépôt.
+> **Mise à jour avant envoi : la correction est PUBLIÉE (release v0.3.3.2,
+> 09/09 soir UTC) et re-validée en réel (re-sonde edge verte, 0 sentinelle
+> brute, 0 échec NER).**
 
 ---
 
@@ -63,7 +66,14 @@
 
 ## 5. Plan de re-test conjoint (après acceptation v0.3.3.2)
 
+**La release v0.3.3.2 est publiée** (9 assets, checksums vérifiés) et
+re-validée en réel sur notre tenant (re-sonde verte : restaurations exactes,
+0 valeur claire côté fournisseur, 0 échec NER, 0 sentinelle brute dans les
+logs). Pour votre poste : `install-n0.sh --version v0.3.3.2` (jamais
+`latest`).
+
 Scénario proposé : opencode multi-tours sur DeepSeek « thinking » à travers
-N0 v0.3.3.2 — critères : tours N≥2 = 200, zéro sentinelle brute en sortie
-(raisonnement inclus), restaurations exactes, reprise des critères P5/P6
-(streaming, observe-only). Date : à votre convenance après la release.
+N0 v0.3.3.2 — critères : tours N≥2 = 200 (avec un client qui rejoue
+`reasoning_content`), zéro sentinelle brute en sortie (raisonnement inclus),
+restaurations exactes, reprise des critères P5/P6 (streaming, observe-only).
+Date : à votre convenance après la release.
