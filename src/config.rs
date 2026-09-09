@@ -273,7 +273,8 @@ pub struct LightNerConfig {
     /// `libonnxruntime.so` à côté du binaire puis dans le PATH.
     pub onnx_lib: Option<PathBuf>,
     /// Seuil de score minimal pour retenir un span (`CLOISON_NER_THRESHOLD`,
-    /// défaut 0.50 — calibration ARBITRAGE-04, balayage de seuils).
+    /// défaut 0.70 — décision du 09/09/2026, consolidation PoC Omarchy §3-F2 :
+    /// 0.70 = meilleur F1 PERSON/LOC mesuré sur du code, zéro faux positif LO).
     pub threshold: f64,
 }
 
@@ -283,7 +284,7 @@ impl Default for LightNerConfig {
             model_path: PathBuf::new(),
             tokenizer_path: PathBuf::new(),
             onnx_lib: None,
-            threshold: 0.50,
+            threshold: 0.70,
         }
     }
 }
@@ -614,7 +615,7 @@ pub fn load() -> Result<Config, ProxyError> {
                 model_path: PathBuf::from(model),
                 tokenizer_path: PathBuf::from(tokenizer),
                 onnx_lib,
-                threshold: env_f64("CLOISON_NER_THRESHOLD", 0.50)?.clamp(0.0, 1.0),
+                threshold: env_f64("CLOISON_NER_THRESHOLD", 0.70)?.clamp(0.0, 1.0),
             })
         }
     };

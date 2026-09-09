@@ -58,6 +58,11 @@ pub struct ChatMessage {
     pub role: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content: Option<Content>,
+    /// Raisonnement « thinking » (DeepSeek v4, GLM…) : champ connu et
+    /// tokenisable depuis v0.3.3.2 — le modèle peut re-mentionner une PII
+    /// masquée dans son raisonnement, qui est rejoué tel quel au tour suivant.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_content: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<ToolCall>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -163,6 +168,10 @@ pub struct ResponseMessage {
     pub role: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content: Option<Content>,
+    /// Raisonnement « thinking » restauré comme `content` (v0.3.3.2) — une
+    /// sentinelle re-mentionnée par le modèle y est résolue, fail-loud.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_content: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<ResponseToolCall>>,
     #[serde(flatten)]

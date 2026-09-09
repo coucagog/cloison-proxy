@@ -125,7 +125,8 @@ impl RequestEngine {
     }
 }
 
-/// Tokenise `messages[].content` (Text + Parts.text) et
+/// Tokenise `messages[].content` (Text + Parts.text),
+/// `messages[].reasoning_content` (modèles « thinking », v0.3.3.2) et
 /// `tool_calls[].function.arguments` — aller.
 ///
 /// B.1 : quand un client detect est configuré, chaque champ est d'abord
@@ -185,6 +186,23 @@ pub async fn tokenize_chat_request(
                     }
                 }
             }
+        }
+        // Reasoning « thinking » : tokenisable comme `text` (F1 v0.3.3.2) —
+        // le raisonnement est rejoué au tour suivant et peut re-mentionner
+        // une PII masquée ; il ne doit jamais partir en clair.
+        if let Some(reasoning) = &mut msg.reasoning_content {
+            let (out, f) = tokenize_with_detect(
+                engine,
+                reasoning,
+                policy,
+                detect,
+                light_ner,
+                session.as_deref_mut(),
+                options,
+            )
+            .await?;
+            *reasoning = out;
+            flags.quasi_id_flagged |= f;
         }
         if let Some(calls) = &mut msg.tool_calls {
             for call in calls {
@@ -304,7 +322,8 @@ async fn tokenize_with_detect(
     }
 }
 
-/// Restaure `choices[].message.content` + `choices[].message.tool_calls[].function.arguments`
+/// Restaure `choices[].message.content`, `choices[].message.reasoning_content`
+/// (v0.3.3.2) + `choices[].message.tool_calls[].function.arguments`
 /// dans une réponse typée. Fail-loud : champ → marqueur neutre si un jeton est
 /// non résolu (bloqué ou incomplet), compteur incrémenté.
 pub fn restore_chat_response(
@@ -327,6 +346,12 @@ pub fn restore_chat_response(
                     }
                 }
             }
+        }
+        // Reasoning « thinking » : restauré comme `content` (F1 v0.3.3.2) —
+        // sans quoi une sentinelle re-mentionnée par le modèle ressortirait
+        // brute côté client (incident I1 Omarchy).
+        if let Some(reasoning) = &mut choice.message.reasoning_content {
+            apply_restore(reasoning, engine, neutral_marker, &mut agg)?;
         }
         if let Some(calls) = &mut choice.message.tool_calls {
             for call in calls {
