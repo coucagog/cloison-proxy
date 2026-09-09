@@ -1,7 +1,9 @@
 //! Configuration du proxy, lue depuis l'environnement (`CLOISON_*`).
 //!
 //! Variables :
-//! - `CLOISON_LISTEN_ADDR` (défaut `0.0.0.0:8787`) ou `CLOISON_PROXY_PORT` (port seul) ;
+//! - `CLOISON_LISTEN_ADDR` (défaut `0.0.0.0:8787` en edge, **`127.0.0.1:8787`
+//!   en mode N0** — S4, le daemon desktop reste local par défaut) ou
+//!   `CLOISON_PROXY_PORT` (port seul) ;
 //! - `CLOISON_UPSTREAM_BASE_URL` (requis hors mock) ;
 //! - `CLOISON_UPSTREAM_CHAT_PATH` / `CLOISON_UPSTREAM_COMPLETIONS_PATH` /
 //!   `CLOISON_UPSTREAM_MODELS_PATH` (défauts `/v1/chat/completions`, `/v1/completions`, `/v1/models`) ;
@@ -42,8 +44,25 @@ use zeroize::Zeroizing;
 
 use crate::errors::{ErrorKind, ProxyError};
 
-/// Adresse d'écoute par défaut.
+/// Adresse d'écoute par défaut (mode edge, conteneurisé).
 pub const DEFAULT_LISTEN_ADDR: &str = "0.0.0.0:8787";
+/// Hôte d'écoute par défaut en mode N0 (daemon desktop : **local uniquement**,
+/// S4 — rapport client 09/09 §11.2).
+pub const DEFAULT_LISTEN_HOST_N0: &str = "127.0.0.1";
+/// Hôte d'écoute par défaut en mode edge (joignable depuis le réseau du compose).
+pub const DEFAULT_LISTEN_HOST_EDGE: &str = "0.0.0.0";
+/// Port d'écoute par défaut.
+pub const DEFAULT_LISTEN_PORT: &str = "8787";
+
+/// Hôte d'écoute par défaut selon le mode : local en N0 (S4), toutes
+/// interfaces en edge. `CLOISON_LISTEN_ADDR` explicite prime toujours.
+pub fn default_listen_host(n0_mode: bool) -> &'static str {
+    if n0_mode {
+        DEFAULT_LISTEN_HOST_N0
+    } else {
+        DEFAULT_LISTEN_HOST_EDGE
+    }
+}
 /// Chemins OpenAI par défaut.
 pub const DEFAULT_CHAT_PATH: &str = "/v1/chat/completions";
 pub const DEFAULT_COMPLETIONS_PATH: &str = "/v1/completions";
@@ -399,19 +418,28 @@ impl Default for StreamConfig {
 pub fn load() -> Result<Config, ProxyError> {
     let mock_mode = env_bool("CLOISON_MOCK_MODE")?;
 
+    // S4 (rapport client 09/09 §11.2) : en mode N0 (CLOISON_VAULT_PATH posé),
+    // l'écoute par défaut est LOCALE — un daemon desktop ne doit jamais
+    // s'exposer sur le réseau sans le demander. Le mode edge (conteneurisé)
+    // conserve 0.0.0.0 ; CLOISON_LISTEN_ADDR explicite prime toujours.
+    let n0_mode = !env("CLOISON_VAULT_PATH", "").is_empty();
+    let default_host = default_listen_host(n0_mode);
+
     let listen_addr: SocketAddr = match std::env::var("CLOISON_LISTEN_ADDR") {
         Ok(v) => v.parse::<SocketAddr>().map_err(|e| {
             ProxyError::new(ErrorKind::Internal, "invalid CLOISON_LISTEN_ADDR")
                 .with_field("detail", e.to_string())
         })?,
         Err(_) => match std::env::var("CLOISON_PROXY_PORT") {
-            Ok(port) => format!("0.0.0.0:{port}")
+            Ok(port) => format!("{default_host}:{port}")
                 .parse::<SocketAddr>()
                 .map_err(|e| {
                     ProxyError::new(ErrorKind::Internal, "invalid CLOISON_PROXY_PORT")
                         .with_field("detail", e.to_string())
                 })?,
-            Err(_) => DEFAULT_LISTEN_ADDR.parse().expect("static default address"),
+            Err(_) => format!("{default_host}:{DEFAULT_LISTEN_PORT}")
+                .parse()
+                .expect("static default address"),
         },
     };
 
@@ -837,6 +865,14 @@ mod tests {
         assert_eq!(k, [0xab; 32]);
         assert!(decode_hex::<32>("ab").is_err());
         assert!(decode_hex::<16>("zz".repeat(16).as_str()).is_err());
+    }
+
+    #[test]
+    fn default_listen_host_is_local_in_n0_mode() {
+        // S4 : le daemon desktop (N0) écoute en local par défaut ; l'edge
+        // (conteneurisé) reste joignable depuis le réseau du compose.
+        assert_eq!(default_listen_host(true), "127.0.0.1");
+        assert_eq!(default_listen_host(false), "0.0.0.0");
     }
 
     #[test]
