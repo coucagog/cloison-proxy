@@ -23,6 +23,7 @@ pub mod engine;
 pub mod error;
 pub mod fake;
 pub mod generalize;
+pub mod geo;
 pub mod policy;
 pub mod quasi_id;
 pub mod registry;

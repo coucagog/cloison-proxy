@@ -113,6 +113,16 @@ pub struct Policy {
     pub generalization: HashMap<DetectorKind, GeneralizeRule>,
     /// Cardinality thresholds per PII type.
     pub cardinality_thresholds: HashMap<DetectorKind, usize>,
+    /// Whitelist géo (S16) : les noms de pays ne sont jamais masqués
+    /// (`geo::COUNTRY_WHITELIST`, spans NER `LOCATION` uniquement).
+    /// Défaut : active — désactivable par `CLOISON_GEO_WHITELIST=0` côté proxy.
+    #[serde(default = "default_true")]
+    pub geo_whitelist: bool,
+}
+
+/// Défaut serde des booléens de politique ajoutés après v1.
+pub fn default_true() -> bool {
+    true
 }
 
 impl Policy {
@@ -123,6 +133,7 @@ impl Policy {
             detection: DetectorPolicy::all_enabled(),
             generalization: HashMap::new(),
             cardinality_thresholds: HashMap::new(),
+            geo_whitelist: true,
         }
     }
 
@@ -160,6 +171,35 @@ impl Policy {
             },
         );
         p
+    }
+
+    /// Désactive un détecteur (S16 — classes désactivables via
+    /// `CLOISON_DISABLE_DETECTORS` côté proxy). Désactiver = ne pas masquer :
+    /// les valeurs de ce type partent en clair, en connaissance de cause.
+    pub fn disable(&mut self, kind: &DetectorKind) {
+        self.detection.enabled.remove(kind);
+    }
+
+    /// Nom d'environnement (`CLOISON_DISABLE_DETECTORS`, liste à virgules) →
+    /// type de détecteur. `None` = nom inconnu (le proxy échoue bruyamment
+    /// au boot — jamais de désactivation silencieuse sur une faute de frappe).
+    pub fn kind_from_env_name(name: &str) -> Option<DetectorKind> {
+        match name.trim().to_ascii_lowercase().as_str() {
+            "email" | "em" => Some(DetectorKind::Email),
+            "phone" | "phonesn" | "ph" => Some(DetectorKind::PhoneSn),
+            "cni" | "cnisn" | "cn" => Some(DetectorKind::CniSn),
+            "creditcard" | "cc" => Some(DetectorKind::CreditCard),
+            "ip" => Some(DetectorKind::Ip),
+            "date" | "dt" => Some(DetectorKind::Date),
+            "person" | "pe" => Some(DetectorKind::Person),
+            "location" | "loc" | "lo" => Some(DetectorKind::Location),
+            "passport" | "pp" => Some(DetectorKind::Passport),
+            "driverlicense" | "permis" | "dl" => Some(DetectorKind::DriverLicense),
+            "matricule" | "ma" => Some(DetectorKind::Matricule),
+            "nom_sn" => Some(DetectorKind::Gazetteer("nom_sn".to_string())),
+            "ville_sn" => Some(DetectorKind::Gazetteer("ville_sn".to_string())),
+            _ => None,
+        }
     }
 
     /// Check if a detector is enabled.
@@ -237,5 +277,36 @@ mod tests {
         assert!(!policy.should_generalize(&DetectorKind::Email));
         assert!(!policy.should_generalize(&DetectorKind::PhoneSn));
         assert!(!policy.should_generalize(&DetectorKind::CniSn));
+    }
+
+    #[test]
+    fn test_policy_geo_whitelist_default_on() {
+        assert!(Policy::default().geo_whitelist);
+        assert!(Policy::n0_for("n0").geo_whitelist);
+    }
+
+    #[test]
+    fn test_policy_disable_detector() {
+        let mut policy = Policy::default();
+        assert!(policy.is_enabled(&DetectorKind::Email));
+        policy.disable(&DetectorKind::Email);
+        assert!(!policy.is_enabled(&DetectorKind::Email));
+    }
+
+    #[test]
+    fn test_kind_from_env_name() {
+        assert_eq!(
+            Policy::kind_from_env_name("email"),
+            Some(DetectorKind::Email)
+        );
+        assert_eq!(
+            Policy::kind_from_env_name(" LOC "),
+            Some(DetectorKind::Location)
+        );
+        assert_eq!(
+            Policy::kind_from_env_name("nom_sn"),
+            Some(DetectorKind::Gazetteer("nom_sn".to_string()))
+        );
+        assert_eq!(Policy::kind_from_env_name("inconnu"), None);
     }
 }

@@ -7,8 +7,8 @@
 //! - `CLOISON_UPSTREAM_BASE_URL` (requis hors mock) ;
 //! - `CLOISON_UPSTREAM_CHAT_PATH` / `CLOISON_UPSTREAM_COMPLETIONS_PATH` /
 //!   `CLOISON_UPSTREAM_MODELS_PATH` (défauts `/v1/chat/completions`, `/v1/completions`, `/v1/models`) ;
-//! - `CLOISON_UPSTREAM_CONNECT_TIMEOUT_MS` (défaut 5000), `CLOISON_UPSTREAM_TIMEOUT_MS` (défaut 30000) ;
-//! - `CLOISON_MAX_BODY_BYTES` (défaut 1 MiB) ;
+//! - `CLOISON_UPSTREAM_CONNECT_TIMEOUT_MS` (défaut 5000), `CLOISON_UPSTREAM_TIMEOUT_MS` (défaut 300000 — S15) ;
+//! - `CLOISON_MAX_BODY_BYTES` (défaut 8 MiB — S6) ;
 //! - `CLOISON_STREAM_MAX_TOKEN_LEN` (défaut 64, plafonné à 256), `CLOISON_STREAM_NEUTRAL_MARKER`
 //!   (défaut `[REDACTED]`), `CLOISON_STREAM_KEEP_ALIVE_MS` (défaut 15000) ;
 //! - `CLOISON_EXPECTED_ACCESS_TOKEN` (optionnel, comparé à temps constant) ;
@@ -67,8 +67,9 @@ pub fn default_listen_host(n0_mode: bool) -> &'static str {
 pub const DEFAULT_CHAT_PATH: &str = "/v1/chat/completions";
 pub const DEFAULT_COMPLETIONS_PATH: &str = "/v1/completions";
 pub const DEFAULT_MODELS_PATH: &str = "/v1/models";
-/// Limite de corps par défaut : 1 MiB.
-pub const DEFAULT_MAX_BODY_BYTES: usize = 1024 * 1024;
+/// Limite de corps par défaut : 8 MiB (S6, rapport client 09/09 §11.3 —
+/// 1 MiB trop bas pour des agents multi-fichiers).
+pub const DEFAULT_MAX_BODY_BYTES: usize = 8 * 1024 * 1024;
 /// Taille max d'une sentinelle CLOISON (≈ 31–38 octets UTF-8) ; borne aussi le tampon de flux.
 pub const DEFAULT_STREAM_MAX_TOKEN_LEN: usize = 64;
 /// Plafond dur de `max_token_len`.
@@ -77,7 +78,10 @@ pub const STREAM_MAX_TOKEN_LEN_CAP: usize = 256;
 pub const DEFAULT_NEUTRAL_MARKER: &str = "[REDACTED]";
 /// Timeouts amont par défaut (ms).
 pub const DEFAULT_CONNECT_TIMEOUT_MS: u64 = 5_000;
-pub const DEFAULT_REQUEST_TIMEOUT_MS: u64 = 30_000;
+/// S15 (rapport client 09/09 §6.2) : les modèles « thinking » tiennent
+/// jusqu'à ~165 s par requête — 30 s coupait la connexion (EOF → 502).
+/// Défaut relevé à 5 minutes ; `CLOISON_UPSTREAM_TIMEOUT_MS` prime.
+pub const DEFAULT_REQUEST_TIMEOUT_MS: u64 = 300_000;
 /// Intervalle de keep-alive SSE par défaut (ms).
 pub const DEFAULT_KEEP_ALIVE_MS: u64 = 15_000;
 /// Seuil k-anonyme du rapport de conformité par défaut (STACK-4).
@@ -151,6 +155,16 @@ pub struct Config {
     /// (gazetteers + alias). La dégradation gracieuse est systématique
     /// (modèle/lib absents → warn, jamais d'erreur).
     pub light_ner: Option<LightNerConfig>,
+    /// S17 — restauration par intérieur de jeton nu (le modèle retire les
+    /// délimiteurs ⟦…⟧ mais recopie le corps base32). Registre-borné + MAC.
+    /// `CLOISON_RESTORE_BARE_INNARDS`, défaut 1.
+    pub restore_bare_innards: bool,
+    /// S16 — whitelist géo (pays jamais masqués). `CLOISON_GEO_WHITELIST`,
+    /// défaut 1.
+    pub geo_whitelist: bool,
+    /// S16 — classes de détecteurs désactivées (`CLOISON_DISABLE_DETECTORS`,
+    /// liste à virgules ; noms validés au boot, fail-loud sur nom inconnu).
+    pub disabled_detectors: Vec<String>,
 }
 
 /// Configuration de la session N0 v1.1 (alias intra-session R1–R7 + jauge
@@ -336,6 +350,9 @@ impl std::fmt::Debug for Config {
             .field("mock_mode", &self.mock_mode)
             .field("audit_mode", &self.audit_mode)
             .field("realistic_fake", &self.realistic_fake)
+            .field("restore_bare_innards", &self.restore_bare_innards)
+            .field("geo_whitelist", &self.geo_whitelist)
+            .field("disabled_detectors", &self.disabled_detectors)
             .field("audit_keys", &self.audit_keys)
             .field("audit_k", &self.audit_k)
             .field("audit_ledger_file", &self.audit_ledger_file)
@@ -648,6 +665,19 @@ pub fn load() -> Result<Config, ProxyError> {
         }
     };
 
+    // S17/S16 (rapport client 09/09 §6.3/§6.4 + S15-S18) : restauration par
+    // intérieur de jeton nu (défaut ON), whitelist géo pays (défaut ON),
+    // classes désactivables (liste à virgules, validée au boot par
+    // `Policy::kind_from_env_name` — fail-loud sur nom inconnu).
+    let restore_bare_innards = env_bool_or("CLOISON_RESTORE_BARE_INNARDS", true)?;
+    let geo_whitelist = env_bool_or("CLOISON_GEO_WHITELIST", true)?;
+    let disabled_detectors: Vec<String> = env("CLOISON_DISABLE_DETECTORS", "")
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .collect();
+
     Ok(Config {
         listen_addr,
         upstream,
@@ -666,7 +696,19 @@ pub fn load() -> Result<Config, ProxyError> {
         vault,
         session,
         light_ner,
+        restore_bare_innards,
+        geo_whitelist,
+        disabled_detectors,
     })
+}
+
+/// `env_bool` avec défaut explicite (les env « opt-out » S16/S17 sont ON
+/// par défaut, contrairement à `env_bool` qui renvoie false si absente).
+fn env_bool_or(name: &str, default: bool) -> Result<bool, ProxyError> {
+    match std::env::var(name) {
+        Ok(v) => env_bool(name),
+        Err(_) => Ok(default),
+    }
 }
 
 /// Charge le sel de session (rotation des jetons) :

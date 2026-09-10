@@ -277,6 +277,9 @@ fn proxy_config(mock_url: &str, control_url: &str, audit_mode: bool) -> Config {
         session: cloison_proxy::config::SessionConfig::default(),
         // N0 v1.2 : pas de NER léger dans ces tests (modèle absent → N0 v1).
         light_ner: None,
+        restore_bare_innards: true,
+        geo_whitelist: true,
+        disabled_detectors: Vec::new(),
     }
 }
 

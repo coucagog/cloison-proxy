@@ -106,6 +106,11 @@ pub struct Engine {
     generalizer: Generalizer,
     /// Per-request emission registry.
     registry: IssuanceRegistry,
+    /// S17 : restauration par **intérieur de jeton nu** (le modèle retire les
+    /// délimiteurs ⟦…⟧ mais recopie le corps base32). Registre-borné + MAC :
+    /// seule une correspondance exacte d'un jeton émis POUR CETTE REQUÊTE est
+    /// restaurée — aucun risque de faux positif exploitable. Défaut : actif.
+    restore_bare_innards: bool,
 }
 
 impl Engine {
@@ -118,6 +123,7 @@ impl Engine {
             keys,
             generalizer: Generalizer::new(),
             registry: IssuanceRegistry::new(),
+            restore_bare_innards: true,
         })
     }
 
@@ -130,7 +136,15 @@ impl Engine {
             keys,
             generalizer: Generalizer::new(),
             registry: IssuanceRegistry::new(),
+            restore_bare_innards: true,
         })
+    }
+
+    /// Active/désactive la restauration par intérieur de jeton nu (S17).
+    /// Défaut : active — désactivable via `CLOISON_RESTORE_BARE_INNARDS=0`.
+    pub fn with_bare_innard_restore(mut self, enabled: bool) -> Self {
+        self.restore_bare_innards = enabled;
+        self
     }
 
     /// Set a custom generalizer.
@@ -267,6 +281,17 @@ impl Engine {
         let mut emitted = Vec::new();
 
         for span in spans {
+            // S16 — whitelist géo (pays) : un nom de pays n'est pas une PII,
+            // et le masquer dégrade les réponses (rapport client 09/09 §6.4,
+            // « Sénégal → Laos »). Quand la whitelist est active (défaut),
+            // les toponymes-pays ne sont JAMAIS masqués ; désactivable par
+            // politique (CLOISON_GEO_WHITELIST=0 côté proxy).
+            if policy.geo_whitelist
+                && span.entity_type == DetectorKind::Location
+                && crate::geo::is_whitelisted_country(&span.value)
+            {
+                continue;
+            }
             // Step 2a: Check generalization — la politique N0 prime (elle
             // porte la règle complète, ex. ville_sn → [VILLE_SN] absent du
             // Generalizer par défaut — corrigé : appliquer la règle de la
@@ -418,6 +443,31 @@ impl Engine {
             // Step 2e: Replace sentinel with clear value
             text_out = replace_span(&text_out, start, end, &plain_value);
             counters.restored += 1;
+        }
+
+        // S17 — passe « intérieurs nus » : le modèle peut retirer les
+        // délimiteurs ⟦…⟧ et recopier le corps base32 seul (comportement
+        // observé sur sorties structurées, rapport client 09/09 §6.3). On
+        // restaure UNIQUEMENT une correspondance exacte avec un jeton émis
+        // pour cette requête (registre) ET vérifiée par MAC — tout autre
+        // run de 26 caractères base32 reste du texte ordinaire, intact.
+        if self.restore_bare_innards {
+            for (innard, start, end) in extract_bare_innard_positions(&text_out)
+                .into_iter()
+                .rev()
+            {
+                let Ok(body) = TokenBody::from_base32(&innard) else {
+                    continue;
+                };
+                let Some((plain, kind)) = self.registry.get(&body).cloned() else {
+                    continue;
+                };
+                if !Token::verify_body(&body, &plain, &kind, &self.keys) {
+                    continue;
+                }
+                text_out = replace_span(&text_out, start, end, &plain);
+                counters.restored += 1;
+            }
         }
 
         Ok(RestoreResult { text_out, counters })
@@ -618,6 +668,44 @@ fn extract_sentinel_positions(text: &str) -> Vec<(String, usize, usize)> {
     positions
 }
 
+/// S17 — extrait les **intérieurs de jetons nus** : runs maximaux de
+/// exactement 26 caractères base32 minuscules (RFC 4648, sans padding —
+/// l'alphabet exact des corps de jetons), sur frontières UTF-8. Renvoie
+/// `(run, start, end)` en ordre direct.
+fn extract_bare_innard_positions(text: &str) -> Vec<(String, usize, usize)> {
+    let bytes = text.as_bytes();
+    let mut positions = Vec::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        if is_b32_lower(bytes[i]) {
+            let start = i;
+            let mut j = i;
+            while j < bytes.len() && is_b32_lower(bytes[j]) {
+                j += 1;
+            }
+            if j - start == Sentinel::B32_LEN
+                && text.is_char_boundary(start)
+                && text.is_char_boundary(j)
+            {
+                positions.push((text[start..j].to_string(), start, j));
+            }
+            i = j;
+        } else {
+            // Avance d'un octet : les octets de continuation UTF-8 (≥ 0x80)
+            // ne sont jamais base32 — le scan reste sûr, les bornes sont
+            // validées par is_char_boundary à l'extraction.
+            i += 1;
+        }
+    }
+    positions
+}
+
+/// Octet de l'alphabet base32 minuscule RFC 4648 (a-z, 2-7) — l'alphabet
+/// exact produit par `TokenBody::to_base32`.
+fn is_b32_lower(b: u8) -> bool {
+    b.is_ascii_lowercase() || (b'2'..=b'7').contains(&b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -712,6 +800,101 @@ mod tests {
             result.counters.blocked > 0,
             "Forged sentinel should be blocked"
         );
+    }
+
+    #[test]
+    fn test_restore_bare_innard_s17() {
+        // S17 : le modèle retire les délimiteurs ⟦…⟧ et recopie le corps
+        // base32 nu → la restauration doit retrouver le clair (registre + MAC).
+        let keys = test_keys();
+        let mut engine = Engine::new(keys).unwrap();
+        let policy = Policy::default();
+
+        let original = "Contact: user@example.com";
+        let result = engine.tokenize(original, &policy, "req-innard").unwrap();
+        let innard = &result.emitted[0].body_b32;
+        let bare = format!("Le contact est {innard} — copie sans délimiteurs.");
+
+        let restored = engine.restore(&bare, "req-innard").unwrap();
+        assert!(
+            restored.text_out.contains("user@example.com"),
+            "intérieur nu restauré : {}",
+            restored.text_out
+        );
+        assert!(restored.counters.restored >= 1);
+    }
+
+    #[test]
+    fn test_bare_innard_unknown_untouched() {
+        // Un run de 26 caractères base32 qui n'est PAS un jeton émis reste
+        // du texte ordinaire (aucun faux positif, aucun blocage).
+        let keys = test_keys();
+        let mut engine = Engine::new(keys).unwrap();
+        let policy = Policy::default();
+        let _ = engine
+            .tokenize("Contact: user@example.com", &policy, "req-unk")
+            .unwrap();
+
+        let noise = "cle qeo6ngmtv5utb54ndn5iswgoe non émise";
+        let restored = engine.restore(noise, "req-unk").unwrap();
+        assert_eq!(restored.text_out, noise, "texte inchangé");
+        assert_eq!(restored.counters.restored, 0);
+    }
+
+    #[test]
+    fn test_bare_innard_toggle_off() {
+        let keys = test_keys();
+        let mut engine = Engine::new(keys)
+            .unwrap()
+            .with_bare_innard_restore(false);
+        let policy = Policy::default();
+
+        let result = engine
+            .tokenize("Contact: user@example.com", &policy, "req-off")
+            .unwrap();
+        let innard = result.emitted[0].body_b32.clone();
+        let bare = format!("contact {innard}");
+
+        let restored = engine.restore(&bare, "req-off").unwrap();
+        assert_eq!(restored.text_out, bare, "toggle OFF : intérieur laissé tel quel");
+    }
+
+    #[test]
+    fn test_geo_whitelist_skips_country_loc() {
+        // S16 : un span NER LOCATION qui est un nom de pays n'est pas masqué
+        // quand la whitelist géo est active (défaut)…
+        let keys = test_keys();
+        let mut engine = Engine::new(keys).unwrap();
+        let mut policy = Policy::default();
+
+        let text = "Le Sénégal est un pays d'Afrique de l'Ouest.";
+        let span = Span {
+            entity_type: DetectorKind::Location,
+            start: 3,
+            end: 12, // "Sénégal" (9 octets, é = 2 octets)
+            score: 0.9,
+            value: "Sénégal".to_string(),
+        };
+        let out = engine
+            .tokenize_with_extra(text, &policy, "req-geo", &[span.clone()])
+            .unwrap();
+        assert!(
+            out.text_out.contains("Sénégal"),
+            "pays non masqué (whitelist) : {}",
+            out.text_out
+        );
+
+        // … et redevient masqué quand la whitelist est désactivée.
+        policy.geo_whitelist = false;
+        let out2 = engine
+            .tokenize_with_extra(text, &policy, "req-geo2", &[span])
+            .unwrap();
+        assert!(
+            !out2.text_out.contains("Sénégal"),
+            "pays masqué sans whitelist : {}",
+            out2.text_out
+        );
+        assert!(out2.text_out.contains(Sentinel::L_OPEN));
     }
 
     #[test]

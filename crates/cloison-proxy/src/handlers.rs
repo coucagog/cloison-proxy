@@ -91,6 +91,9 @@ pub struct AppState {
     /// NER léger embarqué (chantier ④, N0 v1.2) ; `None` = N0 v1 inchangé
     /// (ou modèle non configuré). Dégradation gracieuse au chargement.
     pub light_ner: Option<Arc<LightNer>>,
+    /// S17 — restauration par intérieur de jeton nu (registre-borné + MAC).
+    /// Défaut ON ; `CLOISON_RESTORE_BARE_INNARDS=0` pour désactiver.
+    pub restore_bare_innards: bool,
 }
 
 impl AppState {
@@ -110,6 +113,32 @@ impl AppState {
         } else {
             Policy::default_for(&config.control.tenant_id)
         };
+        // S16 — whitelist géo (pays jamais masqués) : défaut ON.
+        policy.geo_whitelist = config.geo_whitelist;
+        // S16 — classes désactivables : fail-loud au boot sur nom inconnu
+        // (jamais de désactivation silencieuse sur une faute de frappe).
+        for name in &config.disabled_detectors {
+            match Policy::kind_from_env_name(name) {
+                Some(kind) => {
+                    tracing::warn!(
+                        detector = %name,
+                        "détecteur désactivé par CLOISON_DISABLE_DETECTORS — les valeurs de ce type partent en clair"
+                    );
+                    policy.disable(&kind);
+                }
+                None => {
+                    return Err(ProxyError::new(
+                        ErrorKind::Internal,
+                        "unknown detector in CLOISON_DISABLE_DETECTORS",
+                    )
+                    .with_field("detector", name.clone())
+                    .with_field(
+                        "valid_names",
+                        "email,phone,cni,creditcard,ip,date,person,location,passport,driverlicense,matricule,nom_sn,ville_sn",
+                    ));
+                }
+            }
+        }
         // Dette 3 (03/09) — faux réaliste opt-in : remplace les sentinelles par
         // un faux déterministe (irréversible) pour les types couverts, afin de
         // résister aux modèles qui nettoient les ⟦…⟧. Types sans générateur :
@@ -258,6 +287,7 @@ impl AppState {
                 None
             },
             light_ner,
+            restore_bare_innards: config.restore_bare_innards,
         })
     }
 
@@ -354,7 +384,12 @@ pub async fn chat_completions(
         return audit_chat_completions(state, key, tenant.0, req, request_id).await;
     }
 
-    let mut req_engine = RequestEngine::new(&state.keys, &request_id, state.vault.clone())?;
+    let mut req_engine = RequestEngine::new(
+        &state.keys,
+        &request_id,
+        state.vault.clone(),
+        state.restore_bare_innards,
+    )?;
 
     // Phase aller : tokenisation complète du corps (registre = cette requête).
     // B.1 : le sidecar detect est consulté (dégradation gracieuse s'il est
@@ -477,7 +512,12 @@ pub async fn completions_legacy(
         return audit_completions_legacy(state, key, tenant.0, req, request_id).await;
     }
 
-    let mut req_engine = RequestEngine::new(&state.keys, &request_id, state.vault.clone())?;
+    let mut req_engine = RequestEngine::new(
+        &state.keys,
+        &request_id,
+        state.vault.clone(),
+        state.restore_bare_innards,
+    )?;
     let mut session_guard = match &state.session_options {
         Some(_) => Some(state.session.lock().await),
         None => None,

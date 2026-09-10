@@ -19,10 +19,13 @@
 | `CLOISON_UPSTREAM_COMPLETIONS_PATH` | edge | non | `/v1/completions` | chemin legacy `completions` |
 | `CLOISON_UPSTREAM_MODELS_PATH` | edge | non | `/v1/models` | chemin `models` |
 | `CLOISON_UPSTREAM_CONNECT_TIMEOUT_MS` | edge | non | `5000` | timeout de connexion amont |
-| `CLOISON_UPSTREAM_TIMEOUT_MS` | edge | non | `30000` | timeout global amont |
-| `CLOISON_MAX_BODY_BYTES` | edge | non | `1048576` (1 MiB) | limite de corps entrante |
+| `CLOISON_UPSTREAM_TIMEOUT_MS` | edge | non | `300000` (5 min — **S15** : modèles « thinking » jusqu'à ~165 s) | timeout global amont ; un 502/503 amont ou un corps 2xx tronqué (EOF) déclenche **UN** réessai identique (non-stream, jamais plus) |
+| `CLOISON_MAX_BODY_BYTES` | edge | non | `8388608` (8 MiB — **S6**) | limite de corps entrante |
 | `CLOISON_STREAM_MAX_TOKEN_LEN` | edge | non | `64` (plafond `256`) | taille max d'une sentinelle / tampon flux |
 | `CLOISON_STREAM_NEUTRAL_MARKER` | edge | non | `[REDACTED]` | marqueur fail-loud (jeton non résolu) |
+| `CLOISON_RESTORE_BARE_INNARDS` | edge/N0 | non | `1` | **S17** : restauration des **intérieurs de jetons nus** (le modèle retire les délimiteurs ⟦…⟧ et recopie le corps base32) — registre-borné + MAC, jamais de faux positif exploitable ; `0` = désactivé |
+| `CLOISON_GEO_WHITELIST` | edge/N0 | non | `1` | **S16** : les **noms de pays** ne sont jamais masqués (whitelist FR+EN embarquée, spans NER LOCATION) ; `0` = désactivé |
+| `CLOISON_DISABLE_DETECTORS` | edge/N0 | non | — | **S16** : classes désactivées, virgules — `email,phone,cni,creditcard,ip,date,person,location,passport,driverlicense,matricule,nom_sn,ville_sn` ; nom inconnu = **refus de démarrer** (fail-loud, jamais silencieux) |
 | `CLOISON_STREAM_KEEP_ALIVE_MS` | edge | non | `15000` | intervalle keep-alive SSE |
 | `CLOISON_EXPECTED_ACCESS_TOKEN` | edge | **oui** | absent (auth optionnelle) | jeton local `mn_*` attendu, comparé à temps constant |
 | `CLOISON_TENANT_KEY_HEX` | edge/control | **oui** | **requis** (hors mock) | clé locataire 32 octets en hex (64 caractères) |

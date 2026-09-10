@@ -170,3 +170,18 @@ fi
 echo ""
 echo "==> Lancement : $PREFIX/cloison-proxy"
 echo "    Vérification : docs/N0.md §5. Installation terminée ✅"
+
+# S12 (rapport client 09/09 §11.4) : afficher la version installée vs la
+# dernière release et recommander l'épinglage (jamais `latest`).
+echo ""
+echo "==> Version installée : $VERSION"
+if [[ "$VERSION" == "latest" ]]; then
+  LATEST_TAG="$(curl -fsSL "https://api.github.com/repos/$RELEASE_REPO/releases/latest" 2>/dev/null \
+    | sed -n 's/.*"tag_name": "\(v[0-9.]*\)".*/\1/p' | head -1 || true)"
+  if [[ -n "$LATEST_TAG" ]]; then
+    echo "    Dernière release : $LATEST_TAG"
+    echo "    ⚠ RECOMMANDÉ : réinstaller ÉPINGLÉ — bash install-n0.sh --version $LATEST_TAG"
+    echo "      (le tag 'latest' a connu des incohérences de bundle NER sur Linux ;"
+    echo "       l'épinglage garantit la reproductibilité — FAQ/RECO du manuel N0)."
+  fi
+fi

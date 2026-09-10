@@ -935,6 +935,10 @@ cloison-proxy</code></pre>
             <tr><td><span class="code">CLOISON_SESSION_SALT_FILE</span></td><td>Sel de session persistant (0600)</td><td>défaut <span class="code">&lt;vault_path&gt;.salt</span> — les conversations survivent aux redémarrages</td></tr>
             <tr><td><span class="code">CLOISON_NER_MODEL_ONNX</span> + <span class="code">CLOISON_NER_TOKENIZER</span></td><td>NER léger embarqué (PERSON/LOC in-core, jamais de sidecar Python)</td><td>posés ensemble → détection en texte libre ; absents → gazetteers + alias seuls</td></tr>
             <tr><td><span class="code">CLOISON_NER_THRESHOLD</span></td><td>Seuil de score du NER</td><td>défaut <strong>0.70</strong> (meilleur F1 mesuré ; plus haut = moins de faux positifs, plus bas = plus de rappel)</td></tr>
+            <tr><td><span class="code">CLOISON_RESTORE_BARE_INNARDS</span></td><td>Restauration des <strong>intérieurs de jetons nus</strong> — certains modèles retirent les délimiteurs ⟦…⟧ et recopient le corps du jeton seul</td><td>défaut <strong>1</strong> (restauré ssi jeton émis pour la requête : registre + MAC, jamais de faux positif) ; <span class="code">0</span> = désactivé</td></tr>
+            <tr><td><span class="code">CLOISON_GEO_WHITELIST</span></td><td>Les <strong>noms de pays</strong> ne sont jamais masqués (whitelist français + anglais embarquée)</td><td>défaut <strong>1</strong> ; <span class="code">0</span> = tout toponyme masqué</td></tr>
+            <tr><td><span class="code">CLOISON_DISABLE_DETECTORS</span></td><td>Classes de détecteurs désactivées (virgules) — les valeurs de ces types partent alors <strong>en clair</strong></td><td>vide ; <span class="code">person,location,ville_sn,…</span> ; nom inconnu = <strong>refus de démarrer</strong></td></tr>
+            <tr><td><span class="code">CLOISON_UPSTREAM_TIMEOUT_MS</span></td><td>Timeout amont — les modèles « thinking » peuvent tenir plusieurs minutes par requête</td><td>défaut <strong>300000</strong> (5 min) ; un 502/503 ou un corps tronqué déclenche <strong>un</strong> réessai identique (non-stream)</td></tr>
             <tr><td><span class="code">CLOISON_AUDIT_MODE</span></td><td>Mode <strong>observe-only</strong> (détecte et compte, ne masque rien)</td><td><span class="code">1</span>/<span class="code">true</span>/<span class="code">yes</span>/<span class="code">on</span> → observe-only&nbsp;; <span class="code">0</span>/<span class="code">false</span>/absent → <strong>masquage actif</strong> (défaut)</td></tr>
             <tr><td><span class="code">CLOISON_REALISTIC_FAKE</span></td><td>Faux réaliste déterministe et <strong>irréversible</strong> (au lieu des sentinelles)</td><td>opt-in par tenant, 4 conditions mesurées — voir <a href="manuel.html#05-fake">manuel d'utilisation</a></td></tr>
             <tr><td><span class="code">CLOISON_ALIAS_EXPANSION</span></td><td>Alias intra-session (formes dérivées des mentions canoniques)</td><td><strong>1 par défaut</strong> — jamais les pronoms</td></tr>
@@ -959,9 +963,19 @@ cloison-proxy</code></pre>
           </tbody>
         </table>
         <p>Dans tous les modes, les <strong>faibles cardinalités</strong> sont généralisées, jamais tokenisées (la fréquence trahirait le jeton)&nbsp;: date → <span class="code">YYYY-MM</span>, IP → <span class="code">[IP]</span>, carte bancaire → <span class="code">•••••••••1234</span>, ville → <span class="code">[VILLE_SN]</span>.</p>
+        <p><strong>Sémantique du rapport d'audit</strong> (<span class="code">GET /v1/audit/report</span>, observe-only)&nbsp;: <span class="code">total_requests</span> = requêtes de la période ; <span class="code">redacted</span> = projection <strong>k-anonyme</strong> des compteurs (les cellules sous k sont masquées, jamais exposées) ; le détail par type (<span class="code">masked_by_type</span>) n'est <strong>pas exposé</strong> publiquement (il reste dans les reçus locaux signés) ; <span class="code">publishable</span> = vrai uniquement si assez de requêtes <strong>et</strong> toutes les cellules non nulles ≥ k. Pour un inventaire fin des faux positifs lors d'un audit initial, passez par des sondes locales.</p>
 
-        <!-- 05 LIMITES -->
-        <h2 id="sec-limites" data-od-id="sec-limites">05 · Limites honnêtes</h2>
+        <!-- 05 AGENTS -->
+        <h2 id="sec-agents" data-od-id="sec-agents">05 · Agents &amp; modèles «&nbsp;thinking&nbsp;»</h2>
+        <p>CLOISON est compatible avec <strong>tout client OpenAI-compatible</strong> (opencode, Codex, LibreChat, Open WebUI, SDK maison…) et tout fournisseur (DeepSeek, GLM, OpenRouter…). Deux comportements à connaître avec les modèles «&nbsp;thinking&nbsp;»&nbsp;:</p>
+        <div class="callout callout-note" data-od-id="callout-thinking">
+          <span class="cicon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg></span>
+          <p><strong><span class="code">reasoning_content</span> est géré de bout en bout.</strong> À l'aller, le raisonnement rejoué entre les tours est transmis uniquement sous forme de jetons ⟦…⟧ ; au retour, les sentinelles sont restaurées dans le raisonnement (réponses normales et flux). Certains clients ne rejouent pas ce champ entre les tours&nbsp;: le fournisseur renvoie alors un 400 — <strong>indépendamment de CLOISON</strong>. Utilisez un client qui rejoue le champ (ou signalez-le à l'éditeur du SDK)&nbsp;: dès qu'il est présent, CLOISON le transporte.</p>
+        </div>
+        <p>Les modèles «&nbsp;thinking&nbsp;» peuvent tenir <strong>plusieurs minutes par requête</strong>&nbsp;: le timeout amont par défaut est de 5 minutes, et un échec 502/503 ou un corps tronqué déclenche <strong>un</strong> réessai identique. Certains modèles retirent les délimiteurs ⟦…⟧ et recopient l'intérieur du jeton&nbsp;: CLOISON restaure ces intérieurs <strong>nus</strong> (registre de la requête + MAC — jamais de faux positif).</p>
+
+        <!-- 06 LIMITES -->
+        <h2 id="sec-limites" data-od-id="sec-limites">06 · Limites honnêtes</h2>
         <div class="limits-panel" data-od-id="limites-panel-n0">
           <div class="limits-head"><span class="mark" aria-hidden="true"></span>Limites honnêtes</div>
           <div class="limit-item" data-od-id="limite-n0-postes">
@@ -986,8 +1000,8 @@ cloison-proxy</code></pre>
           </div>
         </div>
 
-        <!-- 06 VERIFIER -->
-        <h2 id="sec-verifier" data-od-id="sec-verifier">06 · Vérifier que ça marche</h2>
+        <!-- 07 VERIFIER -->
+        <h2 id="sec-verifier" data-od-id="sec-verifier">07 · Vérifier que ça marche</h2>
         <div class="code-block" data-od-id="code-sonde">
           <div class="code-head">
             <span class="code-lang">Shell</span>
@@ -1006,8 +1020,8 @@ cloison-proxy</code></pre>
         </div>
         <p>Le coffre ne contient <strong>aucune valeur en clair</strong> (chiffré AES-256-GCM)&nbsp;: <span class="code">grep Aminata ~/.cloison/vault.redb</span> ne trouve rien.</p>
 
-        <!-- 07 VAULT -->
-        <h2 id="sec-vault" data-od-id="sec-vault">07 · Coffre&nbsp;: sauvegarde &amp; restauration</h2>
+        <!-- 08 VAULT -->
+        <h2 id="sec-vault" data-od-id="sec-vault">08 · Coffre&nbsp;: sauvegarde &amp; restauration</h2>
         <p>Trois éléments font la restaur-abilité de vos conversations&nbsp;: le coffre <span class="code">vault.redb</span>, le sel <span class="code">.salt</span> (0600, à côté du coffre) et la <strong>passphrase</strong> (dans votre tête ou le keychain OS). <strong>Sauvegardez les trois ensemble</strong>&nbsp;— l'un sans les autres ne restaure rien.</p>
         <div class="code-block" data-od-id="code-vault">
           <div class="code-head">
@@ -1038,6 +1052,7 @@ cp ~/.cloison/.salt        ~/backups/  # sel de session (0600)
         <a href="#sec-install">Installation</a>
         <a href="#sec-config">Configuration</a>
         <a href="#sec-modes">Les modes</a>
+        <a href="#sec-agents">Agents &amp; modèles « thinking »</a>
         <a href="#sec-limites">Limites honnêtes</a>
         <a href="#sec-verifier">Vérifier que ça marche</a>
         <a href="#sec-vault">Coffre : sauvegarde &amp; restauration</a>
