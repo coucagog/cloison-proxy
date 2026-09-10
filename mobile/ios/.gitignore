@@ -1,0 +1,8 @@
+# CLOISON Mobile (iOS) — fichiers locaux (jamais commités)
+.DS_Store
+xcuserdata/
+DerivedData/
+*.xcuserstate
+build/
+# Artefact WASM (construit via wasm-pack — jamais commité)
+Cloison/Web/pkg/

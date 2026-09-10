@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>CLOISON — chat confidentiel</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header>
+  <div class="brand"><span class="dot"></span>CLOISON <small>chat confidentiel · pseudonymisation in-app</small></div>
+  <button id="btn-settings" title="Configuration">⚙</button>
+</header>
+
+<main>
+  <div id="messages" class="messages">
+    <div class="msg system">Le moteur CLOISON tourne <strong>dans cette app</strong> : vos messages sont
+      pseudonymisés avant d'atteindre le fournisseur LLM, et restaurés au retour.
+      Rien n'est persisté (coffre in-memory).</div>
+  </div>
+
+  <form id="composer" class="composer">
+    <textarea id="input" rows="2" placeholder="Votre message…" enterkeyhint="send"></textarea>
+    <button id="btn-send" type="submit" class="primary" disabled>Envoyer</button>
+  </form>
+
+  <div class="status" id="status">(chargement du moteur…)</div>
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
