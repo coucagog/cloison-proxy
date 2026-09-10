@@ -66,6 +66,7 @@ impl RequestEngine {
         keys: &SessionKeys,
         request_id: &str,
         vault: Option<std::sync::Arc<cloison_core::Vault>>,
+        restore_bare_innards: bool,
     ) -> Result<Self, ProxyError> {
         let engine = match vault {
             Some(v) => Engine::with_vault(keys.clone(), (*v).clone()).map_err(|e| {
@@ -79,7 +80,10 @@ impl RequestEngine {
                 ProxyError::new(ErrorKind::Internal, "failed to initialize engine")
                     .with_field("detail", e.to_string())
             })?,
-        };
+        }
+        // S17 — restauration par intérieur de jeton nu (défaut ON, toggle par
+        // CLOISON_RESTORE_BARE_INNARDS côté config).
+        .with_bare_innard_restore(restore_bare_innards);
         Ok(Self {
             engine,
             request_id: request_id.to_string(),

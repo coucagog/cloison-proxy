@@ -171,6 +171,9 @@ fn n0_config(mock_url: &str, dir: &Path, passphrase: &str) -> Config {
         session: SessionConfig::default(),
         // N0 v1.2 : pas de NER léger dans ces tests (modèle absent → N0 v1).
         light_ner: None,
+        restore_bare_innards: true,
+        geo_whitelist: true,
+        disabled_detectors: Vec::new(),
     }
 }
 

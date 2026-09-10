@@ -147,6 +147,26 @@ impl BufferAndScan {
             emit_len = open;
         }
 
+        // S17 — un intérieur de jeton NU (26 caractères base32) coupé au
+        // milieu de la frontière d'émission ne serait JAMAIS réassemblé
+        // (aucun délimiteur à retenir) : on ne coupe jamais un run base32
+        // de ≤ 26 caractères chevauchant la frontière. Un run plus long
+        // n'est pas un intérieur de jeton (le core ne restaure que les runs
+        // d'exactement 26) — le couper est sans conséquence.
+        if emit_len > 0 && emit_len < self.buffer.len() {
+            let b = self.buffer.as_bytes();
+            if is_b32_lower(b[emit_len - 1]) && is_b32_lower(b[emit_len]) {
+                let mut start = emit_len;
+                while start > 0
+                    && emit_len - start < Sentinel::B32_LEN
+                    && is_b32_lower(b[start - 1])
+                {
+                    start -= 1;
+                }
+                emit_len = start;
+            }
+        }
+
         if emit_len > 0 {
             let region = self.buffer[..emit_len].to_string();
             self.buffer.drain(..emit_len);
@@ -237,6 +257,12 @@ impl BufferAndScan {
             }
         }
     }
+}
+
+/// Octet de l'alphabet base32 minuscule RFC 4648 (a-z, 2-7) — l'alphabet
+/// exact des corps de jetons (S17).
+fn is_b32_lower(b: u8) -> bool {
+    b.is_ascii_lowercase() || (b'2'..=b'7').contains(&b)
 }
 
 /// Trouve la fin du premier événement SSE (`\n\n` ou `\r\n\r\n`).

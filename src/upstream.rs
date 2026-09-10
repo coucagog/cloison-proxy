@@ -92,6 +92,23 @@ impl UpstreamClient {
                 .await?;
             return check_success(resp).await;
         }
+        // S15 (rapport client 09/09 §6.2) : raisonnements « thinking » longs →
+        // timeout amont → EOF/502. UN réessai identique sur 502/503 ou corps
+        // 2xx tronqué (JSON invalide) — jamais plus (pas de retry aveugle).
+        if is_retryable_upstream_failure(status, &text) {
+            tracing::warn!(
+                status = %status,
+                "amont EOF/502 (raisonnement long) — UN réessai identique"
+            );
+            let resp = self
+                .http
+                .post(url)
+                .bearer_auth(upstream_key.as_str())
+                .json(&body)
+                .send()
+                .await?;
+            return check_success(resp).await;
+        }
         result_from_parts(status, &text)
     }
 
@@ -231,6 +248,15 @@ fn strip_response_format(body: &serde_json::Value) -> serde_json::Value {
     stripped
 }
 
+/// S15 — échec amont « retryable » (UN réessai identique, jamais plus) :
+/// statut 502/503, ou statut 2xx avec corps tronqué (JSON invalide = EOF sur
+/// un raisonnement long — rapport client 09/09 §6.2).
+fn is_retryable_upstream_failure(status: u16, text: &str) -> bool {
+    matches!(status, 502 | 503)
+        || ((200..300).contains(&status)
+            && serde_json::from_str::<serde_json::Value>(text).is_err())
+}
+
 #[cfg(test)]
 mod url_tests {
     use super::*;
@@ -297,5 +323,16 @@ mod url_tests {
         assert!(!response_format_400(400, &serde_json::json!({"model": "x"}), marker));
         assert!(!response_format_400(400, &body, r#"{"error":{"message":"autre"}}"#));
         assert!(!response_format_400(500, &body, marker));
+    }
+
+    #[test]
+    fn retryable_failure_only_eof_and_502() {
+        // S15 : UN réessai uniquement sur 502/503 ou corps 2xx tronqué.
+        assert!(is_retryable_upstream_failure(502, "x"));
+        assert!(is_retryable_upstream_failure(503, "x"));
+        assert!(is_retryable_upstream_failure(200, "not json"));
+        assert!(!is_retryable_upstream_failure(200, "{}"));
+        assert!(!is_retryable_upstream_failure(400, "bad"));
+        assert!(!is_retryable_upstream_failure(500, "x"));
     }
 }

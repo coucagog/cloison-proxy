@@ -74,6 +74,20 @@ enum MockMode {
     /// Premier appel : 400 « response_format type is unavailable » ; appel
     /// suivant : écho (dégradation retry de l'edge, un seul réessai).
     ResponseFormat400ThenOk,
+    /// S18/S17 — non-stream : écho du contenu tokenisé avec les délimiteurs
+    /// ⟦…⟧ RETIRÉS (le modèle recopie l'intérieur des jetons — comportement
+    /// réel observé sur sorties structurées, rapport client 09/09 §6.3).
+    ChatBareInnards,
+    /// S18/S17 — stream : mêmes intérieurs nus, en chunks de tailles données
+    /// (découpe au milieu des intérieurs pour prouver le réassemblage).
+    ChatStreamBareInnards {
+        chunk_lens: Vec<usize>,
+    },
+    /// S15 — premier appel : 200 avec corps JSON invalide (EOF amont,
+    /// raisonnement long) ; appel suivant : écho (UN réessai identique).
+    Eof200ThenOk,
+    /// S15 — premier appel : 502 ; appel suivant : écho.
+    Error502ThenOk,
 }
 
 /// Serveur mock axum + captures (header Authorization, corps reçus).
@@ -199,6 +213,34 @@ async fn mock_chat(
                 chat_echo_with(&body, None).into_response()
             }
         }
+        MockMode::ChatBareInnards => {
+            chat_echo_with(&body, Some(&strip_sentinels_to_innards(&body))).into_response()
+        }
+        MockMode::ChatStreamBareInnards { chunk_lens } => {
+            let stripped = strip_sentinels_to_innards(&body);
+            chat_stream_with_content(&body, &stripped, &chunk_lens).into_response()
+        }
+        MockMode::Eof200ThenOk => {
+            let n = bodies_seen.lock().unwrap().len();
+            if n == 1 {
+                // Corps 2xx TRONQUÉ : JSON réellement invalide (EOF).
+                (StatusCode::OK, "corps tronqué {").into_response()
+            } else {
+                chat_echo_with(&body, None).into_response()
+            }
+        }
+        MockMode::Error502ThenOk => {
+            let n = bodies_seen.lock().unwrap().len();
+            if n == 1 {
+                (
+                    StatusCode::BAD_GATEWAY,
+                    Json(json!({"error": {"message": "upstream timeout", "type": "server_error"}})),
+                )
+                    .into_response()
+            } else {
+                chat_echo_with(&body, None).into_response()
+            }
+        }
     }
 }
 
@@ -241,6 +283,77 @@ fn first_reasoning(body: &Value) -> Option<String> {
                     .map(str::to_string)
             })
         })
+}
+
+/// S17/S18 — simule le modèle qui retire les délimiteurs : remplace chaque
+/// sentinelle ⟦corps·TAG⟧ par son corps base32 nu (26 caractères, rapport
+/// client 09/09 §6.3 — « le modèle recopie l'intérieur des jetons »).
+fn strip_sentinels_to_innards(body: &Value) -> String {
+    let text = first_content(body).unwrap_or_default();
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text.as_str();
+    let open = '\u{27E6}';
+    let close = '\u{27E7}';
+    let sep = '\u{00B7}';
+    while let Some(open_rel) = rest.find(open) {
+        out.push_str(&rest[..open_rel]);
+        let after_open = open_rel + open.len_utf8();
+        match rest[after_open..].find(close) {
+            Some(close_rel) => {
+                let close_abs = after_open + close_rel;
+                let inner = &rest[after_open..close_abs];
+                let innard = inner.split(sep).next().unwrap_or(inner);
+                out.push_str(innard);
+                rest = &rest[close_abs + close.len_utf8()..];
+            }
+            None => {
+                out.push_str(&rest[open_rel..]);
+                rest = "";
+                break;
+            }
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+/// Stream générique : écho de `content` donné (déjà transformé par le mock)
+/// en chunks de tailles données.
+fn chat_stream_with_content(
+    body: &Value,
+    content: &str,
+    chunk_lens: &[usize],
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let model = body.get("model").cloned().unwrap_or(json!("mock-echo"));
+    let chunks: Vec<String> = if chunk_lens.is_empty() {
+        vec![content.to_string()]
+    } else {
+        split_chunks(content, chunk_lens)
+    };
+
+    let created = 1700000000u64;
+    let stream = async_stream::stream! {
+        for chunk in chunks {
+            let payload = json!({
+                "id": "chatcmpl-mock-bare",
+                "object": "chat.completion.chunk",
+                "created": created,
+                "model": model,
+                "choices": [{"index": 0, "delta": {"content": chunk}, "finish_reason": null}],
+            });
+            yield Ok::<Event, Infallible>(Event::default().data(payload.to_string()));
+        }
+        let final_payload = json!({
+            "id": "chatcmpl-mock-bare",
+            "object": "chat.completion.chunk",
+            "created": created,
+            "model": model,
+            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+        });
+        yield Ok::<Event, Infallible>(Event::default().data(final_payload.to_string()));
+        yield Ok::<Event, Infallible>(Event::default().data("[DONE]"));
+    };
+    Sse::new(stream)
 }
 
 fn chat_echo_with(body: &Value, forced_content: Option<&str>) -> Json<Value> {
@@ -562,6 +675,9 @@ fn test_config(mock_url: &str) -> Config {
         session: cloison_proxy::config::SessionConfig::default(),
         // N0 v1.2 : pas de NER léger dans ces tests (modèle absent → N0 v1).
         light_ner: None,
+        restore_bare_innards: true,
+        geo_whitelist: true,
+        disabled_detectors: Vec::new(),
     }
 }
 
@@ -937,6 +1053,140 @@ async fn reasoning_stream_truncated_sentinel_redacts_at_closure() {
         "no clear phone leaked: {reasoning}"
     );
     assert!(state.metrics.unresolved_tokens.load(Ordering::Relaxed) > 0);
+}
+
+/// S17/S18 — non-stream « sortie structurée » : le mock recopie les
+/// INTÉRIEURS des jetons (délimiteurs retirés). La restauration par corps nu
+/// doit rendre le clair, zéro fuite, zéro intérieur résiduel.
+#[tokio::test]
+async fn bare_innards_restored_non_stream() {
+    let mock = MockUpstream::start(MockMode::ChatBareInnards).await;
+    let (state, app) = proxy_app(&mock.url()).await;
+
+    let original = "Contact: Aminata Diop, user@example.com, +221 77 123 45 67";
+    let body = json!({
+        "model": "mock-echo",
+        "messages": [{"role": "user", "content": original}]
+    });
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let resp: Value = serde_json::from_str(&resp_body).unwrap();
+    let content = resp["choices"][0]["message"]["content"].as_str().unwrap();
+    assert!(
+        content.contains("user@example.com"),
+        "intérieur nu restauré : {content}"
+    );
+    assert!(
+        content.contains("+221 77 123 45 67"),
+        "téléphone restauré : {content}"
+    );
+    assert!(
+        !content.contains('\u{27E6}') && !content.contains('\u{27E7}'),
+        "aucun délimiteur résiduel : {content}"
+    );
+    // Aucun intérieur de jeton (26 base32) ne doit survivre en sortie.
+    let innard_leak = content.split_whitespace().any(|w| {
+        w.len() == 26 && w.chars().all(|c| c.is_ascii_lowercase() || ('2'..='7').contains(&c))
+    });
+    assert!(!innard_leak, "aucun intérieur nu résiduel : {content}");
+    assert_eq!(state.metrics.unresolved_tokens.load(Ordering::Relaxed), 0);
+}
+
+/// S17/S18 — stream « sortie structurée » : intérieurs nus découpés au
+/// milieu des chunks → réassemblés et restaurés, `[DONE]` final.
+#[tokio::test]
+async fn bare_innards_restored_stream() {
+    let lens = vec![7, 5, 9, 4, 6, 8, 5, 7, 3, 6, 5, 4, 8, 6, 5, 7, 4, 6, 8, 5];
+    let mock =
+        MockUpstream::start(MockMode::ChatStreamBareInnards { chunk_lens: lens }).await;
+    let (state, app) = proxy_app(&mock.url()).await;
+
+    let original = "Bonjour, mon email est user@example.com et mon telephone +221 77 123 45 67.";
+    let body = json!({
+        "model": "mock-echo",
+        "stream": true,
+        "messages": [{"role": "user", "content": original}]
+    });
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (content, done) = sse_content_deltas(&resp_body);
+    assert!(done, "stream must end with data: [DONE]");
+    assert_eq!(
+        content, original,
+        "intérieurs nus réassemblés et restaurés à l'identique : {content}"
+    );
+    assert_eq!(state.metrics.unresolved_tokens.load(Ordering::Relaxed), 0);
+}
+
+/// S15 — premier appel amont : 200 avec corps JSON invalide (EOF) → UN
+/// réessai identique → réponse restaurée.
+#[tokio::test]
+async fn upstream_eof_200_retried_once() {
+    let mock = MockUpstream::start(MockMode::Eof200ThenOk).await;
+    let (state, app) = proxy_app(&mock.url()).await;
+
+    let body = json!({
+        "model": "mock-echo",
+        "messages": [{"role": "user", "content": "Contact: user@example.com"}]
+    });
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(
+        resp_body.contains("user@example.com"),
+        "restauré après le réessai EOF"
+    );
+    assert_eq!(mock.body_count(), 2, "UN seul réessai, jamais plus");
+    assert_eq!(state.metrics.upstream_errors.load(Ordering::Relaxed), 0);
+}
+
+/// S15 — premier appel amont : 502 → UN réessai identique → réponse restaurée.
+#[tokio::test]
+async fn upstream_502_retried_once() {
+    let mock = MockUpstream::start(MockMode::Error502ThenOk).await;
+    let (state, app) = proxy_app(&mock.url()).await;
+
+    let body = json!({
+        "model": "mock-echo",
+        "messages": [{"role": "user", "content": "Contact: user@example.com"}]
+    });
+    let (status, resp_body) = send_json(
+        &app,
+        "POST",
+        "/v1/chat/completions",
+        Some(&good_auth()),
+        Some(body),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(
+        resp_body.contains("user@example.com"),
+        "restauré après le réessai 502"
+    );
+    assert_eq!(mock.body_count(), 2, "UN seul réessai, jamais plus");
+    assert_eq!(state.metrics.upstream_errors.load(Ordering::Relaxed), 0);
 }
 
 /// Stream : le mock découpe volontairement les sentinelles en petits chunks ;
